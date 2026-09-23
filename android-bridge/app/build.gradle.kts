@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.ironman.bridge"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.ironman.bridge"
