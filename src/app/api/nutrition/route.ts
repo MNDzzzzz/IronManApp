@@ -4,6 +4,8 @@ import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import { mockStore } from '@/lib/mockStore';
 import { NutritionLog, WaterLog } from '@/types/database';
 
+import { activeProtocol } from '@/lib/nutritionProtocol';
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -11,25 +13,29 @@ export async function GET(request: NextRequest) {
 
     let meals: NutritionLog[] = [];
     let waterLogs: WaterLog[] = [];
+    let allMeals: NutritionLog[] = [];
+    let allWater: WaterLog[] = [];
 
     if (isSupabaseConfigured && supabaseAdmin) {
-      const { data: dbMeals } = await supabaseAdmin
+      const { data: dbAllMeals } = await supabaseAdmin
         .from('nutrition_logs')
         .select('*')
-        .eq('date', date)
-        .order('timestamp', { ascending: true });
+        .order('timestamp', { ascending: false });
 
-      const { data: dbWater } = await supabaseAdmin
+      const { data: dbAllWater } = await supabaseAdmin
         .from('water_logs')
         .select('*')
-        .eq('date', date)
-        .order('timestamp', { ascending: true });
+        .order('timestamp', { ascending: false });
 
-      meals = dbMeals || [];
-      waterLogs = dbWater || [];
+      allMeals = dbAllMeals || [];
+      allWater = dbAllWater || [];
+      meals = allMeals.filter((m) => m.date === date);
+      waterLogs = allWater.filter((w) => w.date === date);
     } else {
-      meals = mockStore.nutritionLogs.filter((m) => m.date === date);
-      waterLogs = mockStore.waterLogs.filter((w) => w.date === date);
+      allMeals = mockStore.nutritionLogs;
+      allWater = mockStore.waterLogs;
+      meals = allMeals.filter((m) => m.date === date);
+      waterLogs = allWater.filter((w) => w.date === date);
     }
 
     const totalCalories = meals.reduce((sum, m) => sum + m.calories, 0);
@@ -42,6 +48,9 @@ export async function GET(request: NextRequest) {
       date,
       meals,
       water_logs: waterLogs,
+      all_meals: allMeals,
+      all_water: allWater,
+      protocol: activeProtocol,
       totals: {
         calories: totalCalories,
         protein_g: Number(totalProtein.toFixed(1)),
