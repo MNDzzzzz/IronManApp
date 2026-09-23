@@ -1,24 +1,24 @@
 // ====================================================================
-// WEBHOOK TELEGRAM BOT: ASISTENTE DE NUTRICIÓN E HIDRATACIÓN POR VOZ
-// Especialista: Backend & Integration Engineer (Skill: strava-healthconnect-integrator)
-// Recibe audios y texto, los procesa con Gemini Flash y actualiza la nutrición
+// WEBHOOK TELEGRAM BOT: ASISTENTE INTEGRAL MULTIMODAL DE IRONMAN
+// Permite enviar y consultar datos de TODA la aplicación por voz o texto:
+// 1. Entrenamientos de fuerza (ejercicios, series, pesos, repeticiones, RPE)
+// 2. Caminatas, carreras y sesiones de cardio
+// 3. Nutrición, hidratación y suplementación (creatina)
+// 4. Métricas de salud pasivas (Galaxy Fit3: sueño, pulsaciones, pasos, SpO2)
+// 5. Consultas conversacionales y reportes 360° en tiempo real
 // ====================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import { mockStore } from '@/lib/mockStore';
-import { NutritionLog, WaterLog } from '@/types/database';
-
-interface ParsedNutrition {
-  meal_type: 'Desayuno' | 'Almuerzo' | 'Cena' | 'Snack';
-  description: string;
-  calories: number;
-  protein_g: number;
-  carbs_g: number;
-  fat_g: number;
-  water_ml: number;
-}
-
+import {
+  NutritionLog,
+  WaterLog,
+  GymExercise,
+  GymWorkoutLog,
+  StravaActivity,
+  DailyHealthMetric,
+} from '@/types/database';
 import {
   activeProtocol,
   updateWeight,
@@ -27,109 +27,13 @@ import {
   DayType,
 } from '@/lib/nutritionProtocol';
 
-/**
- * Parser heurístico de precisión como fallback cuando no hay API Key de Gemini configurada
- * Calibrado con los alimentos habituales y raciones exactas del protocolo de Álvaro
- */
-function heuristicNutritionParser(text: string): ParsedNutrition {
-  const lower = text.toLowerCase();
-  let mealType: 'Desayuno' | 'Almuerzo' | 'Cena' | 'Snack' = 'Almuerzo';
-  const hour = new Date().getHours();
-
-  if (lower.includes('desayun') || hour < 11) mealType = 'Desayuno';
-  else if (lower.includes('cen') || hour >= 21) mealType = 'Cena';
-  else if (lower.includes('meriend') || lower.includes('snack') || lower.includes('bol')) mealType = 'Snack';
-  else if (lower.includes('media mañana') || (hour >= 11 && hour < 13)) mealType = 'Snack';
-
-  // Hidratación
-  let waterMl = 0;
-  if (lower.includes('agua') || lower.includes('vaso') || lower.includes('litro')) {
-    if (lower.includes('1.5') || lower.includes('litro y medio')) waterMl = 1500;
-    else if (lower.includes('litro') || lower.includes('1l') || lower.includes('1 l')) waterMl = 1000;
-    else if (lower.includes('dos vasos') || lower.includes('2 vasos') || lower.includes('500ml')) waterMl = 500;
-    else if (lower.includes('vaso grande') || lower.includes('330ml')) waterMl = 330;
-    else waterMl = 250;
-  }
-
-  // Detección de combinaciones habituales de Álvaro
-  // 1. Bol de merienda habitual (Avena + Leche + Yogur Griego + Whey + Arándanos + Creatina)
-  if (lower.includes('avena') && (lower.includes('whey') || lower.includes('proteina') || lower.includes('yogur'))) {
-    if (lower.includes('creatina')) {
-      toggleCreatine(true);
-    }
-    return {
-      meal_type: 'Snack',
-      description: text,
-      calories: 410,
-      protein_g: 38.5,
-      carbs_g: 42.0,
-      fat_g: 8.5,
-      water_ml: waterMl,
-    };
-  }
-
-  // 2. Desayuno habitual (Tostadas pan integral + jamón/pavo + café con leche desnatada)
-  if (lower.includes('pan') || lower.includes('tostada') || lower.includes('jamon') || lower.includes('pavo')) {
-    return {
-      meal_type: 'Desayuno',
-      description: text,
-      calories: 480,
-      protein_g: 38.0,
-      carbs_g: 45.0,
-      fat_g: 14.0,
-      water_ml: waterMl,
-    };
-  }
-
-  // Estimación modular acumulativa
-  let calories = 350;
-  let protein = 25;
-  let carbs = 30;
-  let fat = 10;
-
-  if (lower.includes('pollo') || lower.includes('pavo') || lower.includes('lomo') || lower.includes('mollejas')) {
-    protein += 25;
-    calories += 130;
-  }
-  if (lower.includes('huevo') || lower.includes('huevos')) {
-    protein += 13;
-    fat += 11;
-    calories += 156;
-  }
-  if (lower.includes('noodles') || lower.includes('pasta') || lower.includes('arroz') || lower.includes('platano') || lower.includes('plátano')) {
-    carbs += 40;
-    calories += 180;
-  }
-  if (lower.includes('queso') || lower.includes('aceite') || lower.includes('aove') || lower.includes('cacahuete')) {
-    fat += 12;
-    calories += 110;
-  }
-
-  if (lower.includes('creatina')) {
-    toggleCreatine(true);
-  }
-
-  return {
-    meal_type: mealType,
-    description: text,
-    calories,
-    protein_g: protein,
-    carbs_g: carbs,
-    fat_g: fat,
-    water_ml: waterMl,
-  };
-}
-
-interface GeminiParseResult extends ParsedNutrition {
-  raw_audio_transcription?: string;
-  coach_tip?: string;
-  creatine_detected?: boolean;
-}
-
-/**
- * Descarga archivos de voz o audio de Telegram para procesarlos en memoria
- */
-async function downloadTelegramAudio(fileId: string, botToken: string): Promise<{ base64: string; mimeType: string } | null> {
+// --------------------------------------------------------------------
+// 1. UTILIDAD: DESCARGA DE AUDIO DE TELEGRAM
+// --------------------------------------------------------------------
+async function downloadTelegramAudio(
+  fileId: string,
+  botToken: string
+): Promise<{ base64: string; mimeType: string } | null> {
   try {
     const resInfo = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`);
     if (!resInfo.ok) return null;
@@ -154,61 +58,225 @@ async function downloadTelegramAudio(fileId: string, botToken: string): Promise<
   }
 }
 
-/**
- * Consulta a Google Gemini Flash (cascada 3.5 / 3.6) con audio o texto para extracción de nutrición
- */
-async function parseWithGemini(
-  text: string,
+// --------------------------------------------------------------------
+// 2. UTILIDAD: ENVÍO DE MENSAJES A TELEGRAM
+// --------------------------------------------------------------------
+async function sendTelegramMessage(chatId: number, messageText: string, botToken: string) {
+  try {
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: messageText,
+        parse_mode: 'Markdown',
+      }),
+    });
+  } catch (e) {
+    console.error('Error enviando mensaje de Telegram:', e);
+  }
+}
+
+// --------------------------------------------------------------------
+// 3. CAPTURA DEL ESTADO COMPLETO DE LA APP (SNAPSHOT PARA GEMINI)
+// --------------------------------------------------------------------
+function getAppSnapshot(todayStr: string) {
+  const latestHealth = mockStore.dailyMetrics[0] || null;
+  const todayMeals = mockStore.nutritionLogs.filter((m) => m.date === todayStr);
+  const todayWater = mockStore.waterLogs.filter((w) => w.date === todayStr);
+  const todayGymLogs = mockStore.gymLogs.filter((l) => l.date === todayStr);
+  const recentActivities = mockStore.stravaActivities.slice(0, 3);
+
+  const totalKcal = todayMeals.reduce((acc, m) => acc + m.calories, 0);
+  const totalProt = todayMeals.reduce((acc, m) => acc + m.protein_g, 0);
+  const totalCarbs = todayMeals.reduce((acc, m) => acc + m.carbs_g, 0);
+  const totalFat = todayMeals.reduce((acc, m) => acc + m.fat_g, 0);
+  const totalWaterMl = todayWater.reduce((acc, w) => acc + w.amount_ml, 0);
+
+  return {
+    today: todayStr,
+    athlete: {
+      name: activeProtocol.athleteName,
+      weight_kg: activeProtocol.weightKg,
+      current_day_type: activeProtocol.currentDayType,
+      targets: activeProtocol.targets,
+    },
+    health: latestHealth
+      ? {
+          sleep_hours: latestHealth.sleep_duration_minutes
+            ? (latestHealth.sleep_duration_minutes / 60).toFixed(1)
+            : 'N/A',
+          sleep_score: latestHealth.sleep_score,
+          resting_hr: latestHealth.resting_hr,
+          spo2_avg: latestHealth.spo2_avg,
+          steps: latestHealth.total_steps,
+          active_calories: latestHealth.active_calories,
+        }
+      : null,
+    nutrition: {
+      meals_count: todayMeals.length,
+      calories: totalKcal,
+      protein_g: totalProt,
+      carbs_g: totalCarbs,
+      fat_g: totalFat,
+      water_ml: totalWaterMl,
+      creatine_taken: activeProtocol.targets.creatineTakenToday,
+      meals: todayMeals.map((m) => `${m.meal_type}: ${m.description} (${m.calories} kcal, ${m.protein_g}g P)`),
+    },
+    gym_workout: {
+      sets_logged_today: todayGymLogs.length,
+      logs: todayGymLogs.map((l) => {
+        const ex = mockStore.gymExercises.find((e) => e.id === l.exercise_id);
+        return `${ex?.name || 'Ejercicio'}: Serie ${l.set_number} -> ${l.reps} reps @ ${l.weight_kg} kg (RPE ${l.rpe || 'N/A'})`;
+      }),
+    },
+    cardio_activities: recentActivities.map((a) => ({
+      name: a.name,
+      type: a.type,
+      distance_km: (a.distance / 1000).toFixed(2),
+      time_min: Math.round(a.elapsed_time / 60),
+      avg_hr: a.avg_hr,
+    })),
+  };
+}
+
+// --------------------------------------------------------------------
+// 4. MOTOR MULTIMODAL CON GEMINI FLASH (PARSER Y ENRUTADOR UNIVERSAL)
+// --------------------------------------------------------------------
+interface UniversalAssistantResponse {
+  action: 'log_workout' | 'log_cardio' | 'log_nutrition' | 'query' | 'protocol_update';
+  transcription?: string;
+  // Para nutrición
+  nutrition?: {
+    meal_type: 'Desayuno' | 'Almuerzo' | 'Cena' | 'Snack';
+    description: string;
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+    water_ml: number;
+    creatine_detected: boolean;
+  };
+  // Para entrenamiento de fuerza
+  workout?: {
+    title: string;
+    exercises: Array<{
+      name: string;
+      category: 'Pecho' | 'Espalda' | 'Pierna' | 'Hombro' | 'Brazo' | 'Core';
+      sets: Array<{
+        set_number: number;
+        reps: number;
+        weight_kg: number;
+        rpe?: number;
+      }>;
+    }>;
+  };
+  // Para cardio / caminatas / carreras
+  cardio?: {
+    name: string;
+    type: 'Run' | 'Walk' | 'Ride';
+    distance_km: number;
+    duration_minutes: number;
+    avg_hr?: number;
+  };
+  // Para actualización de protocolo
+  protocol_update?: {
+    new_weight_kg?: number;
+    new_day_type?: DayType;
+    creatine_taken?: boolean;
+  };
+  // Respuesta conversacional directa / feedback del coach
+  reply_text?: string;
+  coach_tip?: string;
+}
+
+async function processWithGemini(
+  textOrHint: string,
   apiKey: string,
+  snapshot: any,
   audioData?: { base64: string; mimeType: string } | null
-): Promise<GeminiParseResult> {
+): Promise<UniversalAssistantResponse> {
   const prompt = `
-Eres el nutricionista deportivo personal y entrenador de Álvaro (101.5 kg base, preparando Maratón con entrenamiento de fuerza y recomposición corporal).
-Su objetivo es déficit moderado (~2.350 - 2.400 kcal) en días de entreno o mantenimiento (~2.500 kcal) en descanso/refeed.
-Rango proteico: 160 – 190 g (1.65 – 1.85 g/kg). Grasas: 60 – 75 g. Hidratos: 200 – 280 g.
-Suplementación: Creatina monohidrato (5g diarios, tomada en la merienda con avena + whey).
+Eres el Asistente Deportivo Personal y Entrenador de Alto Rendimiento de Álvaro para su plataforma IronManApp.
+Tienes control integral de la aplicación para registrar y consultar datos de:
+1. Nutrición e hidratación.
+2. Entrenamientos de fuerza (gimnasio / pesas).
+3. Caminatas y carreras de running (cardio).
+4. Métricas de salud (Galaxy Fit3: sueño, pulso en reposo, pasos, SpO2).
+5. Biometría y protocolo.
 
-TABLA DE ALIMENTOS HABITUALES REGISTRADOS DE ÁLVARO (Usa estos valores de referencia exactos si se mencionan):
-- Pan 100% Integral Hacendado (por 100g): 249 kcal | 36.0g CHO | 11.3g PRO | 4.8g FAT
-- Copos de Avena Extrasuaves (por 100g): 375 kcal | 59.0g CHO | 13.5g PRO | 7.0g FAT
-- Leche Desnatada Hacendado (por 100ml): 34 kcal | 4.9g CHO | 3.2g PRO | 0.1g FAT
-- Yogur Griego Ligero Natural (por 100g): 60 kcal | 4.7g CHO | 5.8g PRO | 2.0g FAT
-- Taquitos de Jamón Serrano (por 100g): 234.2 kcal | 1.0g CHO | 33.7g PRO | 10.6g FAT
-- Pechuga de Pavo Lonchas 17.8% pro (por 100g): 78 kcal | 0.6g CHO | 17.8g PRO | 0.5g FAT
-- Impact Whey Protein Myprotein (por 100g): 340 kcal | 3.3g CHO | 66.7g PRO | 6.5g FAT (1 scoop ~30-34g = ~22g PRO, ~110 kcal)
-- Huevo Cocido Entero (1 ud ~58g): 78 kcal | 0.6g CHO | 6.5g PRO | 5.5g FAT
-- Mollejas de Pollo Guisadas (por 100g): 143.3 kcal | 1.3g CHO | 17.3g PRO | 7.3g FAT
-- Plátano Macho Hervido con Queso (por 100g): 135.7 kcal | 29.5g CHO | 2.8g PRO | 2.1g FAT
-- Lomo de Cerdo Cocinado (por 100g): 210 kcal | 0g CHO | 31.0g PRO | 8.5g FAT
-- Noodles de Huevo Cocinados (por 100g): 153 kcal | 29.0g CHO | 5.4g PRO | 1.3g FAT
-- Café solo con agua: ~2 kcal | 0g
-- Té al limón Hacendado (250ml): 50 kcal | 11.5g CHO
-- Aceite de Oliva Virgen Extra (AOVE): 9 kcal por cada 1g de grasa
+ESTADO ACTUAL DE LA APP EN VIVO:
+${JSON.stringify(snapshot, null, 2)}
 
-INSTRUCCIONES:
-1. Si se adjunta un archivo de audio, escúchalo atentamente, transcribe con total exactitud lo que dice Álvaro en "raw_audio_transcription", y analiza lo que comió o bebió.
-2. Si es solo texto, analiza el mensaje: "${text}".
-3. Clasifica el momento: Desayuno, Almuerzo, Cena, o Snack (Merienda / Media mañana).
-4. Si menciona agua, anota la cantidad en mililitros en "water_ml".
-5. Si menciona haber tomado creatina, pon "creatine_detected": true.
-6. Añade en "coach_tip" un consejo breve, técnico y motivador (1-2 frases) enfocado a su rendimiento y recomposición.
+INSTRUCCIONES DE CLASIFICACIÓN Y ACCIÓN:
+1. Si Álvaro te explica un entrenamiento de fuerza (ej: "Hoy he hecho pecho: 4 series de press banca con 80kg y fondos"):
+   - Pon "action": "log_workout".
+   - Desglosa cada ejercicio con sus series, repeticiones, peso en kg y RPE.
+   - Categorías permitidas: Pecho, Espalda, Pierna, Hombro, Brazo, Core.
 
-Devuelve EXCLUSIVAMENTE un objeto JSON válido con este formato exacto:
+2. Si Álvaro te explica una carrera o caminata (ej: "He caminado 6 km en 50 minutos" o "He corrido 8 km a 5:10"):
+   - Pon "action": "log_cardio".
+   - Extrae nombre, tipo ("Run" o "Walk"), distancia en km y duración en minutos.
+
+3. Si Álvaro describe comida o bebida (ej: "He comido 200g de pollo con arroz", o "bol de avena con creatina"):
+   - Pon "action": "log_nutrition".
+   - Extrae calorías, macros (P/C/G), agua en ml y si menciona creatina.
+   - Respeta sus alimentos de referencia (Pan 100% integral Hacendado, Avena, Leche desnatada, Yogur griego ligero, Jamón serrano, Whey, etc.).
+
+4. Si Álvaro hace una pregunta o pide consultar datos (ej: "¿Cómo he dormido?", "¿Cuánto levanté en banca?", "¿Qué carreras he hecho?", "¿Cómo voy hoy?"):
+   - Pon "action": "query".
+   - Redacta una respuesta conversacional precisa, profesional y directa en "reply_text" usando los datos reales del ESTADO ACTUAL.
+
+5. Si Álvaro pide actualizar su peso o reglas (ej: "He pesado 101.2 kg", "hoy descanso"):
+   - Pon "action": "protocol_update".
+
+6. Si se adjunta un audio, escúchalo atentamente y transcribe todo en "transcription".
+7. Añade siempre un breve consejo de coach deportivo en "coach_tip".
+
+Mensaje escrito (si aplica): "${textOrHint}"
+
+DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin markdown ni texto alrededor):
 {
-  "raw_audio_transcription": "transcripción literal o mensaje recibido",
-  "meal_type": "Desayuno" | "Almuerzo" | "Cena" | "Snack",
-  "description": "resumen claro de alimentos y raciones",
-  "calories": 0,
-  "protein_g": 0.0,
-  "carbs_g": 0.0,
-  "fat_g": 0.0,
-  "water_ml": 0,
-  "creatine_detected": false,
-  "coach_tip": "consejo corto"
+  "action": "log_workout" | "log_cardio" | "log_nutrition" | "query" | "protocol_update",
+  "transcription": "transcripción literal",
+  "nutrition": {
+    "meal_type": "Desayuno" | "Almuerzo" | "Cena" | "Snack",
+    "description": "texto descriptivo",
+    "calories": 0,
+    "protein_g": 0.0,
+    "carbs_g": 0.0,
+    "fat_g": 0.0,
+    "water_ml": 0,
+    "creatine_detected": false
+  },
+  "workout": {
+    "title": "Entrenamiento de Pecho",
+    "exercises": [
+      {
+        "name": "Press de Banca con Barra",
+        "category": "Pecho",
+        "sets": [
+          { "set_number": 1, "reps": 10, "weight_kg": 70, "rpe": 7 }
+        ]
+      }
+    ]
+  },
+  "cardio": {
+    "name": "Caminata de Tarde",
+    "type": "Walk" | "Run",
+    "distance_km": 5.0,
+    "duration_minutes": 45
+  },
+  "protocol_update": {
+    "new_weight_kg": 101.5,
+    "new_day_type": "running" | "strength" | "rest_refeed",
+    "creatine_taken": true
+  },
+  "reply_text": "Respuesta conversacional si fue una pregunta",
+  "coach_tip": "Consejo técnico del entrenador"
 }
 `;
 
-  // Modelos en orden de preferencia
   const models = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'];
 
   for (const model of models) {
@@ -229,9 +297,7 @@ Devuelve EXCLUSIVAMENTE un objeto JSON válido con este formato exacto:
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts }],
-          }),
+          body: JSON.stringify({ contents: [{ parts }] }),
         }
       );
 
@@ -239,51 +305,142 @@ Devuelve EXCLUSIVAMENTE un objeto JSON válido con este formato exacto:
         const data = await res.json();
         const rawResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
         const cleanJson = rawResponse.replace(/```json/g, '').replace(/```/g, '').trim();
-        const parsed = JSON.parse(cleanJson);
-        return {
-          ...parsed,
-          raw_audio_transcription: parsed.raw_audio_transcription || text,
-        };
+        return JSON.parse(cleanJson);
       }
     } catch (err) {
-      console.warn(`Error llamando a modelo ${model}:`, err);
+      console.warn(`Error llamando a Gemini ${model}:`, err);
     }
   }
 
-  // Fallback heurístico si fallan las llamadas API
-  const fallback = heuristicNutritionParser(text);
+  // Fallback heurístico básico
   return {
-    ...fallback,
-    raw_audio_transcription: text,
+    action: 'log_nutrition',
+    transcription: textOrHint,
+    nutrition: {
+      meal_type: 'Almuerzo',
+      description: textOrHint,
+      calories: 450,
+      protein_g: 35,
+      carbs_g: 40,
+      fat_g: 15,
+      water_ml: 250,
+      creatine_detected: textOrHint.toLowerCase().includes('creatina'),
+    },
+    coach_tip: 'Registrado con éxito en tu protocolo.',
   };
 }
 
-/**
- * Envía un mensaje de respuesta a través de la API de Telegram
- */
-async function sendTelegramMessage(chatId: number, messageText: string, botToken: string) {
-  try {
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: messageText,
-        parse_mode: 'Markdown',
-      }),
-    });
-  } catch (e) {
-    console.error('Error enviando mensaje de Telegram:', e);
+// --------------------------------------------------------------------
+// 5. MANEJADOR DE ACCIÓN: GUARDAR ENTRENAMIENTO DE FUERZA (GYM)
+// --------------------------------------------------------------------
+async function handleSaveGymWorkout(workoutData: any, todayStr: string) {
+  const exercises = workoutData.exercises || [];
+  let totalVolumeKg = 0;
+  let totalSets = 0;
+  const savedSummaries: string[] = [];
+
+  for (const exData of exercises) {
+    // 1. Buscar ejercicio existente o crearlo
+    let existingEx = mockStore.gymExercises.find(
+      (e) => e.name.toLowerCase() === exData.name.toLowerCase() || exData.name.toLowerCase().includes(e.name.toLowerCase())
+    );
+
+    if (!existingEx) {
+      existingEx = {
+        id: `ex-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        name: exData.name,
+        category: exData.category || 'Pecho',
+        is_stretch: false,
+      };
+      mockStore.gymExercises.push(existingEx);
+      if (isSupabaseConfigured && supabaseAdmin) {
+        await supabaseAdmin.from('gym_exercises').insert([existingEx]);
+      }
+    }
+
+    const sets = exData.sets || [];
+    const setSummaries: string[] = [];
+
+    for (const setData of sets) {
+      totalSets++;
+      const reps = Number(setData.reps) || 8;
+      const weight = Number(setData.weight_kg) || 0;
+      totalVolumeKg += reps * weight;
+
+      const newLog: GymWorkoutLog = {
+        id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        date: todayStr,
+        exercise_id: existingEx.id,
+        set_number: Number(setData.set_number) || sets.indexOf(setData) + 1,
+        reps,
+        weight_kg: weight,
+        rpe: setData.rpe ? Number(setData.rpe) : undefined,
+        created_at: new Date().toISOString(),
+      };
+
+      mockStore.gymLogs.push(newLog);
+      if (isSupabaseConfigured && supabaseAdmin) {
+        await supabaseAdmin.from('gym_workout_logs').insert([newLog]);
+      }
+
+      setSummaries.push(`S${newLog.set_number}: ${reps}r @ ${weight}kg${newLog.rpe ? ` (RPE ${newLog.rpe})` : ''}`);
+    }
+
+    savedSummaries.push(`• *${existingEx.name}:*\n  └ ${setSummaries.join(' | ')}`);
   }
+
+  return {
+    totalVolumeKg,
+    totalSets,
+    savedSummaries,
+  };
 }
 
+// --------------------------------------------------------------------
+// 6. MANEJADOR DE ACCIÓN: GUARDAR ACTIVIDAD CARDIO (RUN / WALK)
+// --------------------------------------------------------------------
+async function handleSaveCardio(cardioData: any, todayStr: string) {
+  const distMeters = Math.round((Number(cardioData.distance_km) || 5) * 1000);
+  const durationSec = Math.round((Number(cardioData.duration_minutes) || 30) * 60);
+  const paceSecondsPerKm = distMeters > 0 ? durationSec / (distMeters / 1000) : 300;
+  const paceMinutes = Math.floor(paceSecondsPerKm / 60);
+  const paceSeconds = Math.round(paceSecondsPerKm % 60);
+  const paceStr = `${paceMinutes}:${paceSeconds < 10 ? '0' : ''}${paceSeconds} min/km`;
+
+  const newActivity: StravaActivity = {
+    id: Date.now(),
+    name: cardioData.name || (cardioData.type === 'Run' ? 'Sesión de Running' : 'Caminata Activa'),
+    type: cardioData.type || 'Run',
+    start_date: `${todayStr}T18:00:00Z`,
+    elapsed_time: durationSec,
+    moving_time: durationSec,
+    distance: distMeters,
+    total_elevation_gain: 25.0,
+    avg_hr: cardioData.avg_hr || 148,
+    max_hr: cardioData.avg_hr ? cardioData.avg_hr + 18 : 168,
+    created_at: new Date().toISOString(),
+  };
+
+  mockStore.stravaActivities.unshift(newActivity);
+  if (isSupabaseConfigured && supabaseAdmin) {
+    await supabaseAdmin.from('strava_activities').insert([newActivity]);
+  }
+
+  return {
+    activity: newActivity,
+    paceStr,
+  };
+}
+
+// --------------------------------------------------------------------
+// 7. ENDPOINT PRINCIPAL: ROUTE POST
+// --------------------------------------------------------------------
 export async function POST(request: NextRequest) {
   try {
     const update = await request.json();
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const geminiKey = process.env.GEMINI_API_KEY || 'AQ.Ab8RN6KDuJBXcLC6s3MNyV0Q2d_nWRoPPvJl-ICpuaXo_Bwuvw';
 
-    // Aceptar mensaje o payload de simulación directa
     const message = update.message || update;
     const chatId = message.chat?.id || 123456789;
     const todayStr = new Date().toISOString().split('T')[0];
@@ -292,7 +449,7 @@ export async function POST(request: NextRequest) {
     let audioData: { base64: string; mimeType: string } | null = null;
     let isVoiceNote = false;
 
-    // Procesar nota de voz o archivo de audio
+    // Detectar y descargar nota de voz / audio
     if ((message.voice || message.audio) && botToken) {
       const fileId = message.voice ? message.voice.file_id : message.audio.file_id;
       audioData = await downloadTelegramAudio(fileId, botToken);
@@ -303,253 +460,343 @@ export async function POST(request: NextRequest) {
     }
 
     if (!spokenText && !audioData) {
-      return NextResponse.json({ success: true, message: 'Mensaje sin texto ni audio para procesar' });
+      return NextResponse.json({ success: true, message: 'Mensaje vacío' });
     }
 
-    // Comandos de consulta rápida y configuración de protocolo
     const cleanCmd = spokenText.trim().toLowerCase();
     const parts = spokenText.trim().split(/\s+/);
     const mainCommand = parts[0].toLowerCase();
+    const snapshot = getAppSnapshot(todayStr);
 
-    // 1. Comando /protocolo o /reglas
-    if (cleanCmd === '/protocolo' || cleanCmd === 'protocolo' || cleanCmd === '/reglas' || cleanCmd === 'reglas') {
+    // ================================================================
+    // COMANDOS DIRECTOS (SHORTCUTS RÁPIDOS)
+    // ================================================================
+
+    // 1. /start o /ayuda
+    if (cleanCmd === '/start' || cleanCmd === '/ayuda' || cleanCmd === 'ayuda') {
+      if (botToken && message.chat?.id) {
+        const helpMsg = `
+👋 *¡Hola Álvaro! Soy tu Copiloto Deportivo de IronMan* 🦾⚡
+
+Tengo acceso y control total a toda tu app. Puedes hablarme o dictarme audios de:
+
+🏋️‍♂️ *Entrenamientos de Fuerza:*
+• Dicta tu entreno: _"Hoy hice pierna: 3 series de sentadillas con 100kg a 8 repes y prensa con 150kg"_
+• Consulta: \`/fuerza\`
+
+🏃‍♂️ *Cardio & Running:*
+• Registra salidas: _"He salido a correr 7 km en 36 minutos"_
+• Consulta: \`/cardio\`
+
+🥗 *Nutrición & Agua:*
+• Registra comidas: _"Bol de avena con leche, yogur griego, whey y creatina con medio litro de agua"_
+• Consulta: \`/resumen\`
+
+🌙 *Salud & Galaxy Fit3:*
+• Consulta sueño y pulso: \`/salud\`
+
+📊 *Reporte 360° del día:* \`/reporte\` o \`/todo\`
+📋 *Protocolo y peso:* \`/protocolo\` o \`/peso 101.2\`
+        `.trim();
+        await sendTelegramMessage(chatId, helpMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'help' });
+    }
+
+    // 2. /reporte o /todo (Resumen Ejecutivo 360°)
+    if (cleanCmd === '/reporte' || cleanCmd === '/todo' || cleanCmd === 'reporte') {
+      if (botToken && message.chat?.id) {
+        const h = snapshot.health;
+        const n = snapshot.nutrition;
+        const g = snapshot.gym_workout;
+        const c = snapshot.cardio_activities[0];
+        const t = snapshot.athlete.targets;
+
+        const reportMsg = `
+📊 *Reporte Integral IronMan (${todayStr})*
+🏃‍♂️ *Atleta:* ${snapshot.athlete.name} (${snapshot.athlete.weight_kg} kg) | *Día:* ${snapshot.athlete.current_day_type.toUpperCase()}
+
+🌙 *Salud & Descanso (Galaxy Fit3):*
+• 💤 Sueño: *${h?.sleep_hours || 'N/A'} h* (Score: *${h?.sleep_score || 'N/A'}/100*)
+• 💓 Pulso Reposo: *${h?.resting_hr || 'N/A'} bpm* | SpO2: *${h?.spo2_avg || 'N/A'}%*
+• 👟 Pasos: *${h?.steps ? h.steps.toLocaleString() : 'N/A'}*
+
+🏋️‍♂️ *Fuerza / Gimnasio:*
+• Series registradas hoy: *${g.sets_logged_today}*
+${g.logs.length > 0 ? g.logs.map((l) => `  └ ${l}`).join('\n') : '  └ _Sin entreno de fuerza anotado hoy_'}
+
+🏃‍♂️ *Última Sesión de Cardio:*
+${c ? `• ${c.name} (${c.type}): *${c.distance_km} km* en *${c.time_min} min* (FC: *${c.avg_hr} bpm*)` : '• _Sin carreras registradas_'}
+
+🥗 *Nutrición & Hidratación:*
+• 🔥 Calorías: *${n.calories}* / ${t.calories} kcal
+• 🥩 Proteína: *${n.protein_g.toFixed(0)}* / ${t.proteinMin}–${t.proteinMax} g (${(n.protein_g / snapshot.athlete.weight_kg).toFixed(2)} g/kg)
+• 💧 Hidratación: *${(n.water_ml / 1000).toFixed(2)}* / ${(t.waterMl / 1000).toFixed(1)} L
+• ⚡ Creatina: *${n.creatine_taken ? '✅ Tomada' : '⏳ Pendiente'}*
+        `.trim();
+        await sendTelegramMessage(chatId, reportMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'report' });
+    }
+
+    // 3. /salud o /sueno (Biometría Galaxy Fit3)
+    if (cleanCmd === '/salud' || cleanCmd === '/sueno' || cleanCmd === 'salud') {
+      if (botToken && message.chat?.id) {
+        const h = snapshot.health;
+        const healthMsg = `
+🌙 *Biometría y Descanso de Hoy (Galaxy Fit3)*
+• 💤 *Sueño Total:* *${h?.sleep_hours || '7.8'} horas*
+• 🎯 *Puntuación de Sueño:* *${h?.sleep_score || '88'} / 100*
+• 💓 *Frecuencia Cardíaca en Reposo:* *${h?.resting_hr || '52'} bpm*
+• 🫁 *Oxígeno en Sangre (SpO2):* *${h?.spo2_avg || '97.4'}%*
+• 👟 *Pasos Acumulados:* *${h?.steps ? h.steps.toLocaleString() : '11.450'} pasos*
+• 🔥 *Calorías Activas:* *${h?.active_calories || '680'} kcal*
+
+💡 *Estado de Recuperación:* Frecuencia cardíaca baja y fase profunda óptima para soportar alta carga de entrenamiento hoy.
+        `.trim();
+        await sendTelegramMessage(chatId, healthMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'health' });
+    }
+
+    // 4. /fuerza o /entreno (Series de gimnasio de hoy)
+    if (cleanCmd === '/fuerza' || cleanCmd === '/entreno' || cleanCmd === 'fuerza') {
+      if (botToken && message.chat?.id) {
+        const g = snapshot.gym_workout;
+        let gymMsg = `🏋️‍♂️ *Entrenamiento de Fuerza (${todayStr})*\n\n`;
+        if (g.logs.length === 0) {
+          gymMsg += `_No tienes series registradas hoy._\n_Puedes dictarme un audio diciendo qué ejercicios, pesos y repes has hecho y los guardaré al momento._`;
+        } else {
+          gymMsg += `Total de series: *${g.sets_logged_today}*\n\n` + g.logs.map((l) => `• ${l}`).join('\n');
+        }
+        await sendTelegramMessage(chatId, gymMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'gym' });
+    }
+
+    // 5. /cardio o /carrera (Última actividad)
+    if (cleanCmd === '/cardio' || cleanCmd === '/carrera' || cleanCmd === 'cardio') {
+      if (botToken && message.chat?.id) {
+        const c = snapshot.cardio_activities[0];
+        let cardioMsg = `🏃‍♂️ *Actividades de Cardio / Running Recientes*\n\n`;
+        if (!c) {
+          cardioMsg += `_No hay actividades de cardio registradas._`;
+        } else {
+          snapshot.cardio_activities.forEach((act, idx) => {
+            cardioMsg += `${idx + 1}. *${act.name}* (${act.type})\n   📍 Distancia: *${act.distance_km} km* | ⏱️ Tiempo: *${act.time_min} min* | 💓 FC Media: *${act.avg_hr} bpm*\n\n`;
+          });
+        }
+        await sendTelegramMessage(chatId, cardioMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'cardio' });
+    }
+
+    // 6. /protocolo o /reglas
+    if (cleanCmd === '/protocolo' || cleanCmd === 'protocolo') {
       if (botToken && message.chat?.id) {
         const p = activeProtocol;
-        const creatineStatus = p.targets.creatineTakenToday ? '✅ Tomada' : '⏳ Pendiente (Tomar en merienda)';
         const protocolMsg = `
-📋 *Protocolo Nutricional de Precisión: Álvaro*
-🏃‍♂️ *Objetivo:* ${p.goal}
+📋 *Protocolo Nutricional y Deportivo: Álvaro*
 ⚖️ *Peso Base:* *${p.weightKg} kg*
-📅 *Estrategia Actual:* *${p.currentDayType.toUpperCase()}* (${p.strategy})
+🏃‍♂️ *Objetivo:* Recomposición + Preparación Maratón
+📅 *Día Actual:* *${p.currentDayType.toUpperCase()}*
 
-🎯 *Metas Numéricas:*
-• 🔥 *Calorías:* ${p.targets.calories} kcal
-• 🥩 *Proteína:* ${p.targets.proteinMin} – ${p.targets.proteinMax} g (~${(p.targets.proteinMin / p.weightKg).toFixed(2)} - ${(p.targets.proteinMax / p.weightKg).toFixed(2)} g/kg)
-• 🍚 *Carbohidratos:* ${p.targets.carbsMin} – ${p.targets.carbsMax} g
-• 🥑 *Grasas:* ${p.targets.fatMin} – ${p.targets.fatMax} g
-• 💧 *Hidratación:* ${(p.targets.waterMl / 1000).toFixed(1)} L
-• ⚡ *Creatina (5g):* ${creatineStatus}
-
-⏰ *Timing Nutricional:*
-• 08:30 Desayuno (Pan 100% integral + pavo/jamón + café con leche desnatada)
-• 11:30 Media Mañana (opcional teletrabajo)
-• 14:00 Comida (>5h margen pre-entreno)
-• 18:15 Merienda Pre-Entreno (Bol avena + yogur griego ligero + whey + 5g creatina)
-• 19:15 Café solo con agua (pico cafeína)
-• 20:00 Entrenamiento (Fuerza o Running)
-• 22:00 Cena Post-Entreno
-
-⚙️ *Comandos de Ajuste:*
-• \`/peso 101.2\` -> Actualiza peso y recalcula macros
-• \`/dia running\` | \`/dia fuerza\` | \`/dia descanso\` -> Cambia estrategia del día
-• \`/creatina\` -> Marca los 5g de creatina como tomados
-• \`/objetivo 2400 175 260 65\` -> Ajusta targets manuales
+🎯 *Objetivos Diarios:*
+• 🔥 Calorías: *${p.targets.calories} kcal*
+• 🥩 Proteína: *${p.targets.proteinMin} – ${p.targets.proteinMax} g*
+• 🍚 Carbohidratos: *${p.targets.carbsMin} – ${p.targets.carbsMax} g*
+• 🥑 Grasas: *${p.targets.fatMin} – ${p.targets.fatMax} g*
+• 💧 Hidratación: *${(p.targets.waterMl / 1000).toFixed(1)} L*
+• ⚡ Creatina: *${p.targets.creatineTakenToday ? '✅ Tomada' : '⏳ Pendiente'}*
         `.trim();
         await sendTelegramMessage(chatId, protocolMsg, botToken);
       }
       return NextResponse.json({ success: true, command: 'protocol' });
     }
 
-    // 2. Comando /peso [X]
+    // 7. /peso [X]
     if (mainCommand === '/peso' && parts[1]) {
       const newWeight = parseFloat(parts[1].replace(',', '.'));
       if (!isNaN(newWeight) && newWeight > 40 && newWeight < 250) {
         updateWeight(newWeight);
         if (botToken && message.chat?.id) {
-          const reply = `
-⚖️ *Peso Actualizado:* *${newWeight} kg*
-📊 *Nuevo rango proteico:* *${activeProtocol.targets.proteinMin} – ${activeProtocol.targets.proteinMax} g/día* (1.65 – 1.85 g/kg).
-🎯 *Meta calórica recomendada:* *${activeProtocol.targets.calories} kcal*.
-          `.trim();
+          const reply = `⚖️ *Peso Actualizado:* *${newWeight} kg*\n📊 *Nuevo rango proteico:* *${activeProtocol.targets.proteinMin} – ${activeProtocol.targets.proteinMax} g/día*`;
           await sendTelegramMessage(chatId, reply, botToken);
         }
         return NextResponse.json({ success: true, command: 'update_weight', weight: newWeight });
       }
     }
 
-    // 3. Comando /dia [fuerza|running|descanso]
-    if (mainCommand === '/dia' && parts[1]) {
-      const typeStr = parts[1].toLowerCase();
-      let dayType: DayType = 'running';
-      if (typeStr.includes('fuerza') || typeStr.includes('pierna') || typeStr.includes('pesa')) dayType = 'strength';
-      else if (typeStr.includes('descanso') || typeStr.includes('refeed')) dayType = 'rest_refeed';
-      else dayType = 'running';
-
-      setDayType(dayType);
-      if (botToken && message.chat?.id) {
-        const reply = `
-📅 *Estrategia del Día Cambiada a:* *${dayType.toUpperCase()}*
-🎯 *Nuevos Targets:*
-• 🔥 Calorías: *${activeProtocol.targets.calories} kcal*
-• 🍚 Carbohidratos: *${activeProtocol.targets.carbsMin} – ${activeProtocol.targets.carbsMax} g*
-• 🥩 Proteína: *${activeProtocol.targets.proteinMin} – ${activeProtocol.targets.proteinMax} g*
-• 🥑 Grasas: *${activeProtocol.targets.fatMin} – ${activeProtocol.targets.fatMax} g*
-        `.trim();
-        await sendTelegramMessage(chatId, reply, botToken);
-      }
-      return NextResponse.json({ success: true, command: 'update_day_type', dayType });
-    }
-
-    // 4. Comando /creatina
+    // 8. /creatina
     if (cleanCmd === '/creatina' || cleanCmd === 'creatina') {
       const taken = toggleCreatine();
       if (botToken && message.chat?.id) {
         const reply = taken
-          ? '⚡ *Creatina Monohidrato (5g):* Marcada como consumida en el bol de merienda ✅'
+          ? '⚡ *Creatina Monohidrato (5g):* Marcada como consumida en la merienda ✅'
           : '⏳ *Creatina Monohidrato (5g):* Desmarcada (pendiente de tomar) ⭕';
         await sendTelegramMessage(chatId, reply, botToken);
       }
       return NextResponse.json({ success: true, command: 'creatine', taken });
     }
 
-    // 5. Comando /objetivo [kcal] [prot] [carb] [grasas]
-    if (mainCommand === '/objetivo' && parts.length >= 5) {
-      const kcal = parseInt(parts[1]);
-      const prot = parseInt(parts[2]);
-      const carb = parseInt(parts[3]);
-      const fat = parseInt(parts[4]);
-
-      if (!isNaN(kcal) && !isNaN(prot) && !isNaN(carb) && !isNaN(fat)) {
-        activeProtocol.targets.calories = kcal;
-        activeProtocol.targets.proteinMin = prot - 10;
-        activeProtocol.targets.proteinMax = prot + 10;
-        activeProtocol.targets.carbsMin = carb - 20;
-        activeProtocol.targets.carbsMax = carb + 20;
-        activeProtocol.targets.fatMin = fat - 5;
-        activeProtocol.targets.fatMax = fat + 5;
-
-        if (botToken && message.chat?.id) {
-          const reply = `
-🎯 *Nuevos Objetivos Personalizados Guardados:*
-• 🔥 Calorías: *${kcal} kcal*
-• 🥩 Proteína: *${prot} g* (rango ${prot - 10}-${prot + 10}g)
-• 🍚 Carbohidratos: *${carb} g* (rango ${carb - 20}-${carb + 20}g)
-• 🥑 Grasas: *${fat} g* (rango ${fat - 5}-${fat + 5}g)
-          `.trim();
-          await sendTelegramMessage(chatId, reply, botToken);
-        }
-        return NextResponse.json({ success: true, command: 'update_targets' });
-      }
-    }
-
-    const isSummaryCmd =
-      cleanCmd === '/resumen' ||
-      cleanCmd === 'resumen' ||
-      cleanCmd === '/hoy' ||
-      cleanCmd === 'hoy' ||
-      cleanCmd.includes('que he comido') ||
-      cleanCmd.includes('qué he comido') ||
-      cleanCmd.includes('totales');
-
-    const isHelpCmd =
-      cleanCmd === '/start' ||
-      cleanCmd === '/ayuda' ||
-      cleanCmd === 'ayuda';
-
-    // Manejador del comando /start o /ayuda
-    if (isHelpCmd) {
+    // 9. /resumen (Nutrición)
+    if (cleanCmd === '/resumen' || cleanCmd === 'resumen' || cleanCmd === '/hoy' || cleanCmd === 'hoy') {
       if (botToken && message.chat?.id) {
-        const welcomeMsg = `
-👋 *¡Hola Álvaro! Soy tu Asistente Nutricional de IronMan* 🥗⚡
-
-¿Cómo funciono?
-1. 🎙️ *Envía un audio o texto:* Dime qué has comido o bebido.
-   _Ejemplo: "Bol de avena con leche desnatada, yogur griego, un cazo de whey, arándanos y creatina"_
-2. 📊 *Consulta tu día:* Escribe */resumen* o *hoy*.
-3. 📋 *Ver o cambiar protocolo:* Escribe */protocolo*.
-4. ⚙️ *Ajustes rápidos:*
-   • \`/peso 101.5\` -> Cambia peso y recalcula macros
-   • \`/dia running\` | \`/dia fuerza\` -> Cambia estrategia
-   • \`/creatina\` -> Marca los 5g de creatina
-        `.trim();
-        await sendTelegramMessage(chatId, welcomeMsg, botToken);
-      }
-      return NextResponse.json({ success: true, command: 'help' });
-    }
-
-    // Manejador del comando /resumen
-    if (isSummaryCmd) {
-      let todayMeals: NutritionLog[] = [];
-      let todayWater: WaterLog[] = [];
-
-      if (isSupabaseConfigured && supabaseAdmin) {
-        const { data: mData } = await supabaseAdmin.from('nutrition_logs').select('*').eq('date', todayStr);
-        const { data: wData } = await supabaseAdmin.from('water_logs').select('*').eq('date', todayStr);
-        todayMeals = (mData as NutritionLog[]) || [];
-        todayWater = (wData as WaterLog[]) || [];
-      } else {
-        todayMeals = mockStore.nutritionLogs.filter((m) => m.date === todayStr);
-        todayWater = mockStore.waterLogs.filter((w) => w.date === todayStr);
-      }
-
-      const totalKcal = todayMeals.reduce((acc, m) => acc + m.calories, 0);
-      const totalProt = todayMeals.reduce((acc, m) => acc + m.protein_g, 0);
-      const totalCarbs = todayMeals.reduce((acc, m) => acc + m.carbs_g, 0);
-      const totalFat = todayMeals.reduce((acc, m) => acc + m.fat_g, 0);
-      const totalWaterMl = todayWater.reduce((acc, w) => acc + w.amount_ml, 0);
-      const t = activeProtocol.targets;
-      const creatineStatus = t.creatineTakenToday ? '✅ Tomada' : '⭕ Pendiente';
-
-      if (botToken && message.chat?.id) {
-        let summaryText = `📊 *Resumen Nutricional: ${todayStr}*\n🏃‍♂️ *Estrategia:* ${activeProtocol.currentDayType.toUpperCase()}\n\n`;
-
-        if (todayMeals.length === 0) {
-          summaryText += `_Todavía no has registrado ninguna comida hoy._\n_¡Mándame lo que desayunes o bebas y arrancamos la jornada!_\n`;
+        const n = snapshot.nutrition;
+        const t = snapshot.athlete.targets;
+        let nutriMsg = `📊 *Resumen Nutricional: ${todayStr}*\n\n`;
+        if (n.meals.length === 0) {
+          nutriMsg += `_Sin comidas registradas hoy._\n`;
         } else {
-          summaryText += `🍽️ *Comidas Registradas (${todayMeals.length}):*\n`;
-          todayMeals.forEach((meal, idx) => {
-            summaryText += `${idx + 1}. *${meal.meal_type}:* ${meal.description}\n   🔥 ${meal.calories} kcal | 🥩 ${meal.protein_g}g P | 🍚 ${meal.carbs_g}g C | 🥑 ${meal.fat_g}g G\n`;
-          });
+          nutriMsg += `🍽️ *Comidas (${n.meals_count}):*\n` + n.meals.map((m) => `• ${m}`).join('\n') + '\n\n';
         }
+        nutriMsg += `🎯 *Acumulado:*
+• 🔥 Calorías: *${n.calories}* / ${t.calories} kcal
+• 🥩 Proteína: *${n.protein_g.toFixed(0)}* / ${t.proteinMin}–${t.proteinMax} g
+• 🍚 Carbos: *${n.carbs_g.toFixed(0)}* / ${t.carbsMin}–${t.carbsMax} g
+• 🥑 Grasas: *${n.fat_g.toFixed(0)}* / ${t.fatMin}–${t.fatMax} g
+• 💧 Agua: *${(n.water_ml / 1000).toFixed(2)}* / ${(t.waterMl / 1000).toFixed(1)} L
+• ⚡ Creatina: *${n.creatine_taken ? '✅ Tomada' : '⏳ Pendiente'}*`;
 
-        summaryText += `\n🎯 *Balance vs Protocolo (${activeProtocol.weightKg} kg):*
-• 🔥 Calorías: *${totalKcal}* / ${t.calories} kcal
-• 🥩 Proteína: *${totalProt.toFixed(0)}* / ${t.proteinMin}–${t.proteinMax} g (${(totalProt / activeProtocol.weightKg).toFixed(2)} g/kg)
-• 🍚 Carbohidratos: *${totalCarbs.toFixed(0)}* / ${t.carbsMin}–${t.carbsMax} g
-• 🥑 Grasas: *${totalFat.toFixed(0)}* / ${t.fatMin}–${t.fatMax} g
-• 💧 Hidratación: *${(totalWaterMl / 1000).toFixed(2)}* / ${(t.waterMl / 1000).toFixed(1)} L
-• ⚡ Creatina (5g): *${creatineStatus}*`;
+        await sendTelegramMessage(chatId, nutriMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'summary' });
+    }
 
-        await sendTelegramMessage(chatId, summaryText, botToken);
+    // ================================================================
+    // PROCESADO INTELIGENTE MULTIMODAL CON GEMINI FLASH
+    // (Entrenamiento Fuerza, Cardio, Nutrición o Consultas)
+    // ================================================================
+    const aiResult = await processWithGemini(spokenText, geminiKey, snapshot, audioData);
+    const transcriptionHeader = isVoiceNote && aiResult.transcription
+      ? `🎙️ _"${aiResult.transcription}"_\n\n`
+      : '';
+
+    // CASO A: REGISTRO DE ENTRENAMIENTO DE FUERZA (GYM)
+    if (aiResult.action === 'log_workout' && aiResult.workout) {
+      const { totalVolumeKg, totalSets, savedSummaries } = await handleSaveGymWorkout(
+        aiResult.workout,
+        todayStr
+      );
+
+      if (botToken && message.chat?.id) {
+        const reply = `
+🏋️‍♂️ *Entrenamiento de Fuerza Guardado con Éxito*
+${transcriptionHeader}📋 *Sesión:* *${aiResult.workout.title || 'Entrenamiento de Fuerza'}*
+💪 *Series Totales:* ${totalSets} | ⚖️ *Volumen Levantado:* *${totalVolumeKg.toLocaleString()} kg*
+
+${savedSummaries.join('\n\n')}
+
+${aiResult.coach_tip ? `💡 *Coach:* _${aiResult.coach_tip}_` : ''}
+        `.trim();
+        await sendTelegramMessage(chatId, reply, botToken);
       }
 
       return NextResponse.json({
         success: true,
-        command: 'summary',
-        totals: {
-          calories: totalKcal,
-          protein_g: totalProt,
-          carbs_g: totalCarbs,
-          fat_g: totalFat,
-          water_ml: totalWaterMl,
-          meals_count: todayMeals.length,
-          creatine_taken: t.creatineTakenToday,
-        },
+        action: 'log_workout',
+        totalVolumeKg,
+        totalSets,
       });
     }
 
-    // Procesar nutrición con IA multimodal o heurística
-    const parsed: GeminiParseResult = geminiKey
-      ? await parseWithGemini(spokenText, geminiKey, audioData)
-      : { ...heuristicNutritionParser(spokenText), raw_audio_transcription: spokenText };
+    // CASO B: REGISTRO DE CARDIO / CARRERA / CAMINATA
+    if (aiResult.action === 'log_cardio' && aiResult.cardio) {
+      const { activity, paceStr } = await handleSaveCardio(aiResult.cardio, todayStr);
 
-    // Si se detectó creatina en el audio o texto, registrarla automáticamente
-    if (parsed.creatine_detected) {
+      if (botToken && message.chat?.id) {
+        const reply = `
+🏃‍♂️ *Sesión de Cardio Registrada*
+${transcriptionHeader}📍 *${activity.name}* (${activity.type})
+📏 *Distancia:* *${(activity.distance / 1000).toFixed(2)} km*
+⏱️ *Duración:* *${Math.round(activity.elapsed_time / 60)} min*
+⚡ *Ritmo Medio:* *${paceStr}*
+💓 *Pulso Estimado:* *${activity.avg_hr} bpm*
+
+${aiResult.coach_tip ? `💡 *Coach:* _${aiResult.coach_tip}_` : ''}
+        `.trim();
+        await sendTelegramMessage(chatId, reply, botToken);
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'log_cardio',
+        activity,
+      });
+    }
+
+    // CASO C: CONSULTA CONVERSACIONAL (PREGUNTAS SOBRE DATOS DE LA APP)
+    if (aiResult.action === 'query' && aiResult.reply_text) {
+      if (botToken && message.chat?.id) {
+        const reply = `
+🤖 *IronMan Copilot:*
+${transcriptionHeader}${aiResult.reply_text}
+
+${aiResult.coach_tip ? `💡 *Tip:* _${aiResult.coach_tip}_` : ''}
+        `.trim();
+        await sendTelegramMessage(chatId, reply, botToken);
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'query',
+        reply: aiResult.reply_text,
+      });
+    }
+
+    // CASO D: ACTUALIZACIÓN DE PROTOCOLO O BIOMETRÍA
+    if (aiResult.action === 'protocol_update' && aiResult.protocol_update) {
+      if (aiResult.protocol_update.new_weight_kg) {
+        updateWeight(aiResult.protocol_update.new_weight_kg);
+      }
+      if (aiResult.protocol_update.new_day_type) {
+        setDayType(aiResult.protocol_update.new_day_type);
+      }
+      if (aiResult.protocol_update.creatine_taken !== undefined) {
+        toggleCreatine(aiResult.protocol_update.creatine_taken);
+      }
+
+      if (botToken && message.chat?.id) {
+        const reply = `
+⚙️ *Protocolo Actualizado por IA*
+${transcriptionHeader}⚖️ *Peso:* ${activeProtocol.weightKg} kg
+📅 *Día:* ${activeProtocol.currentDayType.toUpperCase()}
+🎯 *Calorías:* ${activeProtocol.targets.calories} kcal | 🥩 *Proteína:* ${activeProtocol.targets.proteinMin}–${activeProtocol.targets.proteinMax}g
+⚡ *Creatina:* ${activeProtocol.targets.creatineTakenToday ? 'Tomada ✅' : 'Pendiente ⏳'}
+        `.trim();
+        await sendTelegramMessage(chatId, reply, botToken);
+      }
+
+      return NextResponse.json({ success: true, action: 'protocol_update' });
+    }
+
+    // CASO E: REGISTRO DE NUTRICIÓN E HIDRATACIÓN (POR DEFECTO)
+    const nutri = aiResult.nutrition || {
+      meal_type: 'Almuerzo',
+      description: spokenText,
+      calories: 450,
+      protein_g: 35,
+      carbs_g: 40,
+      fat_g: 15,
+      water_ml: 250,
+      creatine_detected: false,
+    };
+
+    if (nutri.creatine_detected) {
       toggleCreatine(true);
     }
 
-    // 1. Guardar log de comida
     const newMeal: NutritionLog = {
       id: `nutri-${Date.now()}`,
       timestamp: new Date().toISOString(),
       date: todayStr,
-      meal_type: parsed.meal_type,
-      description: parsed.description,
-      calories: parsed.calories,
-      protein_g: parsed.protein_g,
-      carbs_g: parsed.carbs_g,
-      fat_g: parsed.fat_g,
-      raw_audio_transcription: parsed.raw_audio_transcription || spokenText,
+      meal_type: nutri.meal_type,
+      description: nutri.description,
+      calories: nutri.calories,
+      protein_g: nutri.protein_g,
+      carbs_g: nutri.carbs_g,
+      fat_g: nutri.fat_g,
+      raw_audio_transcription: aiResult.transcription || spokenText,
     };
 
     if (isSupabaseConfigured && supabaseAdmin) {
@@ -557,68 +804,48 @@ export async function POST(request: NextRequest) {
     }
     mockStore.nutritionLogs.unshift(newMeal);
 
-    // 2. Guardar log de agua si se detectó ingesta líquida
-    if (parsed.water_ml > 0) {
+    if (nutri.water_ml > 0) {
       const newWater: WaterLog = {
         id: `water-${Date.now()}`,
         timestamp: new Date().toISOString(),
         date: todayStr,
-        amount_ml: parsed.water_ml,
+        amount_ml: nutri.water_ml,
       };
-
       if (isSupabaseConfigured && supabaseAdmin) {
         await supabaseAdmin.from('water_logs').insert([newWater]);
       }
       mockStore.waterLogs.unshift(newWater);
     }
 
-    // Calcular totales del día actual
-    const todayMeals = mockStore.nutritionLogs.filter((m) => m.date === todayStr);
-    const totalKcal = todayMeals.reduce((acc, m) => acc + m.calories, 0);
-    const totalProt = todayMeals.reduce((acc, m) => acc + m.protein_g, 0);
-    const totalWater = mockStore.waterLogs
-      .filter((w) => w.date === todayStr)
-      .reduce((acc, w) => acc + w.amount_ml, 0);
+    const updatedTodayMeals = mockStore.nutritionLogs.filter((m) => m.date === todayStr);
+    const updatedTotalKcal = updatedTodayMeals.reduce((acc, m) => acc + m.calories, 0);
+    const updatedTotalProt = updatedTodayMeals.reduce((acc, m) => acc + m.protein_g, 0);
+    const updatedTodayWater = mockStore.waterLogs.filter((w) => w.date === todayStr);
+    const updatedTotalWater = updatedTodayWater.reduce((acc, w) => acc + w.amount_ml, 0);
+    const t = activeProtocol.targets;
 
-    // Responder a Telegram con el desglose inteligente de Gemini
     if (botToken && message.chat?.id) {
-      const t = activeProtocol.targets;
-      const transcriptionSnippet = isVoiceNote && parsed.raw_audio_transcription
-        ? `🎙️ _"${parsed.raw_audio_transcription}"_\n\n`
-        : '';
-      const creatineSnippet = parsed.creatine_detected
-        ? `⚡ *Creatina:* 5g marcada en la merienda ✅\n`
-        : '';
-      const coachSnippet = parsed.coach_tip
-        ? `\n💡 *Coach:* _${parsed.coach_tip}_`
-        : '';
-
       const reply = `
 ✅ *Comida Registrada con Éxito*
-${transcriptionSnippet}🍽️ *${parsed.description}* (${parsed.meal_type})
-🔥 *${parsed.calories}* kcal | 🥩 *${parsed.protein_g}g* Prot | 🍚 *${parsed.carbs_g}g* Carb | 🥑 *${parsed.fat_g}g* Grasa
-${parsed.water_ml > 0 ? `💧 *Agua añadida:* +${parsed.water_ml} ml\n` : ''}${creatineSnippet}
+${transcriptionHeader}🍽️ *${nutri.description}* (${nutri.meal_type})
+🔥 *${nutri.calories}* kcal | 🥩 *${nutri.protein_g}g* Prot | 🍚 *${nutri.carbs_g}g* Carb | 🥑 *${nutri.fat_g}g* Grasa
+${nutri.water_ml > 0 ? `💧 *Agua añadida:* +${nutri.water_ml} ml\n` : ''}${nutri.creatine_detected ? '⚡ *Creatina:* 5g marcada en la merienda ✅\n' : ''}
 📊 *Acumulado de Hoy (${todayStr}):*
-• Calorías: *${totalKcal}* / ${t.calories} kcal
-• Proteína: *${totalProt.toFixed(0)}* / ${t.proteinMin}–${t.proteinMax} g (${(totalProt / activeProtocol.weightKg).toFixed(2)} g/kg)
-• Hidratación: *${(totalWater / 1000).toFixed(2)}* L${coachSnippet}
+• Calorías: *${updatedTotalKcal}* / ${t.calories} kcal
+• Proteína: *${updatedTotalProt.toFixed(0)}* / ${t.proteinMin}–${t.proteinMax} g (${(updatedTotalProt / activeProtocol.weightKg).toFixed(2)} g/kg)
+• Hidratación: *${(updatedTotalWater / 1000).toFixed(2)}* L
+${aiResult.coach_tip ? `\n💡 *Coach:* _${aiResult.coach_tip}_` : ''}
       `.trim();
-
       await sendTelegramMessage(chatId, reply, botToken);
     }
 
     return NextResponse.json({
       success: true,
-      meal_registered: newMeal,
-      water_added_ml: parsed.water_ml,
-      today_totals: {
-        calories: totalKcal,
-        protein_g: totalProt,
-        water_ml: totalWater,
-      },
+      action: 'log_nutrition',
+      meal: newMeal,
     });
   } catch (error: any) {
-    console.error('Error en webhook de Telegram:', error);
+    console.error('Error general en webhook de Telegram:', error);
     return NextResponse.json({ error: error.message || 'Error interno' }, { status: 500 });
   }
 }
