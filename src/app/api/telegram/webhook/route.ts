@@ -159,6 +159,96 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'Mensaje sin texto para procesar' });
     }
 
+    // Comandos de consulta rápida: /resumen, /hoy, /start, /ayuda
+    const cleanCmd = spokenText.trim().toLowerCase();
+    const isSummaryCmd =
+      cleanCmd === '/resumen' ||
+      cleanCmd === 'resumen' ||
+      cleanCmd === '/hoy' ||
+      cleanCmd === 'hoy' ||
+      cleanCmd.includes('que he comido') ||
+      cleanCmd.includes('qué he comido') ||
+      cleanCmd.includes('totales');
+
+    const isHelpCmd =
+      cleanCmd === '/start' ||
+      cleanCmd === '/ayuda' ||
+      cleanCmd === 'ayuda';
+
+    // Manejador del comando /start o /ayuda
+    if (isHelpCmd) {
+      if (botToken && message.chat?.id) {
+        const welcomeMsg = `
+👋 *¡Hola! Soy tu Asistente Nutricional de IronMan* 🥗⚡
+
+¿Cómo funciono?
+1. 🎙️ *Envía un audio o texto:* Dime lo que has comido o bebido.
+   _Ejemplo: "200g de pechuga con 100g de arroz y medio litro de agua"_
+2. 📊 *Consulta tu día:* Escribe */resumen* o *hoy* para ver el desglose completo de tus macros y calorías acumuladas.
+3. ⚡ *Sincronización en vivo:* Todo se refleja al instante en tu dashboard de IronMan.
+        `.trim();
+        await sendTelegramMessage(chatId, welcomeMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'help' });
+    }
+
+    // Manejador del comando /resumen
+    if (isSummaryCmd) {
+      let todayMeals: NutritionLog[] = [];
+      let todayWater: WaterLog[] = [];
+
+      if (isSupabaseConfigured && supabaseAdmin) {
+        const { data: mData } = await supabaseAdmin.from('nutrition_logs').select('*').eq('date', todayStr);
+        const { data: wData } = await supabaseAdmin.from('water_logs').select('*').eq('date', todayStr);
+        todayMeals = (mData as NutritionLog[]) || [];
+        todayWater = (wData as WaterLog[]) || [];
+      } else {
+        todayMeals = mockStore.nutritionLogs.filter((m) => m.date === todayStr);
+        todayWater = mockStore.waterLogs.filter((w) => w.date === todayStr);
+      }
+
+      const totalKcal = todayMeals.reduce((acc, m) => acc + m.calories, 0);
+      const totalProt = todayMeals.reduce((acc, m) => acc + m.protein_g, 0);
+      const totalCarbs = todayMeals.reduce((acc, m) => acc + m.carbs_g, 0);
+      const totalFat = todayMeals.reduce((acc, m) => acc + m.fat_g, 0);
+      const totalWaterMl = todayWater.reduce((acc, w) => acc + w.amount_ml, 0);
+
+      if (botToken && message.chat?.id) {
+        let summaryText = `📊 *Resumen Nutricional de Hoy (${todayStr})*\n\n`;
+
+        if (todayMeals.length === 0) {
+          summaryText += `_Todavía no has registrado ninguna comida hoy._\n_¡Mándame lo que comas o bebas y lo anotaré al segundo!_\n`;
+        } else {
+          summaryText += `🍽️ *Comidas Registradas:*\n`;
+          todayMeals.forEach((meal, idx) => {
+            summaryText += `${idx + 1}. *${meal.meal_type}:* ${meal.description}\n   🔥 ${meal.calories} kcal | 🥩 ${meal.protein_g}g P | 🍚 ${meal.carbs_g}g C | 🥑 ${meal.fat_g}g G\n`;
+          });
+        }
+
+        summaryText += `\n🎯 *Totales Acumulados:*
+• 🔥 Calorías: *${totalKcal}* / 2.600 kcal
+• 🥩 Proteína: *${totalProt.toFixed(0)}* / 160 g
+• 🍚 Carbohidratos: *${totalCarbs.toFixed(0)}* / 280 g
+• 🥑 Grasas: *${totalFat.toFixed(0)}* / 70 g
+• 💧 Hidratación: *${(totalWaterMl / 1000).toFixed(2)}* / 3.00 L`;
+
+        await sendTelegramMessage(chatId, summaryText, botToken);
+      }
+
+      return NextResponse.json({
+        success: true,
+        command: 'summary',
+        totals: {
+          calories: totalKcal,
+          protein_g: totalProt,
+          carbs_g: totalCarbs,
+          fat_g: totalFat,
+          water_ml: totalWaterMl,
+          meals_count: todayMeals.length,
+        },
+      });
+    }
+
     // Procesar nutrición con IA o heurística
     const parsed: ParsedNutrition = geminiKey
       ? await parseWithGemini(spokenText, geminiKey)
