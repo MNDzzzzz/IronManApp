@@ -1,0 +1,16 @@
+{
+  "name": "IronManApp - Health & Performance",
+  "short_name": "IronManApp",
+  "description": "Plataforma de métricas de salud y rendimiento deportivo personal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

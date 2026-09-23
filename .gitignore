@@ -1,0 +1,26 @@
+# Dependencias
+/node_modules
+/.pnp
+.pnp.js
+
+# Compilación Next.js
+/.next/
+/out/
+
+# Entorno local
+.env*.local
+.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+*.pem
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
