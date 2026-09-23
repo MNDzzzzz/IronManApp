@@ -50,8 +50,8 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
 
-    // Health Connect SDK oficial de Android
-    implementation("androidx.health.connect:connect-client:1.1.0-alpha11")
+    // Health Connect SDK oficial de Android (versión para compileSdk 34)
+    implementation("androidx.health.connect:connect-client:1.1.0-alpha10")
 
     // Tareas en segundo plano (Sincronización a mediodía y noche)
     implementation("androidx.work:work-runtime-ktx:2.9.1")
