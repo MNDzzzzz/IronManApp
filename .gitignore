@@ -6,8 +6,9 @@
 # Compilación Next.js
 /.next/
 /out/
+.vercel
 
-# Entorno local
+# Entorno local y claves secretas
 .env*.local
 .env
 
@@ -24,3 +25,12 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Android Studio & Gradle (android-bridge)
+android-bridge/.gradle/
+android-bridge/build/
+android-bridge/*/build/
+android-bridge/.idea/
+android-bridge/*.iml
+android-bridge/local.properties
+android-bridge/.cxx/
