@@ -120,14 +120,53 @@ function heuristicNutritionParser(text: string): ParsedNutrition {
   };
 }
 
+interface GeminiParseResult extends ParsedNutrition {
+  raw_audio_transcription?: string;
+  coach_tip?: string;
+  creatine_detected?: boolean;
+}
+
 /**
- * Consulta a Google Gemini Flash con el contexto completo del atleta y su tabla de alimentos
+ * Descarga archivos de voz o audio de Telegram para procesarlos en memoria
  */
-async function parseWithGemini(text: string, apiKey: string): Promise<ParsedNutrition> {
+async function downloadTelegramAudio(fileId: string, botToken: string): Promise<{ base64: string; mimeType: string } | null> {
+  try {
+    const resInfo = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`);
+    if (!resInfo.ok) return null;
+    const fileData = await resInfo.json();
+    const filePath = fileData.result?.file_path;
+    if (!filePath) return null;
+
+    const resFile = await fetch(`https://api.telegram.org/file/bot${botToken}/${filePath}`);
+    if (!resFile.ok) return null;
+
+    const arrayBuffer = await resFile.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+    let mimeType = 'audio/ogg';
+    if (filePath.endsWith('.mp3')) mimeType = 'audio/mp3';
+    else if (filePath.endsWith('.m4a')) mimeType = 'audio/m4a';
+    else if (filePath.endsWith('.wav')) mimeType = 'audio/wav';
+
+    return { base64, mimeType };
+  } catch (err) {
+    console.error('Error descargando audio de Telegram:', err);
+    return null;
+  }
+}
+
+/**
+ * Consulta a Google Gemini Flash (cascada 3.5 / 3.6) con audio o texto para extracción de nutrición
+ */
+async function parseWithGemini(
+  text: string,
+  apiKey: string,
+  audioData?: { base64: string; mimeType: string } | null
+): Promise<GeminiParseResult> {
   const prompt = `
-Eres el nutricionista deportivo personal de Álvaro (101.5 kg base, preparando Maratón combinando carrera a pie y entrenamiento de fuerza con recomposición corporal).
+Eres el nutricionista deportivo personal y entrenador de Álvaro (101.5 kg base, preparando Maratón con entrenamiento de fuerza y recomposición corporal).
 Su objetivo es déficit moderado (~2.350 - 2.400 kcal) en días de entreno o mantenimiento (~2.500 kcal) en descanso/refeed.
 Rango proteico: 160 – 190 g (1.65 – 1.85 g/kg). Grasas: 60 – 75 g. Hidratos: 200 – 280 g.
+Suplementación: Creatina monohidrato (5g diarios, tomada en la merienda con avena + whey).
 
 TABLA DE ALIMENTOS HABITUALES REGISTRADOS DE ÁLVARO (Usa estos valores de referencia exactos si se mencionan):
 - Pan 100% Integral Hacendado (por 100g): 249 kcal | 36.0g CHO | 11.3g PRO | 4.8g FAT
@@ -142,45 +181,81 @@ TABLA DE ALIMENTOS HABITUALES REGISTRADOS DE ÁLVARO (Usa estos valores de refer
 - Plátano Macho Hervido con Queso (por 100g): 135.7 kcal | 29.5g CHO | 2.8g PRO | 2.1g FAT
 - Lomo de Cerdo Cocinado (por 100g): 210 kcal | 0g CHO | 31.0g PRO | 8.5g FAT
 - Noodles de Huevo Cocinados (por 100g): 153 kcal | 29.0g CHO | 5.4g PRO | 1.3g FAT
-- Café solo con agua: 2 kcal | 0g
+- Café solo con agua: ~2 kcal | 0g
 - Té al limón Hacendado (250ml): 50 kcal | 11.5g CHO
+- Aceite de Oliva Virgen Extra (AOVE): 9 kcal por cada 1g de grasa
 
-Mensaje del atleta: "${text}"
+INSTRUCCIONES:
+1. Si se adjunta un archivo de audio, escúchalo atentamente, transcribe con total exactitud lo que dice Álvaro en "raw_audio_transcription", y analiza lo que comió o bebió.
+2. Si es solo texto, analiza el mensaje: "${text}".
+3. Clasifica el momento: Desayuno, Almuerzo, Cena, o Snack (Merienda / Media mañana).
+4. Si menciona agua, anota la cantidad en mililitros en "water_ml".
+5. Si menciona haber tomado creatina, pon "creatine_detected": true.
+6. Añade en "coach_tip" un consejo breve, técnico y motivador (1-2 frases) enfocado a su rendimiento y recomposición.
 
-Devuelve EXCLUSIVAMENTE un objeto JSON válido con este formato exacto (sin bloques markdown ni explicaciones):
+Devuelve EXCLUSIVAMENTE un objeto JSON válido con este formato exacto:
 {
+  "raw_audio_transcription": "transcripción literal o mensaje recibido",
   "meal_type": "Desayuno" | "Almuerzo" | "Cena" | "Snack",
-  "description": "resumen claro de los alimentos y raciones",
+  "description": "resumen claro de alimentos y raciones",
   "calories": 0,
   "protein_g": 0.0,
   "carbs_g": 0.0,
   "fat_g": 0.0,
-  "water_ml": 0
+  "water_ml": 0,
+  "creatine_detected": false,
+  "coach_tip": "consejo corto"
 }
 `;
 
-  try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-      }),
-    });
+  // Modelos en orden de preferencia
+  const models = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'];
 
-    if (!res.ok) {
-      console.warn('Fallo llamada a Gemini API, usando parser heurístico calibrado.');
-      return heuristicNutritionParser(text);
+  for (const model of models) {
+    try {
+      const parts: any[] = [{ text: prompt }];
+
+      if (audioData) {
+        parts.push({
+          inline_data: {
+            mime_type: audioData.mimeType,
+            data: audioData.base64,
+          },
+        });
+      }
+
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts }],
+          }),
+        }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        const rawResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const cleanJson = rawResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(cleanJson);
+        return {
+          ...parsed,
+          raw_audio_transcription: parsed.raw_audio_transcription || text,
+        };
+      }
+    } catch (err) {
+      console.warn(`Error llamando a modelo ${model}:`, err);
     }
-
-    const data = await res.json();
-    const rawResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const cleanJson = rawResponse.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(cleanJson);
-  } catch (err) {
-    console.error('Error parseando con Gemini:', err);
-    return heuristicNutritionParser(text);
   }
+
+  // Fallback heurístico si fallan las llamadas API
+  const fallback = heuristicNutritionParser(text);
+  return {
+    ...fallback,
+    raw_audio_transcription: text,
+  };
 }
 
 /**
@@ -206,27 +281,29 @@ export async function POST(request: NextRequest) {
   try {
     const update = await request.json();
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const geminiKey = process.env.GEMINI_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY || 'AQ.Ab8RN6KDuJBXcLC6s3MNyV0Q2d_nWRoPPvJl-ICpuaXo_Bwuvw';
 
     // Aceptar mensaje o payload de simulación directa
     const message = update.message || update;
     const chatId = message.chat?.id || 123456789;
     const todayStr = new Date().toISOString().split('T')[0];
 
-    let spokenText = message.text || '';
+    let spokenText = message.text || message.caption || '';
+    let audioData: { base64: string; mimeType: string } | null = null;
+    let isVoiceNote = false;
 
-    // Si viene nota de voz y tenemos botToken, obtener archivo
-    if (message.voice && botToken) {
-      spokenText = 'Nota de voz procesada: comida registrada con éxito';
-      // En entorno de producción se descargaría con getFile y se pasaría directamente a Gemini Flash
+    // Procesar nota de voz o archivo de audio
+    if ((message.voice || message.audio) && botToken) {
+      const fileId = message.voice ? message.voice.file_id : message.audio.file_id;
+      audioData = await downloadTelegramAudio(fileId, botToken);
+      if (audioData) {
+        isVoiceNote = true;
+        spokenText = 'Nota de voz de audio adjunta';
+      }
     }
 
-    if (!spokenText && message.caption) {
-      spokenText = message.caption;
-    }
-
-    if (!spokenText) {
-      return NextResponse.json({ success: true, message: 'Mensaje sin texto para procesar' });
+    if (!spokenText && !audioData) {
+      return NextResponse.json({ success: true, message: 'Mensaje sin texto ni audio para procesar' });
     }
 
     // Comandos de consulta rápida y configuración de protocolo
@@ -451,10 +528,15 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Procesar nutrición con IA o heurística
-    const parsed: ParsedNutrition = geminiKey
-      ? await parseWithGemini(spokenText, geminiKey)
-      : heuristicNutritionParser(spokenText);
+    // Procesar nutrición con IA multimodal o heurística
+    const parsed: GeminiParseResult = geminiKey
+      ? await parseWithGemini(spokenText, geminiKey, audioData)
+      : { ...heuristicNutritionParser(spokenText), raw_audio_transcription: spokenText };
+
+    // Si se detectó creatina en el audio o texto, registrarla automáticamente
+    if (parsed.creatine_detected) {
+      toggleCreatine(true);
+    }
 
     // 1. Guardar log de comida
     const newMeal: NutritionLog = {
@@ -467,7 +549,7 @@ export async function POST(request: NextRequest) {
       protein_g: parsed.protein_g,
       carbs_g: parsed.carbs_g,
       fat_g: parsed.fat_g,
-      raw_audio_transcription: spokenText,
+      raw_audio_transcription: parsed.raw_audio_transcription || spokenText,
     };
 
     if (isSupabaseConfigured && supabaseAdmin) {
@@ -498,17 +580,28 @@ export async function POST(request: NextRequest) {
       .filter((w) => w.date === todayStr)
       .reduce((acc, w) => acc + w.amount_ml, 0);
 
-    // Responder a Telegram si está configurado
+    // Responder a Telegram con el desglose inteligente de Gemini
     if (botToken && message.chat?.id) {
+      const t = activeProtocol.targets;
+      const transcriptionSnippet = isVoiceNote && parsed.raw_audio_transcription
+        ? `🎙️ _"${parsed.raw_audio_transcription}"_\n\n`
+        : '';
+      const creatineSnippet = parsed.creatine_detected
+        ? `⚡ *Creatina:* 5g marcada en la merienda ✅\n`
+        : '';
+      const coachSnippet = parsed.coach_tip
+        ? `\n💡 *Coach:* _${parsed.coach_tip}_`
+        : '';
+
       const reply = `
 ✅ *Comida Registrada con Éxito*
-🍽️ *${parsed.description}* (${parsed.meal_type})
+${transcriptionSnippet}🍽️ *${parsed.description}* (${parsed.meal_type})
 🔥 *${parsed.calories}* kcal | 🥩 *${parsed.protein_g}g* Prot | 🍚 *${parsed.carbs_g}g* Carb | 🥑 *${parsed.fat_g}g* Grasa
-${parsed.water_ml > 0 ? `💧 *Agua añadida:* +${parsed.water_ml} ml\n` : ''}
-📊 *Acumulado de Hoy:*
-• Calorías: *${totalKcal}* kcal
-• Proteína: *${totalProt.toFixed(0)}* g
-• Hidratación: *${(totalWater / 1000).toFixed(1)}* L
+${parsed.water_ml > 0 ? `💧 *Agua añadida:* +${parsed.water_ml} ml\n` : ''}${creatineSnippet}
+📊 *Acumulado de Hoy (${todayStr}):*
+• Calorías: *${totalKcal}* / ${t.calories} kcal
+• Proteína: *${totalProt.toFixed(0)}* / ${t.proteinMin}–${t.proteinMax} g (${(totalProt / activeProtocol.weightKg).toFixed(2)} g/kg)
+• Hidratación: *${(totalWater / 1000).toFixed(2)}* L${coachSnippet}
       `.trim();
 
       await sendTelegramMessage(chatId, reply, botToken);
