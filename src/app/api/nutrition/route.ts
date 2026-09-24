@@ -3,11 +3,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import { mockStore } from '@/lib/mockStore';
 import { NutritionLog, WaterLog } from '@/types/database';
-
 import { activeProtocol } from '@/lib/nutritionProtocol';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
   try {
+    const noCacheHeaders = {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'CDN-Cache-Control': 'no-store',
+      'Vercel-CDN-Cache-Control': 'no-store',
+    };
+
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
 
@@ -44,25 +52,29 @@ export async function GET(request: NextRequest) {
     const totalFat = meals.reduce((sum, m) => sum + m.fat_g, 0);
     const totalWaterMl = waterLogs.reduce((sum, w) => sum + w.amount_ml, 0);
 
-    return NextResponse.json({
-      date,
-      meals,
-      water_logs: waterLogs,
-      all_meals: allMeals,
-      all_water: allWater,
-      protocol: activeProtocol,
-      totals: {
-        calories: totalCalories,
-        protein_g: Number(totalProtein.toFixed(1)),
-        carbs_g: Number(totalCarbs.toFixed(1)),
-        fat_g: Number(totalFat.toFixed(1)),
-        water_ml: totalWaterMl,
+    return NextResponse.json(
+      {
+        date,
+        meals,
+        water_logs: waterLogs,
+        all_meals: allMeals,
+        all_water: allWater,
+        protocol: activeProtocol,
+        totals: {
+          calories: totalCalories,
+          protein_g: Number(totalProtein.toFixed(1)),
+          carbs_g: Number(totalCarbs.toFixed(1)),
+          fat_g: Number(totalFat.toFixed(1)),
+          water_ml: totalWaterMl,
+        },
       },
-    });
+      { headers: noCacheHeaders }
+    );
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
 
 export async function POST(request: NextRequest) {
   try {

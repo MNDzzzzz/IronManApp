@@ -45,22 +45,22 @@ export default function Home() {
     setIsRefreshing(true);
     try {
       // 1. Salud (Fit3)
-      const resHealth = await fetch('/api/health');
+      const resHealth = await fetch('/api/health', { cache: 'no-store' });
       if (resHealth.ok) {
         const data = await resHealth.json();
-        setHealth(data.today);
+        setHealth(data.today || (data.history && data.history.length > 0 ? data.history[0] : null));
         setHealthHistory(data.history || []);
       }
 
       // 2. Actividades Strava
-      const resAct = await fetch('/api/activities');
+      const resAct = await fetch('/api/activities', { cache: 'no-store' });
       if (resAct.ok) {
         const data = await resAct.json();
         setActivities(data.activities || []);
       }
 
       // 3. Gimnasio
-      const resGym = await fetch('/api/gym');
+      const resGym = await fetch('/api/gym', { cache: 'no-store' });
       if (resGym.ok) {
         const data = await resGym.json();
         setGymExercises(data.exercises || []);
@@ -68,11 +68,11 @@ export default function Home() {
       }
 
       // 4. Nutrición & Agua
-      const resNutri = await fetch('/api/nutrition');
+      const resNutri = await fetch('/api/nutrition', { cache: 'no-store' });
       if (resNutri.ok) {
         const data = await resNutri.json();
-        setNutritionMeals(data.meals || []);
-        setWaterLogs(data.water_logs || []);
+        setNutritionMeals(data.all_meals || data.meals || []);
+        setWaterLogs(data.all_water || data.water_logs || []);
         if (data.totals) setNutritionTotals(data.totals);
       }
     } catch (e) {
@@ -81,6 +81,7 @@ export default function Home() {
       setIsRefreshing(false);
     }
   }, []);
+
 
   useEffect(() => {
     loadAllData();

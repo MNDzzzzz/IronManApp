@@ -4,10 +4,19 @@ import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import { mockStore } from '@/lib/mockStore';
 import { GymWorkoutLog } from '@/types/database';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
   try {
+    const noCacheHeaders = {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'CDN-Cache-Control': 'no-store',
+      'Vercel-CDN-Cache-Control': 'no-store',
+    };
+
     const { searchParams } = new URL(request.url);
-    const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+    const dateParam = searchParams.get('date');
 
     let exercises = mockStore.gymExercises;
     let logs = mockStore.gymLogs;
@@ -16,26 +25,34 @@ export async function GET(request: NextRequest) {
       const { data: dbExercises } = await supabaseAdmin.from('gym_exercises').select('*');
       if (dbExercises && dbExercises.length > 0) exercises = dbExercises;
 
-      const { data: dbLogs } = await supabaseAdmin
+      let query = supabaseAdmin
         .from('gym_workout_logs')
         .select('*, gym_exercises(*)')
-        .eq('date', date)
         .order('created_at', { ascending: true });
 
+      if (dateParam) {
+        query = query.eq('date', dateParam);
+      }
+
+      const { data: dbLogs } = await query;
       if (dbLogs) logs = dbLogs;
     } else {
-      logs = mockStore.gymLogs.filter((l) => l.date === date);
+      logs = dateParam ? mockStore.gymLogs.filter((l) => l.date === dateParam) : mockStore.gymLogs;
     }
 
-    return NextResponse.json({
-      exercises,
-      logs,
-      date,
-    });
+    return NextResponse.json(
+      {
+        exercises,
+        logs,
+        date: dateParam || new Date().toISOString().split('T')[0],
+      },
+      { headers: noCacheHeaders }
+    );
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
 
 export async function POST(request: NextRequest) {
   try {
