@@ -11,6 +11,7 @@ import {
   ArrowUpRight,
   TrendingDown,
   Sparkles,
+  Scale,
 } from 'lucide-react';
 import { DailyHealthMetric, NutritionLog, StravaActivity } from '@/types/database';
 
@@ -24,6 +25,7 @@ interface TodayViewProps {
     water_ml: number;
   };
   latestActivity: StravaActivity | null;
+  currentWeight?: number;
   onQuickAddWater: (amountMl: number) => void;
   onNavigateTab: (tab: any) => void;
   onSelectActivity: (activity: StravaActivity) => void;
@@ -33,6 +35,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
   health,
   nutritionTotals,
   latestActivity,
+  currentWeight = 101.0,
   onQuickAddWater,
   onNavigateTab,
   onSelectActivity,
@@ -113,7 +116,40 @@ export const TodayView: React.FC<TodayViewProps> = ({
         </div>
       </div>
 
-      {/* 2. GRID 2X2: PULSO REPOSO, SUEÑO, PASOS, AGUA */}
+      {/* 2. CONTROL DE PESO CORPORAL (PESAJE ANTES DE CENAR) */}
+      <div
+        onClick={() => onNavigateTab('salud')}
+        className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-between shadow-lg hover:border-zinc-800"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <Scale className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs uppercase font-bold tracking-wider text-zinc-400">Peso Corporal</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold flex items-center gap-0.5">
+                <TrendingDown className="w-3 h-3 inline" /> -1.5 kg
+              </span>
+            </div>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Pesaje antes de cenar / post-entreno
+            </p>
+          </div>
+        </div>
+
+        <div className="text-right flex items-center gap-2">
+          <div>
+            <div className="text-2xl font-black text-white">
+              {currentWeight.toFixed(1)} <span className="text-xs font-normal text-zinc-400">kg</span>
+            </div>
+            <span className="text-[10px] text-zinc-500 block">Inicio: 102.5 kg</span>
+          </div>
+          <ArrowUpRight className="w-4 h-4 text-zinc-500" />
+        </div>
+      </div>
+
+      {/* 3. GRID 2X2: PULSO REPOSO, SUEÑO, PASOS, AGUA */}
       <div className="grid grid-cols-2 gap-3">
         {/* Pulso en Reposo (Fit3) */}
         <div

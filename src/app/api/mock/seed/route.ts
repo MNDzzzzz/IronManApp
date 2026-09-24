@@ -7,6 +7,8 @@ import {
   initialGymLogs,
   initialNutritionLogs,
   initialWaterLogs,
+  initialWeightLogs,
+  initialStravaActivities,
 } from '@/lib/mockStore';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 
@@ -17,7 +19,8 @@ export async function POST() {
     mockStore.gymLogs = [...initialGymLogs];
     mockStore.nutritionLogs = [...initialNutritionLogs];
     mockStore.waterLogs = [...initialWaterLogs];
-    mockStore.stravaActivities = [];
+    mockStore.weightLogs = [...initialWeightLogs];
+    mockStore.stravaActivities = [...initialStravaActivities];
 
     // Si Supabase está conectado, sembrar también las tablas de la base de datos
     if (isSupabaseConfigured && supabaseAdmin) {
@@ -32,6 +35,13 @@ export async function POST() {
       }
       if (mockStore.waterLogs.length > 0) {
         await supabaseAdmin.from('water_logs').upsert(mockStore.waterLogs);
+      }
+      if (mockStore.weightLogs.length > 0) {
+        try {
+          await supabaseAdmin.from('weight_logs').upsert(mockStore.weightLogs);
+        } catch (wErr) {
+          console.warn('Aviso sembrando weight_logs en Supabase:', wErr);
+        }
       }
     }
 

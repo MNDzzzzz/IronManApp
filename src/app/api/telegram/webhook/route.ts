@@ -14,6 +14,7 @@ import { mockStore } from '@/lib/mockStore';
 import {
   NutritionLog,
   WaterLog,
+  WeightLog,
   GymExercise,
   GymWorkoutLog,
   StravaActivity,
@@ -86,6 +87,7 @@ function getAppSnapshot(todayStr: string) {
   const todayWater = mockStore.waterLogs.filter((w) => w.date === todayStr);
   const todayGymLogs = mockStore.gymLogs.filter((l) => l.date === todayStr);
   const recentActivities = mockStore.stravaActivities.slice(0, 3);
+  const recentWeights = mockStore.weightLogs || [];
 
   const totalKcal = todayMeals.reduce((acc, m) => acc + m.calories, 0);
   const totalProt = todayMeals.reduce((acc, m) => acc + m.protein_g, 0);
@@ -100,6 +102,16 @@ function getAppSnapshot(todayStr: string) {
       weight_kg: activeProtocol.weightKg,
       current_day_type: activeProtocol.currentDayType,
       targets: activeProtocol.targets,
+    },
+    weight_tracking: {
+      current_weight_kg: activeProtocol.weightKg,
+      initial_weight_kg: recentWeights[recentWeights.length - 1]?.weight_kg || 102.5,
+      total_lost_kg: Number(
+        (activeProtocol.weightKg - (recentWeights[recentWeights.length - 1]?.weight_kg || 102.5)).toFixed(2)
+      ),
+      recent_logs: recentWeights.map(
+        (w) => `${w.date}: ${w.weight_kg} kg (${w.notes || 'Antes de cenar, después de entrenar'})`
+      ),
     },
     health: latestHealth
       ? {
@@ -151,8 +163,20 @@ function getAppSnapshot(todayStr: string) {
 // 4. MOTOR MULTIMODAL CON GEMINI FLASH (PARSER Y ENRUTADOR UNIVERSAL)
 // --------------------------------------------------------------------
 interface UniversalAssistantResponse {
-  action: 'log_workout' | 'log_cardio' | 'log_nutrition' | 'query' | 'protocol_update';
+  action: 'log_workout' | 'log_cardio' | 'log_nutrition' | 'query' | 'protocol_update' | 'adjust_value' | 'log_weight';
   transcription?: string;
+  // Para sumar o restar valores de la app
+  adjust?: {
+    metric: 'calories' | 'water_ml' | 'protein_g' | 'carbs_g' | 'fat_g';
+    delta: number; // Positivo para sumar, negativo para restar (ej: -200, +500)
+    reason?: string;
+  };
+  // Para pesaje y control de peso
+  weight_log?: {
+    weight_kg: number;
+    notes?: string;
+    date?: string;
+  };
   // Para nutrición
   nutrition?: {
     meal_type: 'Desayuno' | 'Almuerzo' | 'Cena' | 'Snack';
@@ -206,17 +230,31 @@ async function processWithGemini(
   const prompt = `
 Eres el Asistente Deportivo Personal y Entrenador de Alto Rendimiento de Álvaro para su plataforma IronManApp.
 Tienes control integral de la aplicación para registrar y consultar datos de:
-1. Nutrición e hidratación.
-2. Entrenamientos de fuerza (gimnasio / pesas).
-3. Caminatas y carreras de running (cardio).
-4. Métricas de salud (Galaxy Fit3: sueño, pulso en reposo, pasos, SpO2).
-5. Biometría y protocolo.
+1. Nutrición e hidratación (incluyendo sumar, restar y corregir ingestas acumuladas).
+2. Peso corporal y evolución antropométrica (pesajes antes de cenar, después de entrenar).
+3. Entrenamientos de fuerza (gimnasio / pesas).
+4. Caminatas y carreras de running (cardio).
+5. Métricas de salud (Galaxy Fit3: sueño, pulso en reposo, pasos, SpO2).
+6. Biometría y protocolo.
 
 ESTADO ACTUAL DE LA APP EN VIVO:
 ${JSON.stringify(snapshot, null, 2)}
 
 INSTRUCCIONES DE CLASIFICACIÓN Y ACCIÓN:
-1. Si Álvaro te explica un entrenamiento de fuerza (ej: "Hoy he hecho torso", o "press banca 60kg, remo 50kg..."):
+1. Si Álvaro pide SUMAR o RESTAR valores numéricos a las métricas del día (ej: "Réstame 200 calorías", "Quita 300 kcal que me equivoqué", "Suma 500 ml de agua", "He bebido medio litro más", "Añade 25g de proteína", "Resta 15g de hidratos", "+300 cal", "-200 kcal", "+500 agua"):
+   - Pon "action": "adjust_value".
+   - Rellena "adjust":
+     • "metric": "calories" | "water_ml" | "protein_g" | "carbs_g" | "fat_g"
+     • "delta": número positivo para sumar (ej: 300) o negativo para restar (ej: -200)
+     • "reason": motivo o descripción breve de la corrección.
+
+2. Si Álvaro comunica su PESO CORPORAL o pesaje (ej: "Hoy peso 101 kg", "Mi peso es 100.8", "He pesado 101 kilos antes de cenar", "Pesaje post-entreno: 101.2"):
+   - Pon "action": "log_weight".
+   - Rellena "weight_log":
+     • "weight_kg": número en kg (ej: 101.0)
+     • "notes": "Antes de cenar, después de entrenar" (o lo que especifique).
+
+3. Si Álvaro te explica un entrenamiento de fuerza (ej: "Hoy he hecho torso", o "press banca 60kg, remo 50kg..."):
    - Pon "action": "log_workout".
    - Reconoce sus 3 días y ejercicios habituales:
      • Día 1 Torso: Press de Banca (60kg), Remo con Barra / Polea (50kg), Press Inclinado Mancuernas (50kg), Jalón al Pecho (50kg), Elevaciones Laterales (5kg/lado), Curl Bíceps Banco Inclinado (10-12.5kg), Extensión Tríceps en Polea (50kg).
@@ -225,31 +263,40 @@ INSTRUCCIONES DE CLASIFICACIÓN Y ACCIÓN:
    - Desglosa cada ejercicio con sus series, repeticiones, peso en kg y RPE.
    - Categorías permitidas: Pecho, Espalda, Pierna, Hombro, Brazo, Core.
 
-2. Si Álvaro te explica una carrera o caminata (ej: "He caminado 6 km en 50 minutos" o "He corrido 8 km a 5:10"):
+4. Si Álvaro te explica una carrera o caminata (ej: "He caminado 6 km en 50 minutos" o "He corrido 8 km a 5:10"):
    - Pon "action": "log_cardio".
    - Extrae nombre, tipo ("Run" o "Walk"), distancia en km y duración en minutos.
 
-3. Si Álvaro describe comida o bebida (ej: "He comido 200g de pollo con arroz", o "bol de avena con creatina"):
+5. Si Álvaro describe una comida o bebida ingerida (ej: "He comido 200g de pollo con arroz", o "bol de avena con creatina"):
    - Pon "action": "log_nutrition".
    - Extrae calorías, macros (P/C/G), agua en ml y si menciona creatina.
    - Respeta sus alimentos de referencia (Pan 100% integral Hacendado, Avena, Leche desnatada, Yogur griego ligero, Jamón serrano, Whey, etc.).
 
-4. Si Álvaro hace una pregunta o pide consultar datos (ej: "¿Cómo he dormido?", "¿Cuánto levanté en banca?", "¿Qué carreras he hecho?", "¿Cómo voy hoy?"):
+6. Si Álvaro hace una pregunta o pide consultar datos (ej: "¿Cómo he dormido?", "¿Cuánto levanté en banca?", "¿Qué carreras he hecho?", "¿Cómo voy hoy?", "¿Cuánto he perdido de peso?", "¿Cuál es mi peso actual?"):
    - Pon "action": "query".
    - Redacta una respuesta conversacional precisa, profesional y directa en "reply_text" usando los datos reales del ESTADO ACTUAL.
 
-5. Si Álvaro pide actualizar su peso o reglas (ej: "He pesado 101.2 kg", "hoy descanso"):
+7. Si Álvaro pide actualizar tipo de día o reglas (ej: "hoy descanso", "tómate la creatina"):
    - Pon "action": "protocol_update".
 
-6. Si se adjunta un audio, escúchalo atentamente y transcribe todo en "transcription".
-7. Añade siempre un breve consejo de coach deportivo en "coach_tip".
+8. Si se adjunta un audio, escúchalo atentamente y transcribe todo en "transcription".
+9. Añade siempre un breve consejo de coach deportivo en "coach_tip".
 
 Mensaje escrito (si aplica): "${textOrHint}"
 
 DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin markdown ni texto alrededor):
 {
-  "action": "log_workout" | "log_cardio" | "log_nutrition" | "query" | "protocol_update",
+  "action": "log_workout" | "log_cardio" | "log_nutrition" | "query" | "protocol_update" | "adjust_value" | "log_weight",
   "transcription": "transcripción literal",
+  "adjust": {
+    "metric": "calories" | "water_ml" | "protein_g" | "carbs_g" | "fat_g",
+    "delta": -200,
+    "reason": "Corrección de calorías"
+  },
+  "weight_log": {
+    "weight_kg": 101.0,
+    "notes": "Antes de cenar, después de entrenar"
+  },
   "nutrition": {
     "meal_type": "Desayuno" | "Almuerzo" | "Cena" | "Snack",
     "description": "texto descriptivo",
@@ -279,7 +326,7 @@ DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin mark
     "duration_minutes": 45
   },
   "protocol_update": {
-    "new_weight_kg": 101.5,
+    "new_weight_kg": 101.0,
     "new_day_type": "running" | "strength" | "rest_refeed",
     "creatine_taken": true
   },
@@ -444,7 +491,158 @@ async function handleSaveCardio(cardioData: any, todayStr: string) {
 }
 
 // --------------------------------------------------------------------
-// 7. ENDPOINT PRINCIPAL: ROUTE POST
+// 7. MANEJADOR DE ACCIÓN: GUARDAR PESO CORPORAL
+// --------------------------------------------------------------------
+async function handleSaveWeight(weightKg: number, notes?: string, dateStr?: string) {
+  const logDate = dateStr || new Date().toISOString().split('T')[0];
+  const notesText = notes || 'Antes de cenar, después de entrenar';
+
+  const newLog: WeightLog = {
+    id: `weight-${Date.now()}`,
+    date: logDate,
+    timestamp: new Date().toISOString(),
+    weight_kg: Number(weightKg.toFixed(2)),
+    notes: notesText,
+    created_at: new Date().toISOString(),
+  };
+
+  const existingIdx = mockStore.weightLogs.findIndex((w) => w.date === logDate);
+  if (existingIdx >= 0) {
+    mockStore.weightLogs[existingIdx] = newLog;
+  } else {
+    mockStore.weightLogs.unshift(newLog);
+  }
+
+  updateWeight(weightKg);
+
+  if (isSupabaseConfigured && supabaseAdmin) {
+    try {
+      await supabaseAdmin.from('weight_logs').upsert([newLog], { onConflict: 'id' });
+    } catch (e) {
+      console.warn('Aviso guardando peso en Supabase:', e);
+    }
+  }
+
+  const sorted = [...mockStore.weightLogs].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+  const initial = sorted[sorted.length - 1]?.weight_kg || 102.5;
+  const totalDiff = Number((weightKg - initial).toFixed(2));
+
+  return {
+    log: newLog,
+    initial,
+    totalDiff,
+    recentLogs: sorted.slice(0, 4),
+  };
+}
+
+// --------------------------------------------------------------------
+// 8. MANEJADOR DE ACCIÓN: AJUSTE / SUMAR / RESTAR VALORES
+// --------------------------------------------------------------------
+async function handleAdjustValue(
+  metric: 'calories' | 'water_ml' | 'protein_g' | 'carbs_g' | 'fat_g',
+  delta: number,
+  reason: string,
+  todayStr: string
+) {
+  if (metric === 'water_ml') {
+    const newWater: WaterLog = {
+      id: `water-adj-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      date: todayStr,
+      amount_ml: delta,
+    };
+    if (isSupabaseConfigured && supabaseAdmin) {
+      try {
+        await supabaseAdmin.from('water_logs').insert([newWater]);
+      } catch (e) {
+        console.warn('Aviso guardando agua en Supabase:', e);
+      }
+    }
+    mockStore.waterLogs.unshift(newWater);
+
+    const todayWater = mockStore.waterLogs.filter((w) => w.date === todayStr);
+    const totalWater = todayWater.reduce((acc, w) => acc + w.amount_ml, 0);
+
+    return {
+      metricName: 'Agua',
+      deltaStr: `${delta > 0 ? `+${delta}` : delta} ml`,
+      newTotalStr: `${(totalWater / 1000).toFixed(2)} L`,
+      targetStr: `${(activeProtocol.targets.waterMl / 1000).toFixed(1)} L`,
+    };
+  }
+
+  // Si es ajuste de nutrición (calorías, proteína, carbohidratos o grasa)
+  const isKcal = metric === 'calories';
+  const isProt = metric === 'protein_g';
+  const isCarbs = metric === 'carbs_g';
+  const isFat = metric === 'fat_g';
+
+  const newMeal: NutritionLog = {
+    id: `nutri-adj-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    date: todayStr,
+    meal_type: 'Snack',
+    description: reason || `Ajuste manual (${delta > 0 ? `+${delta}` : delta} ${metric})`,
+    calories: isKcal ? delta : 0,
+    protein_g: isProt ? delta : 0,
+    carbs_g: isCarbs ? delta : 0,
+    fat_g: isFat ? delta : 0,
+    raw_audio_transcription: `Ajuste manual: ${delta > 0 ? `+${delta}` : delta} en ${metric}`,
+  };
+
+  if (isSupabaseConfigured && supabaseAdmin) {
+    try {
+      await supabaseAdmin.from('nutrition_logs').insert([newMeal]);
+    } catch (e) {
+      console.warn('Aviso guardando ajuste nutricional en Supabase:', e);
+    }
+  }
+  mockStore.nutritionLogs.unshift(newMeal);
+
+  const todayMeals = mockStore.nutritionLogs.filter((m) => m.date === todayStr);
+  const totalKcal = todayMeals.reduce((acc, m) => acc + m.calories, 0);
+  const totalProt = todayMeals.reduce((acc, m) => acc + m.protein_g, 0);
+  const totalCarbs = todayMeals.reduce((acc, m) => acc + m.carbs_g, 0);
+  const totalFat = todayMeals.reduce((acc, m) => acc + m.fat_g, 0);
+
+  let metricName = 'Calorías';
+  let unit = 'kcal';
+  let newTotal = `${totalKcal} kcal`;
+  let target = `${activeProtocol.targets.calories} kcal`;
+
+  if (isProt) {
+    metricName = 'Proteína';
+    unit = 'g';
+    newTotal = `${totalProt.toFixed(0)} g`;
+    target = `${activeProtocol.targets.proteinMin}–${activeProtocol.targets.proteinMax} g`;
+  } else if (isCarbs) {
+    metricName = 'Carbohidratos';
+    unit = 'g';
+    newTotal = `${totalCarbs.toFixed(0)} g`;
+    target = `${activeProtocol.targets.carbsMin}–${activeProtocol.targets.carbsMax} g`;
+  } else if (isFat) {
+    metricName = 'Grasas';
+    unit = 'g';
+    newTotal = `${totalFat.toFixed(0)} g`;
+    target = `${activeProtocol.targets.fatMin}–${activeProtocol.targets.fatMax} g`;
+  }
+
+  return {
+    metricName,
+    deltaStr: `${delta > 0 ? `+${delta}` : delta} ${unit}`,
+    newTotalStr: newTotal,
+    targetStr: target,
+    totalKcal,
+    totalProt,
+    totalCarbs,
+    totalFat,
+  };
+}
+
+// --------------------------------------------------------------------
+// 9. ENDPOINT PRINCIPAL: ROUTE POST
 // --------------------------------------------------------------------
 export async function POST(request: NextRequest) {
   try {
@@ -491,12 +689,21 @@ export async function POST(request: NextRequest) {
 
 Tengo acceso y control total a toda tu app. Puedes hablarme o dictarme audios de:
 
+⚖️ *Control de Peso Corporal:*
+• Ver peso actual y evolución: \`/peso\`
+• Registrar nuevo pesaje: \`/peso 101.0\` o _"Hoy he pesado 101 kg antes de cenar"_
+
+➕➖ *Sumar y Restar Valores (Calorías, Agua, Macros):*
+• Sumar: \`/sumar cal 200\`, \`/sumar agua 500\`, \`/+ pro 25\`
+• Restar: \`/restar cal 150\`, \`/restar agua 250\`, \`/- carb 30\`
+• Lenguaje natural: _"Resta 200 calorías a hoy"_ o _"He bebido 500 ml más de agua"_
+
 🏋️‍♂️ *Entrenamientos de Fuerza:*
 • Dicta tu entreno: _"Hoy hice pierna: 3 series de sentadillas con 100kg a 8 repes y prensa con 150kg"_
 • Consulta: \`/fuerza\`
 
 🏃‍♂️ *Cardio & Running:*
-• Registra salidas: _"He salido a correr 7 km en 36 minutos"_
+• Registra salidas: _"He salido a correr 5 km en 35 minutos"_
 • Consulta: \`/cardio\`
 
 🥗 *Nutrición & Agua:*
@@ -507,7 +714,7 @@ Tengo acceso y control total a toda tu app. Puedes hablarme o dictarme audios de
 • Consulta sueño y pulso: \`/salud\`
 
 📊 *Reporte 360° del día:* \`/reporte\` o \`/todo\`
-📋 *Protocolo y peso:* \`/protocolo\` o \`/peso 101.2\`
+📋 *Protocolo:* \`/protocolo\`
         `.trim();
         await sendTelegramMessage(chatId, helpMsg, botToken);
       }
@@ -522,10 +729,14 @@ Tengo acceso y control total a toda tu app. Puedes hablarme o dictarme audios de
         const g = snapshot.gym_workout;
         const c = snapshot.cardio_activities[0];
         const t = snapshot.athlete.targets;
+        const w = snapshot.weight_tracking;
 
         const reportMsg = `
 📊 *Reporte Integral IronMan (${todayStr})*
-🏃‍♂️ *Atleta:* ${snapshot.athlete.name} (${snapshot.athlete.weight_kg} kg) | *Día:* ${snapshot.athlete.current_day_type.toUpperCase()}
+🏃‍♂️ *Atleta:* ${snapshot.athlete.name} (*${snapshot.athlete.weight_kg} kg* | Variación: *${w.total_lost_kg} kg*) | *Día:* ${snapshot.athlete.current_day_type.toUpperCase()}
+
+⚖️ *Seguimiento de Peso:*
+• Actual: *${w.current_weight_kg} kg* | Inicial: *${w.initial_weight_kg} kg* | Cambio: *${w.total_lost_kg <= 0 ? `${w.total_lost_kg} kg 📉` : `+${w.total_lost_kg} kg 📈`}*
 
 🌙 *Salud & Descanso (Galaxy Fit3):*
 • 💤 Sueño: *${h?.sleep_hours || 'N/A'} h* (Score: *${h?.sleep_score || 'N/A'}/100*)
@@ -625,16 +836,104 @@ ${c ? `• ${c.name} (${c.type}): *${c.distance_km} km* en *${c.time_min} min* (
       return NextResponse.json({ success: true, command: 'protocol' });
     }
 
-    // 7. /peso [X]
-    if (mainCommand === '/peso' && parts[1]) {
-      const newWeight = parseFloat(parts[1].replace(',', '.'));
-      if (!isNaN(newWeight) && newWeight > 40 && newWeight < 250) {
-        updateWeight(newWeight);
+    // 7. /peso (Ver historial) o /peso [X] [notas]
+    if (mainCommand === '/peso' || mainCommand === '/pesos' || cleanCmd === 'peso') {
+      const weightVal = parts[1] ? parseFloat(parts[1].replace(',', '.')) : NaN;
+
+      if (isNaN(weightVal)) {
+        // Modo consulta de peso y evolución
         if (botToken && message.chat?.id) {
-          const reply = `⚖️ *Peso Actualizado:* *${newWeight} kg*\n📊 *Nuevo rango proteico:* *${activeProtocol.targets.proteinMin} – ${activeProtocol.targets.proteinMax} g/día*`;
+          const sorted = [...mockStore.weightLogs].sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+          const current = activeProtocol.weightKg;
+          const initial = sorted[sorted.length - 1]?.weight_kg || 102.5;
+          const diff = Number((current - initial).toFixed(2));
+          const diffStr = diff <= 0 ? `${diff} kg 📉` : `+${diff} kg 📈`;
+
+          const reply = `
+⚖️ *Control de Peso Corporal — Álvaro*
+• *Peso Actual:* *${current} kg*
+• *Peso Inicial (20/09):* *${initial} kg*
+• *Variación Total:* *${diffStr}*
+
+📋 *Historial de pesajes (antes de cenar):*
+${sorted.map((w) => `• *${w.date}:* *${w.weight_kg} kg* _(${w.notes || 'Antes de cenar'})_`).join('\n')}
+
+💡 *Para registrar un nuevo peso:*
+Escribe ej: \`/peso 100.8\` o díctamelo: _"Hoy he pesado 100.8 antes de cenar"_.
+          `.trim();
           await sendTelegramMessage(chatId, reply, botToken);
         }
-        return NextResponse.json({ success: true, command: 'update_weight', weight: newWeight });
+        return NextResponse.json({ success: true, command: 'view_weight' });
+      } else if (weightVal >= 40 && weightVal <= 250) {
+        // Modo registro/actualización de peso
+        const notes = parts.slice(2).join(' ') || 'Antes de cenar, después de entrenar';
+        const resWeight = await handleSaveWeight(weightVal, notes, todayStr);
+
+        if (botToken && message.chat?.id) {
+          const diffStr = resWeight.totalDiff <= 0 ? `${resWeight.totalDiff} kg 📉` : `+${resWeight.totalDiff} kg 📈`;
+          const reply = `
+⚖️ *Peso Registrado con Éxito*
+• *Nuevo Peso:* *${weightVal} kg* (${todayStr})
+• *Notas:* _${notes}_
+• *Variación acumulada:* *${diffStr}* (desde ${resWeight.initial} kg)
+📊 *Nuevo rango proteico:* *${activeProtocol.targets.proteinMin} – ${activeProtocol.targets.proteinMax} g/día* (1.65–1.85 g/kg)
+          `.trim();
+          await sendTelegramMessage(chatId, reply, botToken);
+        }
+        return NextResponse.json({ success: true, command: 'update_weight', weight: weightVal });
+      }
+    }
+
+    // 8. /sumar o /+ y /restar o /-
+    if (
+      mainCommand === '/sumar' ||
+      mainCommand === '/+' ||
+      mainCommand === '/restar' ||
+      mainCommand === '/-'
+    ) {
+      const isSubtract = mainCommand === '/restar' || mainCommand === '/-';
+      let metric: 'calories' | 'water_ml' | 'protein_g' | 'carbs_g' | 'fat_g' = 'calories';
+      let amount = 0;
+
+      for (let i = 1; i < parts.length; i++) {
+        const p = parts[i].toLowerCase();
+        const num = parseFloat(p.replace(',', '.'));
+        if (!isNaN(num)) {
+          amount = Math.abs(num);
+        } else if (p.includes('cal') || p.includes('kcal')) {
+          metric = 'calories';
+        } else if (p.includes('agua') || p.includes('ml')) {
+          metric = 'water_ml';
+        } else if (p.includes('pro') || p.includes('prot')) {
+          metric = 'protein_g';
+        } else if (p.includes('carb') || p.includes('hidrato')) {
+          metric = 'carbs_g';
+        } else if (p.includes('grasa') || p.includes('fat')) {
+          metric = 'fat_g';
+        }
+      }
+
+      if (amount > 0) {
+        const delta = isSubtract ? -amount : amount;
+        const resAdj = await handleAdjustValue(
+          metric,
+          delta,
+          isSubtract ? `Corrección (-${amount} ${metric})` : `Añadido (+${amount} ${metric})`,
+          todayStr
+        );
+
+        if (botToken && message.chat?.id) {
+          const actionWord = isSubtract ? 'Restado ➖' : 'Sumado ➕';
+          const reply = `
+⚙️ *Ajuste Realizado: ${resAdj.metricName}*
+• *Modificación:* *${resAdj.deltaStr}* (${actionWord})
+• *Nuevo acumulado de hoy:* *${resAdj.newTotalStr}* / ${resAdj.targetStr}
+          `.trim();
+          await sendTelegramMessage(chatId, reply, botToken);
+        }
+        return NextResponse.json({ success: true, command: 'adjust_metric', metric, delta });
       }
     }
 
@@ -779,6 +1078,66 @@ ${transcriptionHeader}⚖️ *Peso:* ${activeProtocol.weightKg} kg
       }
 
       return NextResponse.json({ success: true, action: 'protocol_update' });
+    }
+
+    // CASO D2: REGISTRO DE PESO CORPORAL (PESAJE DIARIO)
+    if (aiResult.action === 'log_weight' && (aiResult.weight_log?.weight_kg || aiResult.protocol_update?.new_weight_kg)) {
+      const weightVal = Number(aiResult.weight_log?.weight_kg || aiResult.protocol_update?.new_weight_kg);
+      const notes = aiResult.weight_log?.notes || 'Antes de cenar, después de entrenar';
+      const resWeight = await handleSaveWeight(weightVal, notes, todayStr);
+
+      if (botToken && message.chat?.id) {
+        const diffStr = resWeight.totalDiff <= 0 ? `${resWeight.totalDiff} kg 📉` : `+${resWeight.totalDiff} kg 📈`;
+        const reply = `
+⚖️ *Pesaje Registrado por IA*
+${transcriptionHeader}• *Peso:* *${weightVal} kg* (${todayStr})
+• *Momento:* _${notes}_
+• *Variación acumulada:* *${diffStr}* (desde ${resWeight.initial} kg)
+📊 *Nuevo rango de proteína:* *${activeProtocol.targets.proteinMin} – ${activeProtocol.targets.proteinMax} g/día* (1.65–1.85 g/kg)
+
+${aiResult.coach_tip ? `💡 *Coach:* _${aiResult.coach_tip}_` : ''}
+        `.trim();
+        await sendTelegramMessage(chatId, reply, botToken);
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'log_weight',
+        weight_kg: weightVal,
+        totalDiff: resWeight.totalDiff,
+      });
+    }
+
+    // CASO D3: AJUSTE / SUMAR / RESTAR VALORES A LA APP
+    if (aiResult.action === 'adjust_value' && aiResult.adjust) {
+      const { metric, delta, reason } = aiResult.adjust;
+      const resAdj = await handleAdjustValue(
+        metric,
+        delta,
+        reason || aiResult.transcription || spokenText,
+        todayStr
+      );
+
+      if (botToken && message.chat?.id) {
+        const actionWord = delta < 0 ? 'Restado ➖' : 'Sumado ➕';
+        const reply = `
+⚙️ *Ajuste Realizado con Éxito*
+${transcriptionHeader}• *Modificación:* *${resAdj.deltaStr}* en *${resAdj.metricName}* (${actionWord})
+• *Motivo:* _${reason || 'Corrección solicitada'}_
+📊 *Nuevo total de hoy:* *${resAdj.newTotalStr}* / ${resAdj.targetStr}
+
+${aiResult.coach_tip ? `💡 *Coach:* _${aiResult.coach_tip}_` : ''}
+        `.trim();
+        await sendTelegramMessage(chatId, reply, botToken);
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'adjust_value',
+        metric,
+        delta,
+        newTotal: resAdj.newTotalStr,
+      });
     }
 
     // CASO E: REGISTRO DE NUTRICIÓN E HIDRATACIÓN (POR DEFECTO)

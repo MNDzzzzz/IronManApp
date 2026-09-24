@@ -16,6 +16,7 @@ import {
   GymWorkoutLog,
   NutritionLog,
   WaterLog,
+  WeightLog,
 } from '@/types/database';
 
 export default function Home() {
@@ -32,6 +33,8 @@ export default function Home() {
   const [gymLogs, setGymLogs] = useState<GymWorkoutLog[]>([]);
   const [nutritionMeals, setNutritionMeals] = useState<NutritionLog[]>([]);
   const [waterLogs, setWaterLogs] = useState<WaterLog[]>([]);
+  const [weightLogs, setWeightLogs] = useState<WeightLog[]>([]);
+  const [currentWeight, setCurrentWeight] = useState<number>(101.0);
   const [nutritionTotals, setNutritionTotals] = useState({
     calories: 0,
     protein_g: 0,
@@ -74,6 +77,14 @@ export default function Home() {
         setNutritionMeals(data.all_meals || data.meals || []);
         setWaterLogs(data.all_water || data.water_logs || []);
         if (data.totals) setNutritionTotals(data.totals);
+      }
+
+      // 5. Peso Corporal
+      const resWeight = await fetch('/api/weight', { cache: 'no-store' });
+      if (resWeight.ok) {
+        const data = await resWeight.json();
+        setWeightLogs(data.logs || []);
+        if (data.current_weight) setCurrentWeight(data.current_weight);
       }
     } catch (e) {
       console.error('Error cargando datos de IronManApp:', e);
@@ -153,6 +164,28 @@ export default function Home() {
     }
   };
 
+  // Manejador para registrar pesaje
+  const handleAddWeight = async (weightKg: number, notes?: string, date?: string) => {
+    try {
+      const res = await fetch('/api/weight', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weight_kg: weightKg, notes, date }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentWeight(weightKg);
+        setWeightLogs((prev) => {
+          const logDate = date || new Date().toISOString().split('T')[0];
+          const filtered = prev.filter((p) => p.date !== logDate);
+          return [data.log, ...filtered];
+        });
+      }
+    } catch (e) {
+      console.error('Error guardando peso:', e);
+    }
+  };
+
   // Manejador para resembrar datos de prueba
   const handleReseedMockData = async () => {
     const res = await fetch('/api/mock/seed', { method: 'POST' });
@@ -178,6 +211,7 @@ export default function Home() {
             health={health}
             nutritionTotals={nutritionTotals}
             latestActivity={activities[0] || null}
+            currentWeight={currentWeight}
             onQuickAddWater={handleQuickAddWater}
             onNavigateTab={(tab) => setCurrentTab(tab)}
             onSelectActivity={(act) => setSelectedActivity(act)}
@@ -211,7 +245,13 @@ export default function Home() {
         )}
 
         {currentTab === 'salud' && (
-          <HealthView health={health} history={healthHistory} />
+          <HealthView
+            health={health}
+            history={healthHistory}
+            weightLogs={weightLogs}
+            currentWeight={currentWeight}
+            onAddWeight={handleAddWeight}
+          />
         )}
       </main>
 

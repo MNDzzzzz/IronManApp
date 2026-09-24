@@ -97,6 +97,15 @@ export interface WaterLog {
   amount_ml: number;
 }
 
+export interface WeightLog {
+  id: string;
+  date: string; // YYYY-MM-DD
+  timestamp: string; // ISO 8601
+  weight_kg: number;
+  notes?: string;
+  created_at?: string;
+}
+
 // Payload recibido desde el Android Puente (Health Connect)
 export interface BridgeSyncPayload {
   device: string;

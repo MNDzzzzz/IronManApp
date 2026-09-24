@@ -152,14 +152,14 @@ export const initialFrequentFoods: Record<string, FrequentFood> = {
 // Protocolo activo en memoria
 export const activeProtocol: UserProtocol = {
   athleteName: 'Álvaro',
-  weightKg: 101.5,
+  weightKg: 101.0,
   goal: 'Recomposición corporal + preparación Maratón (fuerza + running)',
   strategy: 'Déficit moderado (~300–500 kcal) con periodización según exigencia del entreno',
   currentDayType: 'running',
   targets: {
     calories: 2350,
-    proteinMin: 160,
-    proteinMax: 190,
+    proteinMin: 167,
+    proteinMax: 187,
     carbsMin: 200,
     carbsMax: 280,
     fatMin: 60,

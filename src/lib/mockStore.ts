@@ -8,6 +8,7 @@ import {
   GymWorkoutLog,
   NutritionLog,
   WaterLog,
+  WeightLog,
   StreamDataPoint,
 } from '@/types/database';
 import { mergeStravaWithFit3HeartRate } from './merging/temporalAligner';
@@ -350,16 +351,150 @@ export const initialGymLogs: GymWorkoutLog[] = [
   { id: 'log-21-21', date: '2026-09-21', exercise_id: 'ex-torso-7', set_number: 3, reps: 12, weight_kg: 50, rpe: 10 },
 ];
 
-export const initialDailyMetrics: DailyHealthMetric[] = [];
+export const initialDailyMetrics: DailyHealthMetric[] = [
+  {
+    id: 'health-24',
+    date: '2026-09-24',
+    resting_hr: 50,
+    sleep_duration_minutes: 465, // 7h 45m
+    sleep_score: 89,
+    deep_sleep_minutes: 110,
+    rem_sleep_minutes: 105,
+    light_sleep_minutes: 220,
+    awake_minutes: 30,
+    spo2_avg: 97.6,
+    spo2_min: 94.0,
+    total_steps: 20450, // Más de 20.000 pasos
+    active_calories: 890,
+    synced_at: '2026-09-24T22:00:00Z',
+  },
+  {
+    id: 'health-23',
+    date: '2026-09-23',
+    resting_hr: 52,
+    sleep_duration_minutes: 480, // 8h
+    sleep_score: 88,
+    deep_sleep_minutes: 115,
+    rem_sleep_minutes: 110,
+    light_sleep_minutes: 225,
+    awake_minutes: 30,
+    spo2_avg: 97.4,
+    spo2_min: 94.0,
+    total_steps: 11450,
+    active_calories: 450,
+    synced_at: '2026-09-23T22:00:00Z',
+  },
+  {
+    id: 'health-22',
+    date: '2026-09-22',
+    resting_hr: 53,
+    sleep_duration_minutes: 450, // 7h 30m
+    sleep_score: 85,
+    deep_sleep_minutes: 100,
+    rem_sleep_minutes: 100,
+    light_sleep_minutes: 215,
+    awake_minutes: 35,
+    spo2_avg: 97.2,
+    spo2_min: 93.5,
+    total_steps: 10234, // 10.234 pasos (7,54 km)
+    active_calories: 640,
+    synced_at: '2026-09-22T22:00:00Z',
+  },
+];
+
+export const initialWeightLogs: WeightLog[] = [
+  {
+    id: 'weight-24',
+    date: '2026-09-24',
+    timestamp: '2026-09-24T21:45:00Z',
+    weight_kg: 101.0,
+    notes: 'Antes de cenar, después de entrenar (Running 5 km en 35 min)',
+    created_at: '2026-09-24T21:45:00Z',
+  },
+  {
+    id: 'weight-22',
+    date: '2026-09-22',
+    timestamp: '2026-09-22T21:50:00Z',
+    weight_kg: 101.5,
+    notes: 'Antes de cenar, después de entrenar (Pierna 20:00)',
+    created_at: '2026-09-22T21:50:00Z',
+  },
+  {
+    id: 'weight-21',
+    date: '2026-09-21',
+    timestamp: '2026-09-21T21:40:00Z',
+    weight_kg: 101.6,
+    notes: 'Antes de cenar, después de entrenar (Torso)',
+    created_at: '2026-09-21T21:40:00Z',
+  },
+  {
+    id: 'weight-20',
+    date: '2026-09-20',
+    timestamp: '2026-09-20T21:30:00Z',
+    weight_kg: 102.5,
+    notes: 'Antes de cenar, después de entrenar',
+    created_at: '2026-09-20T21:30:00Z',
+  },
+];
 
 export const initialNutritionLogs: NutritionLog[] = [
-  // --- MIÉRCOLES 23 DE SEPTIEMBRE (Descanso Activo / Refeed Mantenimiento ~2.508 kcal) ---
+  // --- JUEVES 24 DE SEPTIEMBRE (Running 5km + >20.000 pasos - 2.691 kcal) ---
+  {
+    id: 'nutri-24-4',
+    date: '2026-09-24',
+    timestamp: '2026-09-24T22:00:00Z',
+    meal_type: 'Cena',
+    description: 'Pechuga de pollo cocinada a la plancha (61 g) + bol de avena (40 g), leche desnatada (100 ml), yogur griego ligero (120 g), Impact Whey (35 g), chía, arándanos (50 g) y creatina (9 g)',
+    calories: 523,
+    protein_g: 58.4,
+    carbs_g: 41.2,
+    fat_g: 12.4,
+    raw_audio_transcription: 'Cena: 61g pechuga plancha con bol de avena, leche desnatada, yogur griego ligero, whey, chía, arándanos y creatina',
+  },
+  {
+    id: 'nutri-24-3',
+    date: '2026-09-24',
+    timestamp: '2026-09-24T17:15:00Z',
+    meal_type: 'Snack',
+    description: 'Sobremesa: 2 cafés con leche semidesnatada (500 ml total) con azúcar (8 g total) + medio gofre con bola de helado de nata y Nocilla',
+    calories: 636,
+    protein_g: 21.9,
+    carbs_g: 76.1,
+    fat_g: 26.8,
+    raw_audio_transcription: 'Sobremesa: 2 cafés con leche semidesnatada con azúcar y medio gofre con helado y Nocilla',
+  },
+  {
+    id: 'nutri-24-2',
+    date: '2026-09-24',
+    timestamp: '2026-09-24T14:30:00Z',
+    meal_type: 'Almuerzo',
+    description: 'Comida fuera: 1/2 ración de patatas trufadas con parmesano, 1/2 ración de ensalada con pollo crujiente y salsa miel-mostaza, bocadillo completo (lomo, bacon, huevo, cheddar, alioli y mostaza) + Coca-Cola Zero',
+    calories: 1158,
+    protein_g: 67.2,
+    carbs_g: 88.7,
+    fat_g: 71.0,
+    raw_audio_transcription: 'Comida fuera: patatas trufadas con parmesano, ensalada pollo crujiente y bocadillo completo con lomo, bacon, huevo y queso',
+  },
+  {
+    id: 'nutri-24-1',
+    date: '2026-09-24',
+    timestamp: '2026-09-24T08:45:00Z',
+    meal_type: 'Desayuno',
+    description: 'Tortilla (2 huevos) con pavo (48 g) y queso light (25 g) + noodles cocinados (70 g) con salsa de soja (10 ml)',
+    calories: 374,
+    protein_g: 32.8,
+    carbs_g: 22.8,
+    fat_g: 16.4,
+    raw_audio_transcription: 'Desayuno: Tortilla de dos huevos con pavo y queso light con 70g de noodles salteados con soja',
+  },
+
+  // --- MIÉRCOLES 23 DE SEPTIEMBRE (Descanso Activo / Refeed Mantenimiento - 2.508 kcal) ---
   {
     id: 'nutri-23-6',
     date: '2026-09-23',
     timestamp: '2026-09-23T22:15:00Z',
     meal_type: 'Cena',
-    description: 'Lomo de cerdo cocinado (35g), noodles de huevo (90g), verduras salteadas (100g) y 3 huevos (2 enteros + 1 clara, 140g)',
+    description: 'Restos de noodles (90 g) y verduras salteadas (100 g) con lomo de cerdo (35 g) y 3 huevos cocidos (2 enteros + 1 clara)',
     calories: 417,
     protein_g: 34.0,
     carbs_g: 32.8,
@@ -371,7 +506,7 @@ export const initialNutritionLogs: NutritionLog[] = [
     date: '2026-09-23',
     timestamp: '2026-09-23T20:00:00Z',
     meal_type: 'Snack',
-    description: 'Paseo de tarde: Cacahuetes salados, copa de cava y 2 trozos de bizcocho',
+    description: 'Picoteo (tarde / paseo): 4 cacahuetes con sal, 1 copa de cava y 2 trozos de bizcocho (brazo de gitano y naranja con nueces)',
     calories: 470,
     protein_g: 7.2,
     carbs_g: 51.6,
@@ -383,7 +518,7 @@ export const initialNutritionLogs: NutritionLog[] = [
     date: '2026-09-23',
     timestamp: '2026-09-23T18:30:00Z',
     meal_type: 'Snack',
-    description: 'Merienda pre-entreno: Copos de avena extrasuaves (40g), leche desnatada (85ml), yogur griego ligero (120g), Impact Whey (34g), chía (1g), arándanos congelados (37g) + 5g creatina',
+    description: 'Bol de avena (40 g), leche desnatada (85 ml), yogur griego ligero (120 g), Impact Whey (34 g), chía y arándanos congelados (37 g)',
     calories: 391,
     protein_g: 38.2,
     carbs_g: 38.8,
@@ -395,7 +530,7 @@ export const initialNutritionLogs: NutritionLog[] = [
     date: '2026-09-23',
     timestamp: '2026-09-23T14:20:00Z',
     meal_type: 'Almuerzo',
-    description: 'Noodles de huevo (125g cocinado), lomo de cerdo (80g), verduras salteadas (110g), AOVE (11g), 2 huevos cocidos enteros (115g) y té al limón Hacendado (250ml)',
+    description: 'Noodles de huevo (125 g cocinados) con lomo de cerdo (80 g) y salteado de verduras al AOVE + 2 huevos cocidos enteros + Nestea limón (250 ml)',
     calories: 699,
     protein_g: 46.4,
     carbs_g: 54.7,
@@ -407,7 +542,7 @@ export const initialNutritionLogs: NutritionLog[] = [
     date: '2026-09-23',
     timestamp: '2026-09-23T11:45:00Z',
     meal_type: 'Snack',
-    description: 'Media mañana: 1 huevo cocido entero (~58g) y 1 manzana golden (160g)',
+    description: 'Media Mañana: 1 huevo cocido mediano entero + manzana golden (160 g)',
     calories: 161,
     protein_g: 6.9,
     carbs_g: 19.8,
@@ -419,25 +554,25 @@ export const initialNutritionLogs: NutritionLog[] = [
     date: '2026-09-23',
     timestamp: '2026-09-23T08:50:00Z',
     meal_type: 'Desayuno',
-    description: 'Leche desnatada (200ml), azúcar blanco (2g), café soluble (2g), pan 100% integral (53g), AOVE (2g), tomate rallado (15g), taquitos de jamón (41g) y pechuga de pavo lonchas (50g)',
-    calories: 368,
-    protein_g: 35.0,
-    carbs_g: 31.7,
+    description: 'Café con leche desnatada (200 ml), tostadas de pan 100% integral (53 g) con AOVE, tomate, taquitos de jamón (41 g) y pechuga de pavo (50 g)',
+    calories: 370,
+    protein_g: 35.4,
+    carbs_g: 32.3,
     fat_g: 9.7,
     raw_audio_transcription: 'Desayuno: Tostada de pan integral con jamón y pavo, tomate, un chorrito de aceite y café con leche desnatada',
   },
 
-  // --- MARTES 22 DE SEPTIEMBRE (Pierna a las 20:00 - Déficit Óptimo ~2.291 kcal) ---
+  // --- MARTES 22 DE SEPTIEMBRE (Pierna 20:00 - Carga Hidratos / Déficit Óptimo - 2.291 kcal) ---
   {
     id: 'nutri-22-5',
     date: '2026-09-22',
     timestamp: '2026-09-22T22:15:00Z',
     meal_type: 'Cena',
-    description: 'Post-entreno pierna: Mollejas de pollo guisadas (100g), molido de verde plátano macho (90g), queso light lonchas (25g) y pechuga de pavo lonchas (145g)',
-    calories: 442,
+    description: 'Mollejas de pollo (100 g), molido de plátano macho verde, queso light en lonchas y pechuga de pavo en lonchas (145 g)',
+    calories: 622,
     protein_g: 50.4,
-    carbs_g: 29.7,
-    fat_g: 15.0,
+    carbs_g: 30.0,
+    fat_g: 15.3,
     raw_audio_transcription: 'Cena post-pesas: mollejas de pollo con molido de plátano macho, una loncha de queso light y pavo',
   },
   {
@@ -445,7 +580,7 @@ export const initialNutritionLogs: NutritionLog[] = [
     date: '2026-09-22',
     timestamp: '2026-09-22T19:25:00Z',
     meal_type: 'Snack',
-    description: 'Pre-entreno: Café solo con agua 35 min antes de entrenar (pico de cafeína sin interferir con el sueño)',
+    description: 'Pre-entreno: Café solo con agua',
     calories: 2,
     protein_g: 0.2,
     carbs_g: 0.3,
@@ -457,10 +592,10 @@ export const initialNutritionLogs: NutritionLog[] = [
     date: '2026-09-22',
     timestamp: '2026-09-22T18:30:00Z',
     meal_type: 'Snack',
-    description: 'Merienda pre-entreno: Copos de avena extrasuaves (50g), leche desnatada (100ml), yogur griego ligero (125g), Impact Whey (31g), semillas chía (1g), arándanos congelados (53g) + 5g creatina',
-    calories: 435,
+    description: 'Bol de avena (50 g), leche desnatada, yogur griego ligero, Impact Whey (31 g), semillas de chía y arándanos congelados',
+    calories: 430,
     protein_g: 38.5,
-    carbs_g: 47.0,
+    carbs_g: 47.3,
     fat_g: 8.8,
     raw_audio_transcription: 'Bol de merienda con 50g de avena, leche desnatada, yogur griego, un cazo de proteína whey, chía, arándanos y creatina',
   },
@@ -469,7 +604,7 @@ export const initialNutritionLogs: NutritionLog[] = [
     date: '2026-09-22',
     timestamp: '2026-09-22T14:15:00Z',
     meal_type: 'Almuerzo',
-    description: 'Carga principal: Mollejas de pollo guisadas (150g) con plátano macho hervido con queso (350g)',
+    description: 'Mollejas de pollo guisadas (150 g) con plátano macho hervido y queso (350 g)',
     calories: 690,
     protein_g: 35.7,
     carbs_g: 105.5,
@@ -481,16 +616,22 @@ export const initialNutritionLogs: NutritionLog[] = [
     date: '2026-09-22',
     timestamp: '2026-09-22T08:45:00Z',
     meal_type: 'Desayuno',
-    description: 'Leche desnatada (400ml), café soluble (2g), azúcar blanco (6g), 3 rebanadas de pan 100% integral (90g), mermelada (10g), tomate rallado natural (60g), AOVE (8g), taquitos de jamón serrano (60g) y 1 plátano de mesa (100g)',
-    calories: 723,
+    description: 'Café con leche desnatada (400 ml), tostadas de pan 100% integral (3 rebanadas) con AOVE, tomate y taquitos de jamón, mermelada y plátano',
+    calories: 547,
     protein_g: 45.1,
-    carbs_g: 105.7,
-    fat_g: 19.3,
+    carbs_g: 89.0,
+    fat_g: 19.2,
     raw_audio_transcription: 'Desayuno: 3 tostadas de pan integral con jamón, tomate rallado y aceite, tazón grande de leche desnatada con café y un plátano',
   },
 ];
 
 export const initialWaterLogs: WaterLog[] = [
+  // Hidratación 24 de Septiembre (2.800 ml)
+  { id: 'water-24-4', date: '2026-09-24', timestamp: '2026-09-24T21:30:00Z', amount_ml: 550 },
+  { id: 'water-24-3', date: '2026-09-24', timestamp: '2026-09-24T18:00:00Z', amount_ml: 750 },
+  { id: 'water-24-2', date: '2026-09-24', timestamp: '2026-09-24T13:30:00Z', amount_ml: 750 },
+  { id: 'water-24-1', date: '2026-09-24', timestamp: '2026-09-24T09:00:00Z', amount_ml: 750 },
+
   // Hidratación 23 de Septiembre (2.750 ml)
   { id: 'water-23-4', date: '2026-09-23', timestamp: '2026-09-23T21:30:00Z', amount_ml: 500 },
   { id: 'water-23-3', date: '2026-09-23', timestamp: '2026-09-23T18:00:00Z', amount_ml: 750 },
@@ -563,6 +704,23 @@ function generateSampleRun(): StravaActivity {
   };
 }
 
+export const initialStravaActivities: StravaActivity[] = [
+  {
+    id: 124092401,
+    name: 'Tirada Corta de Running (5 km)',
+    type: 'Run',
+    start_date: '2026-09-24T18:30:00Z',
+    elapsed_time: 2100, // 35 min
+    moving_time: 2100,
+    distance: 5000,
+    total_elevation_gain: 24.0,
+    summary_polyline: 'o_~dFfkxU_@a@w@i@_@_Am@m@_@u@e@',
+    avg_hr: 154,
+    max_hr: 170,
+    created_at: '2026-09-24T19:10:00Z',
+  },
+];
+
 // Almacén en memoria global (singleton para Next.js en caliente)
 declare global {
   var __ironman_store: {
@@ -573,6 +731,7 @@ declare global {
     gymLogs: GymWorkoutLog[];
     nutritionLogs: NutritionLog[];
     waterLogs: WaterLog[];
+    weightLogs: WeightLog[];
   } | undefined;
 }
 
@@ -580,11 +739,12 @@ if (!global.__ironman_store) {
   global.__ironman_store = {
     dailyMetrics: [...initialDailyMetrics],
     hrSamples: [],
-    stravaActivities: [],
+    stravaActivities: [...initialStravaActivities],
     gymExercises: [...initialGymExercises],
     gymLogs: [...initialGymLogs],
     nutritionLogs: [...initialNutritionLogs],
     waterLogs: [...initialWaterLogs],
+    weightLogs: [...initialWeightLogs],
   };
 }
 

@@ -109,7 +109,19 @@ CREATE TABLE IF NOT EXISTS water_logs (
 
 CREATE INDEX IF NOT EXISTS idx_water_date ON water_logs (date DESC);
 
--- 6. SEGURIDAD Y POLÍTICAS RLS (Row Level Security)
+-- 6. SEGUIMIENTO DE PESO CORPORAL (Pesajes diarios / antes de cenar)
+CREATE TABLE IF NOT EXISTS weight_logs (
+    id TEXT PRIMARY KEY,
+    date DATE NOT NULL,
+    timestamp TIMESTAMPTZ DEFAULT now(),
+    weight_kg NUMERIC(5,2) NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_weight_date ON weight_logs (date DESC);
+
+-- 7. SEGURIDAD Y POLÍTICAS RLS (Row Level Security)
 ALTER TABLE daily_health_metrics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE heart_rate_samples ENABLE ROW LEVEL SECURITY;
 ALTER TABLE strava_activities ENABLE ROW LEVEL SECURITY;
@@ -117,6 +129,7 @@ ALTER TABLE gym_exercises ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gym_workout_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE nutrition_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE water_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE weight_logs ENABLE ROW LEVEL SECURITY;
 
 -- Permitir lectura y escritura completa con Service Role o clave maestra
 DO $$
@@ -141,5 +154,8 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'service_role_all_water') THEN
         CREATE POLICY service_role_all_water ON water_logs FOR ALL USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'service_role_all_weight') THEN
+        CREATE POLICY service_role_all_weight ON weight_logs FOR ALL USING (true);
     END IF;
 END $$;
