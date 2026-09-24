@@ -196,9 +196,8 @@ export const initialGymExercises: GymExercise[] = [
     day: 'Día 3: Full Body',
     target_sets: 3,
     target_reps: '6-8 reps (RIR 2)',
-    current_weight_kg: 70,
     rest_time: '2 - 2.5 min',
-    notes: 'Patrón dominante de rodilla con máxima transferencia de fuerza',
+    notes: 'Patrón dominante de rodilla con máxima transferencia. Pesos por determinar en primera sesión',
   },
   {
     id: 'ex-full-2',
@@ -208,9 +207,8 @@ export const initialGymExercises: GymExercise[] = [
     day: 'Día 3: Full Body',
     target_sets: 3,
     target_reps: '8-10 reps (RIR 1-2)',
-    current_weight_kg: 18,
     rest_time: '2 min',
-    notes: 'Fuerza de hombros y estabilidad vertical de tronco',
+    notes: 'Fuerza de hombros y estabilidad vertical. Pesos por determinar en primera sesión',
   },
   {
     id: 'ex-full-3',
@@ -220,9 +218,8 @@ export const initialGymExercises: GymExercise[] = [
     day: 'Día 3: Full Body',
     target_sets: 3,
     target_reps: '8-10 reps (RIR 1)',
-    current_weight_kg: 80,
     rest_time: '2 min',
-    notes: 'Extensor primario de zancada en carrera (glúteo mayor)',
+    notes: 'Extensor primario de zancada en carrera. Pesos por determinar en primera sesión',
   },
   {
     id: 'ex-full-4',
@@ -232,9 +229,8 @@ export const initialGymExercises: GymExercise[] = [
     day: 'Día 3: Full Body',
     target_sets: 3,
     target_reps: '10-12 reps (RIR 1)',
-    current_weight_kg: 22,
     rest_time: '1.5 min',
-    notes: 'Espalda alta y estabilidad de cadera en apoyo asimétrico',
+    notes: 'Espalda alta y estabilidad de cadera. Pesos por determinar en primera sesión',
   },
   {
     id: 'ex-full-5',
@@ -244,9 +240,8 @@ export const initialGymExercises: GymExercise[] = [
     day: 'Día 3: Full Body',
     target_sets: 3,
     target_reps: '12-15 reps (RIR 0-1)',
-    current_weight_kg: 25,
     rest_time: '1 min',
-    notes: 'Salud del manguito rotador y deltoides posterior (braceo ergonómico)',
+    notes: 'Salud del manguito rotador y deltoides posterior. Pesos por determinar en primera sesión',
   },
   {
     id: 'ex-full-6',
@@ -256,9 +251,8 @@ export const initialGymExercises: GymExercise[] = [
     day: 'Día 3: Full Body',
     target_sets: 3,
     target_reps: '12-15 reps (RIR 1)',
-    current_weight_kg: 35,
     rest_time: '1 min',
-    notes: 'Trabajo de sóleo o flexión de tronco controlada',
+    notes: 'Trabajo de sóleo o flexión de tronco. Pesos por determinar en primera sesión',
   },
 
   // --- MOVILIDAD & ESTIRAMIENTOS ESPECÍFICOS PREVENCIÓN RUNNING ---
@@ -298,33 +292,62 @@ export const initialGymExercises: GymExercise[] = [
 
 export const initialGymLogs: GymWorkoutLog[] = [
   // --- MARTES 22 DE SEPTIEMBRE (Pierna 20:00 - Sesión Real) ---
-  { id: 'log-22-1', date: '2026-09-22', exercise_id: 'ex-pierna-1', set_number: 1, reps: 10, weight_kg: 120, rpe: 8 },
-  { id: 'log-22-2', date: '2026-09-22', exercise_id: 'ex-pierna-1', set_number: 2, reps: 9, weight_kg: 120, rpe: 8.5 },
-  { id: 'log-22-3', date: '2026-09-22', exercise_id: 'ex-pierna-1', set_number: 3, reps: 8, weight_kg: 120, rpe: 9 },
+  { id: 'log-22-1', date: '2026-09-22', exercise_id: 'ex-pierna-1', set_number: 1, reps: 10, weight_kg: 120, rpe: 8.5 },
+  { id: 'log-22-2', date: '2026-09-22', exercise_id: 'ex-pierna-1', set_number: 2, reps: 10, weight_kg: 120, rpe: 8.5 },
+  { id: 'log-22-3', date: '2026-09-22', exercise_id: 'ex-pierna-1', set_number: 3, reps: 10, weight_kg: 120, rpe: 9 },
 
-  { id: 'log-22-4', date: '2026-09-22', exercise_id: 'ex-pierna-2', set_number: 1, reps: 12, weight_kg: 60, rpe: 8 },
-  { id: 'log-22-5', date: '2026-09-22', exercise_id: 'ex-pierna-2', set_number: 2, reps: 10, weight_kg: 60, rpe: 8.5 },
-  { id: 'log-22-6', date: '2026-09-22', exercise_id: 'ex-pierna-2', set_number: 3, reps: 10, weight_kg: 60, rpe: 9 },
+  { id: 'log-22-4', date: '2026-09-22', exercise_id: 'ex-pierna-2', set_number: 1, reps: 12, weight_kg: 60, rpe: 9 },
+  { id: 'log-22-5', date: '2026-09-22', exercise_id: 'ex-pierna-2', set_number: 2, reps: 12, weight_kg: 60, rpe: 9 },
+  { id: 'log-22-6', date: '2026-09-22', exercise_id: 'ex-pierna-2', set_number: 3, reps: 12, weight_kg: 60, rpe: 9 },
 
-  { id: 'log-22-7', date: '2026-09-22', exercise_id: 'ex-pierna-3', set_number: 1, reps: 12, weight_kg: 70, rpe: 7.5 },
-  { id: 'log-22-8', date: '2026-09-22', exercise_id: 'ex-pierna-3', set_number: 2, reps: 11, weight_kg: 80, rpe: 8 },
-  { id: 'log-22-9', date: '2026-09-22', exercise_id: 'ex-pierna-3', set_number: 3, reps: 10, weight_kg: 90, rpe: 9 },
+  { id: 'log-22-7', date: '2026-09-22', exercise_id: 'ex-pierna-3', set_number: 1, reps: 12, weight_kg: 70, rpe: 9 },
+  { id: 'log-22-8', date: '2026-09-22', exercise_id: 'ex-pierna-3', set_number: 2, reps: 12, weight_kg: 80, rpe: 9 },
+  { id: 'log-22-9', date: '2026-09-22', exercise_id: 'ex-pierna-3', set_number: 3, reps: 12, weight_kg: 90, rpe: 9 },
 
-  { id: 'log-22-10', date: '2026-09-22', exercise_id: 'ex-pierna-4', set_number: 1, reps: 12, weight_kg: 50, rpe: 8 },
-  { id: 'log-22-11', date: '2026-09-22', exercise_id: 'ex-pierna-4', set_number: 2, reps: 10, weight_kg: 50, rpe: 8.5 },
-  { id: 'log-22-12', date: '2026-09-22', exercise_id: 'ex-pierna-4', set_number: 3, reps: 10, weight_kg: 50, rpe: 9 },
+  { id: 'log-22-10', date: '2026-09-22', exercise_id: 'ex-pierna-4', set_number: 1, reps: 12, weight_kg: 50, rpe: 9 },
+  { id: 'log-22-11', date: '2026-09-22', exercise_id: 'ex-pierna-4', set_number: 2, reps: 12, weight_kg: 50, rpe: 9 },
+  { id: 'log-22-12', date: '2026-09-22', exercise_id: 'ex-pierna-4', set_number: 3, reps: 12, weight_kg: 50, rpe: 9 },
 
-  { id: 'log-22-13', date: '2026-09-22', exercise_id: 'ex-pierna-5', set_number: 1, reps: 12, weight_kg: 0, rpe: 7.5 },
+  { id: 'log-22-13', date: '2026-09-22', exercise_id: 'ex-pierna-5', set_number: 1, reps: 12, weight_kg: 0, rpe: 8 },
   { id: 'log-22-14', date: '2026-09-22', exercise_id: 'ex-pierna-5', set_number: 2, reps: 12, weight_kg: 0, rpe: 8 },
   { id: 'log-22-15', date: '2026-09-22', exercise_id: 'ex-pierna-5', set_number: 3, reps: 12, weight_kg: 0, rpe: 8 },
 
-  { id: 'log-22-16', date: '2026-09-22', exercise_id: 'ex-pierna-6', set_number: 1, reps: 15, weight_kg: 20, rpe: 8 },
-  { id: 'log-22-17', date: '2026-09-22', exercise_id: 'ex-pierna-6', set_number: 2, reps: 15, weight_kg: 20, rpe: 8.5 },
+  { id: 'log-22-16', date: '2026-09-22', exercise_id: 'ex-pierna-6', set_number: 1, reps: 15, weight_kg: 20, rpe: 9 },
+  { id: 'log-22-17', date: '2026-09-22', exercise_id: 'ex-pierna-6', set_number: 2, reps: 15, weight_kg: 20, rpe: 9 },
   { id: 'log-22-18', date: '2026-09-22', exercise_id: 'ex-pierna-6', set_number: 3, reps: 15, weight_kg: 20, rpe: 9 },
 
-  { id: 'log-22-19', date: '2026-09-22', exercise_id: 'ex-pierna-7', set_number: 1, reps: 45, weight_kg: 0, rpe: 8 },
+  { id: 'log-22-19', date: '2026-09-22', exercise_id: 'ex-pierna-7', set_number: 1, reps: 45, weight_kg: 0, rpe: 8.5 },
   { id: 'log-22-20', date: '2026-09-22', exercise_id: 'ex-pierna-7', set_number: 2, reps: 45, weight_kg: 0, rpe: 8.5 },
   { id: 'log-22-21', date: '2026-09-22', exercise_id: 'ex-pierna-7', set_number: 3, reps: 40, weight_kg: 0, rpe: 9 },
+
+  // --- LUNES 21 DE SEPTIEMBRE (Torso - Sesión Real según Tabla & RIR) ---
+  { id: 'log-21-1', date: '2026-09-21', exercise_id: 'ex-torso-1', set_number: 1, reps: 8, weight_kg: 60, rpe: 8.5 },
+  { id: 'log-21-2', date: '2026-09-21', exercise_id: 'ex-torso-1', set_number: 2, reps: 8, weight_kg: 60, rpe: 8.5 },
+  { id: 'log-21-3', date: '2026-09-21', exercise_id: 'ex-torso-1', set_number: 3, reps: 8, weight_kg: 60, rpe: 9 },
+
+  { id: 'log-21-4', date: '2026-09-21', exercise_id: 'ex-torso-2', set_number: 1, reps: 10, weight_kg: 50, rpe: 8.5 },
+  { id: 'log-21-5', date: '2026-09-21', exercise_id: 'ex-torso-2', set_number: 2, reps: 10, weight_kg: 50, rpe: 8.5 },
+  { id: 'log-21-6', date: '2026-09-21', exercise_id: 'ex-torso-2', set_number: 3, reps: 10, weight_kg: 50, rpe: 9 },
+
+  { id: 'log-21-7', date: '2026-09-21', exercise_id: 'ex-torso-3', set_number: 1, reps: 10, weight_kg: 50, rpe: 9 },
+  { id: 'log-21-8', date: '2026-09-21', exercise_id: 'ex-torso-3', set_number: 2, reps: 10, weight_kg: 50, rpe: 9 },
+  { id: 'log-21-9', date: '2026-09-21', exercise_id: 'ex-torso-3', set_number: 3, reps: 10, weight_kg: 50, rpe: 9 },
+
+  { id: 'log-21-10', date: '2026-09-21', exercise_id: 'ex-torso-4', set_number: 1, reps: 12, weight_kg: 50, rpe: 9 },
+  { id: 'log-21-11', date: '2026-09-21', exercise_id: 'ex-torso-4', set_number: 2, reps: 12, weight_kg: 50, rpe: 9 },
+  { id: 'log-21-12', date: '2026-09-21', exercise_id: 'ex-torso-4', set_number: 3, reps: 12, weight_kg: 50, rpe: 9 },
+
+  { id: 'log-21-13', date: '2026-09-21', exercise_id: 'ex-torso-5', set_number: 1, reps: 15, weight_kg: 5, rpe: 9.5 },
+  { id: 'log-21-14', date: '2026-09-21', exercise_id: 'ex-torso-5', set_number: 2, reps: 15, weight_kg: 5, rpe: 9.5 },
+  { id: 'log-21-15', date: '2026-09-21', exercise_id: 'ex-torso-5', set_number: 3, reps: 15, weight_kg: 5, rpe: 10 },
+
+  { id: 'log-21-16', date: '2026-09-21', exercise_id: 'ex-torso-6', set_number: 1, reps: 12, weight_kg: 12.5, rpe: 9.5 },
+  { id: 'log-21-17', date: '2026-09-21', exercise_id: 'ex-torso-6', set_number: 2, reps: 12, weight_kg: 10, rpe: 9.5 },
+  { id: 'log-21-18', date: '2026-09-21', exercise_id: 'ex-torso-6', set_number: 3, reps: 12, weight_kg: 10, rpe: 10 },
+
+  { id: 'log-21-19', date: '2026-09-21', exercise_id: 'ex-torso-7', set_number: 1, reps: 12, weight_kg: 50, rpe: 9.5 },
+  { id: 'log-21-20', date: '2026-09-21', exercise_id: 'ex-torso-7', set_number: 2, reps: 12, weight_kg: 50, rpe: 9.5 },
+  { id: 'log-21-21', date: '2026-09-21', exercise_id: 'ex-torso-7', set_number: 3, reps: 12, weight_kg: 50, rpe: 10 },
 ];
 
 export const initialDailyMetrics: DailyHealthMetric[] = [];

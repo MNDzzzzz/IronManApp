@@ -31,7 +31,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet }) =
   const [activeTab, setActiveTab] = useState<'routine' | 'history'>('routine');
 
   // Filtro de fecha para el historial de series
-  const [historyDateFilter, setHistoryDateFilter] = useState<'all' | 'today' | '2026-09-22'>('today');
+  const [historyDateFilter, setHistoryDateFilter] = useState<'all' | 'today' | '2026-09-22' | '2026-09-21'>('today');
 
   const strengthExercises = useMemo(() => exercises.filter((e) => !e.is_stretch), [exercises]);
   const stretchExercises = useMemo(() => exercises.filter((e) => e.is_stretch), [exercises]);
@@ -52,7 +52,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet }) =
   );
 
   const [reps, setReps] = useState<number>(8);
-  const [weightKg, setWeightKg] = useState<number>(selectedExercise?.current_weight_kg ?? 60);
+  const [weightKg, setWeightKg] = useState<number>(selectedExercise?.current_weight_kg ?? 0);
   const [rpe, setRpe] = useState<number>(8);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -61,16 +61,16 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet }) =
     if (filteredExercises.length > 0 && !filteredExercises.some((e) => e.id === selectedExerciseId)) {
       const nextEx = filteredExercises[0];
       setSelectedExerciseId(nextEx.id);
-      setWeightKg(nextEx.current_weight_kg ?? 50);
+      setWeightKg(nextEx.current_weight_kg ?? 0);
     }
   }, [filteredExercises, selectedExerciseId]);
 
-  // Al seleccionar un ejercicio nuevo, preestablecer su peso habitual
+  // Al seleccionar un ejercicio nuevo, preestablecer su peso habitual si existe
   const handleSelectExercise = (exId: string) => {
     setSelectedExerciseId(exId);
     const ex = exercises.find((e) => e.id === exId);
-    if (ex && ex.current_weight_kg !== undefined) {
-      setWeightKg(ex.current_weight_kg);
+    if (ex) {
+      setWeightKg(ex.current_weight_kg ?? 0);
     }
   };
 
@@ -101,6 +101,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet }) =
   const displayedHistoryLogs = useMemo(() => {
     if (historyDateFilter === 'today') return logs.filter((l) => l.date === todayStr);
     if (historyDateFilter === '2026-09-22') return logs.filter((l) => l.date === '2026-09-22');
+    if (historyDateFilter === '2026-09-21') return logs.filter((l) => l.date === '2026-09-21');
     return logs;
   }, [logs, historyDateFilter, todayStr]);
 
@@ -198,7 +199,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet }) =
               >
                 {filteredExercises.map((ex) => (
                   <option key={ex.id} value={ex.id}>
-                    {ex.name} ({ex.current_weight_kg ? `${ex.current_weight_kg}kg` : 'PC'})
+                    {ex.name} ({ex.current_weight_kg !== undefined ? (ex.current_weight_kg > 0 ? `${ex.current_weight_kg}kg` : 'PC') : 'Por determinar'})
                   </option>
                 ))}
               </select>
@@ -350,9 +351,11 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet }) =
                     </div>
                     <div className="text-right">
                       <span className="text-xs font-black text-orange-400 block">
-                        {ex.current_weight_kg !== undefined && ex.current_weight_kg > 0
-                          ? `${ex.current_weight_kg} kg`
-                          : 'Peso Corp.'}
+                        {ex.current_weight_kg !== undefined
+                          ? ex.current_weight_kg > 0
+                            ? `${ex.current_weight_kg} kg`
+                            : 'Peso Corp.'
+                          : 'Por determinar'}
                       </span>
                       <span className="text-[9px] text-zinc-500">
                         {completedSets.length > 0 ? `${completedSets.length}/${targetSets} series` : 'Pendiente'}
@@ -397,10 +400,10 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet }) =
             <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
               Historial de Series
             </h3>
-            <div className="flex gap-1 bg-zinc-900 p-0.5 rounded-xl border border-zinc-800 text-[10px]">
+            <div className="flex gap-1 bg-zinc-900 p-0.5 rounded-xl border border-zinc-800 text-[10px] overflow-x-auto">
               <button
                 onClick={() => setHistoryDateFilter('today')}
-                className={`px-2 py-0.5 rounded-lg ${
+                className={`px-2 py-0.5 rounded-lg whitespace-nowrap ${
                   historyDateFilter === 'today' ? 'bg-orange-500 text-black font-bold' : 'text-zinc-400'
                 }`}
               >
@@ -408,15 +411,23 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet }) =
               </button>
               <button
                 onClick={() => setHistoryDateFilter('2026-09-22')}
-                className={`px-2 py-0.5 rounded-lg ${
+                className={`px-2 py-0.5 rounded-lg whitespace-nowrap ${
                   historyDateFilter === '2026-09-22' ? 'bg-orange-500 text-black font-bold' : 'text-zinc-400'
                 }`}
               >
-                Martes 22 (Pierna)
+                M22 (Pierna)
+              </button>
+              <button
+                onClick={() => setHistoryDateFilter('2026-09-21')}
+                className={`px-2 py-0.5 rounded-lg whitespace-nowrap ${
+                  historyDateFilter === '2026-09-21' ? 'bg-orange-500 text-black font-bold' : 'text-zinc-400'
+                }`}
+              >
+                L21 (Torso)
               </button>
               <button
                 onClick={() => setHistoryDateFilter('all')}
-                className={`px-2 py-0.5 rounded-lg ${
+                className={`px-2 py-0.5 rounded-lg whitespace-nowrap ${
                   historyDateFilter === 'all' ? 'bg-orange-500 text-black font-bold' : 'text-zinc-400'
                 }`}
               >
