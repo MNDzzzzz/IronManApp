@@ -58,21 +58,26 @@ CREATE INDEX IF NOT EXISTS idx_strava_start_date ON strava_activities (start_dat
 
 -- 4. RUTINAS Y PROGRESIÓN DE FUERZA (Gimnasio)
 CREATE TABLE IF NOT EXISTS gym_exercises (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     category TEXT NOT NULL, -- 'Pecho', 'Espalda', 'Pierna', 'Hombro', 'Brazo', 'Core'
     is_stretch BOOLEAN DEFAULT false, -- True para estiramientos/movilidad
+    day TEXT, -- 'Día 1: Torso', 'Día 2: Pierna', 'Día 3: Full Body'
+    target_sets INTEGER DEFAULT 3,
+    target_reps TEXT,
+    current_weight_kg NUMERIC(5,2),
+    rest_time TEXT,
     notes TEXT
 );
 
 CREATE TABLE IF NOT EXISTS gym_workout_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY,
     date DATE NOT NULL,
-    exercise_id UUID REFERENCES gym_exercises(id) ON DELETE CASCADE,
+    exercise_id TEXT REFERENCES gym_exercises(id) ON DELETE CASCADE,
     set_number INTEGER NOT NULL,
     reps INTEGER NOT NULL,
     weight_kg NUMERIC(5,2) NOT NULL,
-    rpe INTEGER, -- Escala de esfuerzo percibido 1-10
+    rpe NUMERIC(3,1), -- Escala de esfuerzo percibido 1-10 (ej: 8.5)
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -81,7 +86,7 @@ CREATE INDEX IF NOT EXISTS idx_gym_logs_exercise ON gym_workout_logs (exercise_i
 
 -- 5. NUTRICIÓN E HIDRATACIÓN (Vía Bot de Telegram y Web)
 CREATE TABLE IF NOT EXISTS nutrition_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY,
     timestamp TIMESTAMPTZ DEFAULT now(),
     date DATE NOT NULL DEFAULT CURRENT_DATE,
     meal_type TEXT, -- 'Desayuno', 'Almuerzo', 'Cena', 'Snack'
@@ -96,7 +101,7 @@ CREATE TABLE IF NOT EXISTS nutrition_logs (
 CREATE INDEX IF NOT EXISTS idx_nutrition_date ON nutrition_logs (date DESC);
 
 CREATE TABLE IF NOT EXISTS water_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY,
     timestamp TIMESTAMPTZ DEFAULT now(),
     date DATE NOT NULL DEFAULT CURRENT_DATE,
     amount_ml INTEGER NOT NULL
