@@ -163,12 +163,18 @@ function getAppSnapshot(todayStr: string) {
 // 4. MOTOR MULTIMODAL CON GEMINI FLASH (PARSER Y ENRUTADOR UNIVERSAL)
 // --------------------------------------------------------------------
 interface UniversalAssistantResponse {
-  action: 'log_workout' | 'log_cardio' | 'log_nutrition' | 'query' | 'protocol_update' | 'adjust_value' | 'log_weight';
+  action: 'log_workout' | 'log_cardio' | 'log_nutrition' | 'query' | 'protocol_update' | 'adjust_value' | 'set_value' | 'log_weight';
   transcription?: string;
   // Para sumar o restar valores de la app
   adjust?: {
     metric: 'calories' | 'water_ml' | 'protein_g' | 'carbs_g' | 'fat_g';
     delta: number; // Positivo para sumar, negativo para restar (ej: -200, +500)
+    reason?: string;
+  };
+  // Para fijar o resetear un total absoluto de la app
+  set_value?: {
+    metric: 'calories' | 'water_ml' | 'protein_g' | 'carbs_g' | 'fat_g';
+    target_value: number; // Valor absoluto final deseado para hoy (ej: 3000 para agua en ml, 2500 para calorías)
     reason?: string;
   };
   // Para pesaje y control de peso
@@ -230,7 +236,7 @@ async function processWithGemini(
   const prompt = `
 Eres el Asistente Deportivo Personal y Entrenador de Alto Rendimiento de Álvaro para su plataforma IronManApp.
 Tienes control integral de la aplicación para registrar y consultar datos de:
-1. Nutrición e hidratación (incluyendo sumar, restar y corregir ingestas acumuladas).
+1. Nutrición e hidratación (incluyendo sumar, restar, fijar o corregir ingestas acumuladas).
 2. Peso corporal y evolución antropométrica (pesajes antes de cenar, después de entrenar).
 3. Entrenamientos de fuerza (gimnasio / pesas).
 4. Caminatas y carreras de running (cardio).
@@ -247,6 +253,13 @@ INSTRUCCIONES DE CLASIFICACIÓN Y ACCIÓN:
      • "metric": "calories" | "water_ml" | "protein_g" | "carbs_g" | "fat_g"
      • "delta": número positivo para sumar (ej: 300) o negativo para restar (ej: -200)
      • "reason": motivo o descripción breve de la corrección.
+
+1.b. Si Álvaro pide FIJAR, CAMBIAR, SOBRESCRIBIR o RESETEAR el TOTAL ACUMULADO de una métrica para hoy (ej: "cambia los 13 L de agua que aparecen que he bebido hoy y que sean solo 3L", "en total hoy he bebido 3L de agua", "pon que hoy he bebido 3 litros de agua", "deja el agua en 3000", "cambia las calorías a 2500", "pon las calorías en 2600", "fija la proteína en 170g", "resetea el agua a 3L"):
+   - Pon "action": "set_value".
+   - Rellena "set_value":
+     • "metric": "water_ml" | "calories" | "protein_g" | "carbs_g" | "fat_g"
+     • "target_value": número final absoluto deseado (ej: si dice 3 litros de agua -> 3000; si dice 2500 kcal -> 2500; si dice 170g de proteína -> 170).
+     • "reason": motivo o texto explicativo del usuario.
 
 2. Si Álvaro comunica su PESO CORPORAL o pesaje (ej: "Hoy peso 101 kg", "Mi peso es 100.8", "He pesado 101 kilos antes de cenar", "Pesaje post-entreno: 101.2"):
    - Pon "action": "log_weight".
@@ -286,12 +299,17 @@ Mensaje escrito (si aplica): "${textOrHint}"
 
 DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin markdown ni texto alrededor):
 {
-  "action": "log_workout" | "log_cardio" | "log_nutrition" | "query" | "protocol_update" | "adjust_value" | "log_weight",
+  "action": "log_workout" | "log_cardio" | "log_nutrition" | "query" | "protocol_update" | "adjust_value" | "set_value" | "log_weight",
   "transcription": "transcripción literal",
   "adjust": {
     "metric": "calories" | "water_ml" | "protein_g" | "carbs_g" | "fat_g",
     "delta": -200,
     "reason": "Corrección de calorías"
+  },
+  "set_value": {
+    "metric": "water_ml",
+    "target_value": 3000,
+    "reason": "Fijar agua diaria en 3L"
   },
   "weight_log": {
     "weight_kg": 101.0,
@@ -642,9 +660,105 @@ async function handleAdjustValue(
 }
 
 // --------------------------------------------------------------------
+// 8.b. MANEJADOR DE ACCIÓN: FIJAR / RESETEAR VALOR ABSOLUTO
+// --------------------------------------------------------------------
+async function handleSetValue(
+  metric: 'calories' | 'water_ml' | 'protein_g' | 'carbs_g' | 'fat_g',
+  targetValue: number,
+  reason: string,
+  todayStr: string
+) {
+  if (metric === 'water_ml') {
+    // 1. Limpiar o reemplazar registros de agua de hoy en Supabase
+    if (isSupabaseConfigured && supabaseAdmin) {
+      try {
+        await supabaseAdmin.from('water_logs').delete().eq('date', todayStr);
+      } catch (e) {
+        console.warn('Aviso limpiando water_logs en Supabase:', e);
+      }
+    }
+    // Limpiar en mockStore
+    mockStore.waterLogs = mockStore.waterLogs.filter((w) => w.date !== todayStr);
+
+    // 2. Insertar el valor definitivo fijado
+    const newWater: WaterLog = {
+      id: `water-set-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      date: todayStr,
+      amount_ml: Math.round(targetValue),
+    };
+
+    if (isSupabaseConfigured && supabaseAdmin) {
+      try {
+        await supabaseAdmin.from('water_logs').insert([newWater]);
+      } catch (e) {
+        console.warn('Aviso guardando agua fijada en Supabase:', e);
+      }
+    }
+    mockStore.waterLogs.unshift(newWater);
+
+    return {
+      metricName: 'Hidratación / Agua',
+      newTotalStr: `${(targetValue / 1000).toFixed(2)} L`,
+      targetStr: `${(activeProtocol.targets.waterMl / 1000).toFixed(1)} L`,
+      detailStr: `Fijado directamente a ${(targetValue / 1000).toFixed(2)} L (${targetValue} ml)`,
+    };
+  }
+
+  // Para nutrición (calorías, proteínas, carbohidratos, grasas):
+  const todayMeals = mockStore.nutritionLogs.filter((m) => m.date === todayStr);
+  const totalKcal = todayMeals.reduce((acc, m) => acc + m.calories, 0);
+  const totalProt = todayMeals.reduce((acc, m) => acc + m.protein_g, 0);
+  const totalCarbs = todayMeals.reduce((acc, m) => acc + m.carbs_g, 0);
+  const totalFat = todayMeals.reduce((acc, m) => acc + m.fat_g, 0);
+
+  let currentVal = totalKcal;
+  let metricName = 'Calorías';
+  let unit = 'kcal';
+  let target = `${activeProtocol.targets.calories} kcal`;
+
+  if (metric === 'protein_g') {
+    currentVal = totalProt;
+    metricName = 'Proteína';
+    unit = 'g';
+    target = `${activeProtocol.targets.proteinMin}–${activeProtocol.targets.proteinMax} g`;
+  } else if (metric === 'carbs_g') {
+    currentVal = totalCarbs;
+    metricName = 'Carbohidratos';
+    unit = 'g';
+    target = `${activeProtocol.targets.carbsMin}–${activeProtocol.targets.carbsMax} g`;
+  } else if (metric === 'fat_g') {
+    currentVal = totalFat;
+    metricName = 'Grasas';
+    unit = 'g';
+    target = `${activeProtocol.targets.fatMin}–${activeProtocol.targets.fatMax} g`;
+  }
+
+  const delta = Math.round(targetValue - currentVal);
+  if (delta !== 0) {
+    await handleAdjustValue(
+      metric,
+      delta,
+      reason || `Ajuste para fijar total en ${targetValue} ${unit}`,
+      todayStr
+    );
+  }
+
+  return {
+    metricName,
+    newTotalStr: `${targetValue} ${unit}`,
+    targetStr: target,
+    detailStr:
+      delta !== 0
+        ? `Ajustado con ${delta > 0 ? `+${delta}` : delta} ${unit} para igualar ${targetValue} ${unit}`
+        : `El valor ya era exactamente ${targetValue} ${unit}`,
+  };
+}
+
+// --------------------------------------------------------------------
 // 9. ENDPOINT PRINCIPAL: ROUTE POST
 // --------------------------------------------------------------------
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const update = await request.json();
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -694,9 +808,13 @@ Tengo acceso y control total a toda tu app. Puedes hablarme o dictarme audios de
 • Registrar nuevo pesaje: \`/peso 101.0\` o _"Hoy he pesado 101 kg antes de cenar"_
 
 ➕➖ *Sumar y Restar Valores (Calorías, Agua, Macros):*
-• Sumar: \`/sumar cal 200\`, \`/sumar agua 500\`, \`/+ pro 25\`
-• Restar: \`/restar cal 150\`, \`/restar agua 250\`, \`/- carb 30\`
+• Sumar: \`/sumar cal 200\`, \`/sumar agua 500\`, \`+500 agua\`
+• Restar: \`/restar cal 150\`, \`/restar agua 250\`, \`-200 cal\`
 • Lenguaje natural: _"Resta 200 calorías a hoy"_ o _"He bebido 500 ml más de agua"_
+
+🎯 *Fijar o Resetear Totales Directos:*
+• Fijar agua: \`/fijar agua 3L\`, \`/set agua 3000\` o _"Cambia el agua de hoy a 3L"_
+• Fijar calorías/macros: \`/fijar cal 2500\`, \`/set pro 170\` o _"Pon 2500 kcal para hoy"_
 
 🏋️‍♂️ *Entrenamientos de Fuerza:*
 • Dicta tu entreno: _"Hoy hice pierna: 3 series de sentadillas con 100kg a 8 repes y prensa con 150kg"_
@@ -937,6 +1055,59 @@ Escribe ej: \`/peso 100.8\` o díctamelo: _"Hoy he pesado 100.8 antes de cenar"_
       }
     }
 
+    // 8.b. /fijar o /set (Fijar total absoluto de métricas)
+    if (
+      mainCommand === '/fijar' ||
+      mainCommand === '/set' ||
+      mainCommand === '/poner' ||
+      mainCommand === '/establecer'
+    ) {
+      let metric: 'calories' | 'water_ml' | 'protein_g' | 'carbs_g' | 'fat_g' = 'water_ml';
+      let targetVal = 0;
+
+      for (let i = 1; i < parts.length; i++) {
+        const p = parts[i].toLowerCase();
+        const num = parseFloat(p.replace(',', '.'));
+        if (!isNaN(num)) {
+          targetVal = num;
+        } else if (p.includes('cal') || p.includes('kcal')) {
+          metric = 'calories';
+        } else if (p.includes('agua') || p.includes('ml') || p.includes('litro') || p === 'l' || p.endsWith('l')) {
+          metric = 'water_ml';
+        } else if (p.includes('pro') || p.includes('prot')) {
+          metric = 'protein_g';
+        } else if (p.includes('carb') || p.includes('hidrato')) {
+          metric = 'carbs_g';
+        } else if (p.includes('grasa') || p.includes('fat')) {
+          metric = 'fat_g';
+        }
+      }
+
+      // Si es agua y el valor es menor o igual a 10 (ej: 3 o 3.5), se interpreta en Litros -> ml
+      if (metric === 'water_ml' && targetVal > 0 && targetVal <= 10) {
+        targetVal = targetVal * 1000;
+      }
+
+      if (targetVal > 0) {
+        const resSet = await handleSetValue(
+          metric,
+          targetVal,
+          `Comando directo ${mainCommand}`,
+          todayStr
+        );
+
+        if (botToken && message.chat?.id) {
+          const reply = `
+🎯 *Total Fijado: ${resSet.metricName}*
+• *Nuevo total de hoy:* *${resSet.newTotalStr}* / ${resSet.targetStr}
+• *Detalle:* _${resSet.detailStr}_
+          `.trim();
+          await sendTelegramMessage(chatId, reply, botToken);
+        }
+        return NextResponse.json({ success: true, command: 'set_metric', metric: metric as string, targetVal });
+      }
+    }
+
     // 8. /creatina
     if (cleanCmd === '/creatina' || cleanCmd === 'creatina') {
       const taken = toggleCreatine();
@@ -1137,6 +1308,42 @@ ${aiResult.coach_tip ? `💡 *Coach:* _${aiResult.coach_tip}_` : ''}
         metric,
         delta,
         newTotal: resAdj.newTotalStr,
+      });
+    }
+
+    // CASO D4: FIJAR O SOBRESCRIBIR TOTALES DIRECTOS (AGUA, CALORÍAS, MACROS)
+    if (aiResult.action === 'set_value' && aiResult.set_value) {
+      const { metric, target_value, reason } = aiResult.set_value;
+      let finalTarget = Number(target_value);
+      if (metric === 'water_ml' && finalTarget > 0 && finalTarget <= 10) {
+        finalTarget = finalTarget * 1000;
+      }
+
+      const resSet = await handleSetValue(
+        metric,
+        finalTarget,
+        reason || aiResult.transcription || spokenText,
+        todayStr
+      );
+
+      if (botToken && message.chat?.id) {
+        const reply = `
+🎯 *Total Corregido con Éxito*
+${transcriptionHeader}• *Métrica:* *${resSet.metricName}*
+• *Nuevo total de hoy:* *${resSet.newTotalStr}* / ${resSet.targetStr}
+• *Detalle:* _${resSet.detailStr}_
+
+${aiResult.coach_tip ? `💡 *Coach:* _${aiResult.coach_tip}_` : ''}
+        `.trim();
+        await sendTelegramMessage(chatId, reply, botToken);
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'set_value',
+        metric,
+        target_value: finalTarget,
+        newTotal: resSet.newTotalStr,
       });
     }
 

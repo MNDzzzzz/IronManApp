@@ -626,8 +626,8 @@ export const initialNutritionLogs: NutritionLog[] = [
 ];
 
 export const initialWaterLogs: WaterLog[] = [
-  // Hidratación 24 de Septiembre (2.800 ml)
-  { id: 'water-24-4', date: '2026-09-24', timestamp: '2026-09-24T21:30:00Z', amount_ml: 550 },
+  // Hidratación 24 de Septiembre (3.000 ml)
+  { id: 'water-24-4', date: '2026-09-24', timestamp: '2026-09-24T21:30:00Z', amount_ml: 750 },
   { id: 'water-24-3', date: '2026-09-24', timestamp: '2026-09-24T18:00:00Z', amount_ml: 750 },
   { id: 'water-24-2', date: '2026-09-24', timestamp: '2026-09-24T13:30:00Z', amount_ml: 750 },
   { id: 'water-24-1', date: '2026-09-24', timestamp: '2026-09-24T09:00:00Z', amount_ml: 750 },
