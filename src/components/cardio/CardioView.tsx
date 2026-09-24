@@ -48,66 +48,80 @@ export const CardioView: React.FC<CardioViewProps> = ({
       </div>
 
       {/* LISTA DE ACTIVIDADES */}
-      <div className="space-y-3">
-        {activities.map((activity) => {
-          const paceMinutes = activity.moving_time
-            ? ((activity.moving_time / 60) / (activity.distance / 1000)).toFixed(2)
-            : '5.10';
+      {activities.length === 0 ? (
+        <div className="p-8 rounded-3xl bg-zinc-950 border border-zinc-900 text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center mx-auto text-2xl">
+            🏃
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-base font-bold text-white">Sin actividades registradas</h3>
+            <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
+              Tus carreras y caminatas de Strava aparecerán aquí cuando salgas a entrenar o sincronices en Ajustes. También puedes dictarle una sesión al bot de Telegram.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {activities.map((activity) => {
+            const paceMinutes = activity.moving_time
+              ? ((activity.moving_time / 60) / (activity.distance / 1000)).toFixed(2)
+              : '5.10';
 
-          return (
-            <div
-              key={activity.id}
-              onClick={() => onSelectActivity(activity)}
-              className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 hover:border-zinc-800 active:scale-98 transition-all cursor-pointer space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-brand-strava font-bold text-xs">
-                    🏃
+            return (
+              <div
+                key={activity.id}
+                onClick={() => onSelectActivity(activity)}
+                className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 hover:border-zinc-800 active:scale-98 transition-all cursor-pointer space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-brand-strava font-bold text-xs">
+                      🏃
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-white">{activity.name}</h3>
+                      <p className="text-[11px] text-zinc-500">
+                        {new Date(activity.start_date).toLocaleDateString('es-ES', {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-white">{activity.name}</h3>
-                    <p className="text-[11px] text-zinc-500">
-                      {new Date(activity.start_date).toLocaleDateString('es-ES', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
+                  <div className="flex items-center gap-1 text-zinc-400">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-emerald-400 font-medium">
+                      Fit3 HR OK
+                    </span>
+                    <ChevronRight className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="flex items-center gap-1 text-zinc-400">
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-emerald-400 font-medium">
-                    Fit3 HR OK
-                  </span>
-                  <ChevronRight className="w-4 h-4" />
+
+                {/* Métricas Principales */}
+                <div className="grid grid-cols-4 gap-2 pt-2 border-t border-zinc-900/80 text-center">
+                  <div className="bg-zinc-900/40 rounded-xl p-1.5">
+                    <span className="text-[10px] text-zinc-500 block">Distancia</span>
+                    <span className="text-xs font-bold text-white">{(activity.distance / 1000).toFixed(2)} km</span>
+                  </div>
+                  <div className="bg-zinc-900/40 rounded-xl p-1.5">
+                    <span className="text-[10px] text-zinc-500 block">Ritmo</span>
+                    <span className="text-xs font-bold text-white">{paceMinutes} /km</span>
+                  </div>
+                  <div className="bg-zinc-900/40 rounded-xl p-1.5">
+                    <span className="text-[10px] text-zinc-500 block">Desnivel</span>
+                    <span className="text-xs font-bold text-white">+{Math.round(activity.total_elevation_gain)} m</span>
+                  </div>
+                  <div className="bg-rose-950/20 border border-rose-900/30 rounded-xl p-1.5">
+                    <span className="text-[10px] text-rose-400 block">Pulso Medio</span>
+                    <span className="text-xs font-bold text-rose-400">{activity.avg_hr || 148} bpm</span>
+                  </div>
                 </div>
               </div>
-
-              {/* Métricas Principales */}
-              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-zinc-900/80 text-center">
-                <div className="bg-zinc-900/40 rounded-xl p-1.5">
-                  <span className="text-[10px] text-zinc-500 block">Distancia</span>
-                  <span className="text-xs font-bold text-white">{(activity.distance / 1000).toFixed(2)} km</span>
-                </div>
-                <div className="bg-zinc-900/40 rounded-xl p-1.5">
-                  <span className="text-[10px] text-zinc-500 block">Ritmo</span>
-                  <span className="text-xs font-bold text-white">{paceMinutes} /km</span>
-                </div>
-                <div className="bg-zinc-900/40 rounded-xl p-1.5">
-                  <span className="text-[10px] text-zinc-500 block">Desnivel</span>
-                  <span className="text-xs font-bold text-white">+{Math.round(activity.total_elevation_gain)} m</span>
-                </div>
-                <div className="bg-rose-950/20 border border-rose-900/30 rounded-xl p-1.5">
-                  <span className="text-[10px] text-rose-400 block">Pulso Medio</span>
-                  <span className="text-xs font-bold text-rose-400">{activity.avg_hr || 148} bpm</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* MODAL DETALLE DE ACTIVIDAD CON GRÁFICA MULTICAPA SINCRONIZADA */}
       {selectedActivity && (

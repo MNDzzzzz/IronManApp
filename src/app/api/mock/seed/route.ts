@@ -16,6 +16,7 @@ export async function POST() {
     mockStore.gymLogs = [...initialGymLogs];
     mockStore.nutritionLogs = [...initialNutritionLogs];
     mockStore.waterLogs = [...initialWaterLogs];
+    mockStore.stravaActivities = [];
 
     return NextResponse.json({
       success: true,

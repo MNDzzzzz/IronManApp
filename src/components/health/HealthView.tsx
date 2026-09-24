@@ -19,26 +19,39 @@ interface HealthViewProps {
 }
 
 export const HealthView: React.FC<HealthViewProps> = ({ health, history }) => {
-  const current = health || {
-    id: 'default',
-    date: new Date().toISOString().split('T')[0],
-    resting_hr: 52,
-    sleep_duration_minutes: 465,
-    sleep_score: 88,
-    deep_sleep_minutes: 95,
-    rem_sleep_minutes: 110,
-    light_sleep_minutes: 230,
-    awake_minutes: 30,
-    spo2_avg: 97.4,
-    spo2_min: 94.0,
-    total_steps: 11450,
-    active_calories: 680,
-  };
+  if (!health) {
+    return (
+      <div className="space-y-4 pb-24 px-4 pt-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-black text-white tracking-tight">Salud Galaxy Fit3</h1>
+            <p className="text-xs text-zinc-400">Métricas pasivas extraídas vía Health Connect</p>
+          </div>
+          <span className="text-[10px] px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-500 font-mono flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" /> Sin sincro hoy
+          </span>
+        </div>
 
-  const totalSleepMinutes = current.sleep_duration_minutes || 465;
-  const deepPct = Math.round(((current.deep_sleep_minutes || 95) / totalSleepMinutes) * 100);
-  const remPct = Math.round(((current.rem_sleep_minutes || 110) / totalSleepMinutes) * 100);
-  const lightPct = Math.round(((current.light_sleep_minutes || 230) / totalSleepMinutes) * 100);
+        <div className="p-8 rounded-3xl bg-zinc-950 border border-zinc-900 text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto">
+            <HeartPulse className="w-7 h-7" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-base font-bold text-white">Esperando datos de Galaxy Fit3</h3>
+            <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
+              No hay métricas de salud registradas para hoy. Conecta Health Connect / Samsung Health en la pestaña de Ajustes o sincroniza tu pulsera para ver aquí tu pulso en reposo, sueño profundo/REM, pasos y SpO2.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const current = health;
+  const totalSleepMinutes = current.sleep_duration_minutes || 0;
+  const deepPct = totalSleepMinutes > 0 ? Math.round(((current.deep_sleep_minutes || 0) / totalSleepMinutes) * 100) : 0;
+  const remPct = totalSleepMinutes > 0 ? Math.round(((current.rem_sleep_minutes || 0) / totalSleepMinutes) * 100) : 0;
+  const lightPct = totalSleepMinutes > 0 ? Math.round(((current.light_sleep_minutes || 0) / totalSleepMinutes) * 100) : 0;
   const awakePct = Math.max(0, 100 - (deepPct + remPct + lightPct));
 
   return (

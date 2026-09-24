@@ -19,6 +19,36 @@ interface GymViewProps {
 }
 
 export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet }) => {
+  if (exercises.length === 0) {
+    return (
+      <div className="space-y-4 pb-24 px-4 pt-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-black text-white tracking-tight">Fuerza & Gimnasio</h1>
+            <p className="text-xs text-zinc-400">Plan diario, sobrecarga progresiva y estiramientos</p>
+          </div>
+        </div>
+
+        <div className="p-8 rounded-3xl bg-zinc-950 border border-zinc-900 text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center mx-auto">
+            <Dumbbell className="w-7 h-7" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-base font-bold text-white">Sin rutina configurada</h3>
+            <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
+              Aún no tienes ejercicios en tu rutina. Pásame tu rutina de entrenamiento (ejercicios, series, pesos objetivo y días) para configurártela a medida en esta pantalla.
+            </p>
+          </div>
+          <div className="pt-2">
+            <p className="text-[11px] text-zinc-500">
+              💡 También puedes dictar tu entrenamiento por audio o texto en Telegram y se guardará automáticamente.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const [selectedExerciseId, setSelectedExerciseId] = useState<string>(exercises[0]?.id || '');
   const [reps, setReps] = useState<number>(10);
   const [weightKg, setWeightKg] = useState<number>(75);

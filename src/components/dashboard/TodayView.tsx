@@ -41,18 +41,18 @@ export const TodayView: React.FC<TodayViewProps> = ({
   const steps = health?.total_steps || 0;
   const stepsPercent = Math.min(100, Math.round((steps / stepsGoal) * 100));
 
-  const caloriesBurned = (health?.active_calories || 0) + 1850; // TMB + activa
+  const caloriesBurned = health?.active_calories ? health.active_calories + 1850 : 0;
   const caloriesConsumed = nutritionTotals.calories || 0;
   const netCalories = caloriesConsumed - caloriesBurned;
 
   const waterGoal = 3000;
   const waterPercent = Math.min(100, Math.round((nutritionTotals.water_ml / waterGoal) * 100));
 
-  const restingHr = health?.resting_hr || 52;
+  const restingHr = health?.resting_hr ? `${health.resting_hr}` : '--';
   const sleepHours = health?.sleep_duration_minutes
     ? (health.sleep_duration_minutes / 60).toFixed(1)
-    : '7.5';
-  const sleepScore = health?.sleep_score || 88;
+    : '--';
+  const sleepScore = health?.sleep_score ? `${health.sleep_score}/100` : '--';
 
   return (
     <div className="space-y-4 pb-24 px-4 pt-2">
@@ -70,12 +70,18 @@ export const TodayView: React.FC<TodayViewProps> = ({
           </div>
           <span
             className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${
-              netCalories <= 0
-                ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40'
-                : 'bg-amber-950/60 text-amber-400 border border-amber-800/40'
+              caloriesBurned > 0
+                ? netCalories <= 0
+                  ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40'
+                  : 'bg-amber-950/60 text-amber-400 border border-amber-800/40'
+                : 'bg-zinc-900 text-zinc-400 border border-zinc-800'
             }`}
           >
-            {netCalories > 0 ? `+${netCalories} kcal` : `${netCalories} kcal`}
+            {caloriesBurned > 0
+              ? netCalories > 0
+                ? `+${netCalories} kcal`
+                : `${netCalories} kcal`
+              : 'Fit3 sin sincronizar'}
           </span>
         </div>
 
@@ -93,7 +99,10 @@ export const TodayView: React.FC<TodayViewProps> = ({
 
           <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-3">
             <span className="text-[11px] text-zinc-400">Quemadas (Total)</span>
-            <div className="text-xl font-black text-white mt-0.5">{caloriesBurned} <span className="text-xs font-normal text-zinc-400">kcal</span></div>
+            <div className="text-xl font-black text-white mt-0.5">
+              {caloriesBurned > 0 ? caloriesBurned : '--'}{' '}
+              <span className="text-xs font-normal text-zinc-400">kcal</span>
+            </div>
             <div className="w-full bg-zinc-800 h-1.5 rounded-full mt-2 overflow-hidden">
               <div
                 className="bg-rose-500 h-full rounded-full transition-all duration-500"
@@ -120,8 +129,15 @@ export const TodayView: React.FC<TodayViewProps> = ({
             <div className="text-2xl font-black text-white flex items-baseline gap-1">
               {restingHr} <span className="text-xs font-medium text-zinc-400">bpm</span>
             </div>
-            <p className="text-[10px] text-emerald-400 mt-1 flex items-center gap-0.5">
-              <TrendingDown className="w-3 h-3" /> Óptimo recuperación
+            <p className="text-[10px] text-zinc-500 mt-1 flex items-center gap-0.5">
+              {health?.resting_hr ? (
+                <>
+                  <TrendingDown className="w-3 h-3 text-emerald-400" />
+                  <span className="text-emerald-400">Óptimo recuperación</span>
+                </>
+              ) : (
+                'Sin datos Fit3 hoy'
+              )}
             </p>
           </div>
         </div>
@@ -134,7 +150,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
           <div className="flex items-center justify-between text-indigo-400">
             <Moon className="w-5 h-5 fill-indigo-400/20" />
             <span className="text-[10px] px-1.5 py-0.5 bg-indigo-950/60 border border-indigo-800/40 text-indigo-300 rounded-md font-bold">
-              {sleepScore}/100
+              {sleepScore}
             </span>
           </div>
           <div className="mt-3">
@@ -142,8 +158,10 @@ export const TodayView: React.FC<TodayViewProps> = ({
             <div className="text-2xl font-black text-white flex items-baseline gap-1">
               {sleepHours} <span className="text-xs font-medium text-zinc-400">horas</span>
             </div>
-            <p className="text-[10px] text-indigo-300 mt-1">
-              {health?.deep_sleep_minutes || 95}m Profundo (Excelente)
+            <p className="text-[10px] text-zinc-500 mt-1">
+              {health?.deep_sleep_minutes
+                ? `${health.deep_sleep_minutes}m Profundo`
+                : 'Sin datos Fit3 hoy'}
             </p>
           </div>
         </div>

@@ -14,63 +14,11 @@ import { mergeStravaWithFit3HeartRate } from './merging/temporalAligner';
 
 const today = new Date().toISOString().split('T')[0];
 
-export const initialGymExercises: GymExercise[] = [
-  { id: 'ex-1', name: 'Press de Banca con Barra', category: 'Pecho', is_stretch: false },
-  { id: 'ex-2', name: 'Dominadas Pronas / Jalón al Pecho', category: 'Espalda', is_stretch: false },
-  { id: 'ex-3', name: 'Sentadilla Trasera con Barra', category: 'Pierna', is_stretch: false },
-  { id: 'ex-4', name: 'Press Militar con Mancuernas', category: 'Hombro', is_stretch: false },
-  { id: 'ex-5', name: 'Peso Muerto Rumano', category: 'Pierna', is_stretch: false },
-  { id: 'ex-6', name: 'Curl de Bíceps con Barra Z', category: 'Brazo', is_stretch: false },
-  { id: 'ex-7', name: 'Fondos en Paralelas / Dips', category: 'Pecho', is_stretch: false },
-  { id: 'ex-8', name: 'Estiramiento Pectoral en Pared', category: 'Pecho', is_stretch: true },
-  { id: 'ex-9', name: 'Estiramiento Isquiotibiales y Cadera 90/90', category: 'Pierna', is_stretch: true },
-  { id: 'ex-10', name: 'Movilidad Torácica Cat-Cow', category: 'Core', is_stretch: true },
-];
+export const initialGymExercises: GymExercise[] = [];
 
-export const initialGymLogs: GymWorkoutLog[] = [
-  { id: 'log-1', date: today, exercise_id: 'ex-1', set_number: 1, reps: 10, weight_kg: 70, rpe: 7 },
-  { id: 'log-2', date: today, exercise_id: 'ex-1', set_number: 2, reps: 8, weight_kg: 80, rpe: 8 },
-  { id: 'log-3', date: today, exercise_id: 'ex-1', set_number: 3, reps: 6, weight_kg: 85, rpe: 9 },
-  { id: 'log-4', date: today, exercise_id: 'ex-2', set_number: 1, reps: 10, weight_kg: 0, rpe: 7 },
-  { id: 'log-5', date: today, exercise_id: 'ex-2', set_number: 2, reps: 8, weight_kg: 10, rpe: 8 },
-  { id: 'log-6', date: today, exercise_id: 'ex-3', set_number: 1, reps: 8, weight_kg: 90, rpe: 7 },
-  { id: 'log-7', date: today, exercise_id: 'ex-3', set_number: 2, reps: 8, weight_kg: 100, rpe: 8.5 },
-];
+export const initialGymLogs: GymWorkoutLog[] = [];
 
-export const initialDailyMetrics: DailyHealthMetric[] = [
-  {
-    id: 'health-today',
-    date: today,
-    resting_hr: 52,
-    sleep_duration_minutes: 465, // 7h 45m
-    sleep_score: 88,
-    deep_sleep_minutes: 95,
-    rem_sleep_minutes: 110,
-    light_sleep_minutes: 230,
-    awake_minutes: 30,
-    spo2_avg: 97.4,
-    spo2_min: 94.0,
-    total_steps: 11450,
-    active_calories: 680,
-    synced_at: new Date().toISOString(),
-  },
-  {
-    id: 'health-yesterday',
-    date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-    resting_hr: 54,
-    sleep_duration_minutes: 420, // 7h 00m
-    sleep_score: 79,
-    deep_sleep_minutes: 75,
-    rem_sleep_minutes: 90,
-    light_sleep_minutes: 220,
-    awake_minutes: 35,
-    spo2_avg: 96.8,
-    spo2_min: 93.5,
-    total_steps: 9800,
-    active_calories: 520,
-    synced_at: new Date(Date.now() - 86400000).toISOString(),
-  },
-];
+export const initialDailyMetrics: DailyHealthMetric[] = [];
 
 export const initialNutritionLogs: NutritionLog[] = [
   // --- MIÉRCOLES 23 DE SEPTIEMBRE (Descanso Activo / Refeed Mantenimiento ~2.508 kcal) ---
@@ -300,7 +248,7 @@ if (!global.__ironman_store) {
   global.__ironman_store = {
     dailyMetrics: [...initialDailyMetrics],
     hrSamples: [],
-    stravaActivities: [generateSampleRun()],
+    stravaActivities: [],
     gymExercises: [...initialGymExercises],
     gymLogs: [...initialGymLogs],
     nutritionLogs: [...initialNutritionLogs],
