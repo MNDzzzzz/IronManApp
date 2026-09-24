@@ -8,6 +8,7 @@ import {
   initialNutritionLogs,
   initialWaterLogs,
 } from '@/lib/mockStore';
+import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 
 export async function POST() {
   try {
@@ -17,6 +18,22 @@ export async function POST() {
     mockStore.nutritionLogs = [...initialNutritionLogs];
     mockStore.waterLogs = [...initialWaterLogs];
     mockStore.stravaActivities = [];
+
+    // Si Supabase está conectado, sembrar también las tablas de la base de datos
+    if (isSupabaseConfigured && supabaseAdmin) {
+      if (mockStore.gymExercises.length > 0) {
+        await supabaseAdmin.from('gym_exercises').upsert(mockStore.gymExercises);
+      }
+      if (mockStore.gymLogs.length > 0) {
+        await supabaseAdmin.from('gym_workout_logs').upsert(mockStore.gymLogs);
+      }
+      if (mockStore.nutritionLogs.length > 0) {
+        await supabaseAdmin.from('nutrition_logs').upsert(mockStore.nutritionLogs);
+      }
+      if (mockStore.waterLogs.length > 0) {
+        await supabaseAdmin.from('water_logs').upsert(mockStore.waterLogs);
+      }
+    }
 
     return NextResponse.json({
       success: true,
