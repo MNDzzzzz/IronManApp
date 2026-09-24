@@ -57,6 +57,11 @@ export interface GymExercise {
   name: string;
   category: 'Pecho' | 'Espalda' | 'Pierna' | 'Hombro' | 'Brazo' | 'Core';
   is_stretch: boolean;
+  day?: 'Día 1: Torso' | 'Día 2: Pierna' | 'Día 3: Full Body';
+  target_sets?: number;
+  target_reps?: string;
+  current_weight_kg?: number;
+  rest_time?: string;
   notes?: string;
 }
 

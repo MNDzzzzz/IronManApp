@@ -124,6 +124,13 @@ function getAppSnapshot(todayStr: string) {
       meals: todayMeals.map((m) => `${m.meal_type}: ${m.description} (${m.calories} kcal, ${m.protein_g}g P)`),
     },
     gym_workout: {
+      available_routine_exercises: mockStore.gymExercises.map((e) => ({
+        day: e.day,
+        name: e.name,
+        target: `${e.target_sets || 3}x ${e.target_reps || '8-10'}`,
+        current_weight: `${e.current_weight_kg || 0} kg`,
+        notes: e.notes,
+      })),
       sets_logged_today: todayGymLogs.length,
       logs: todayGymLogs.map((l) => {
         const ex = mockStore.gymExercises.find((e) => e.id === l.exercise_id);
@@ -209,8 +216,12 @@ ESTADO ACTUAL DE LA APP EN VIVO:
 ${JSON.stringify(snapshot, null, 2)}
 
 INSTRUCCIONES DE CLASIFICACIÓN Y ACCIÓN:
-1. Si Álvaro te explica un entrenamiento de fuerza (ej: "Hoy he hecho pecho: 4 series de press banca con 80kg y fondos"):
+1. Si Álvaro te explica un entrenamiento de fuerza (ej: "Hoy he hecho torso", o "press banca 60kg, remo 50kg..."):
    - Pon "action": "log_workout".
+   - Reconoce sus 3 días y ejercicios habituales:
+     • Día 1 Torso: Press de Banca (60kg), Remo con Barra / Polea (50kg), Press Inclinado Mancuernas (50kg), Jalón al Pecho (50kg), Elevaciones Laterales (5kg/lado), Curl Bíceps Banco Inclinado (10-12.5kg), Extensión Tríceps en Polea (50kg).
+     • Día 2 Pierna Anti-impacto: Prensa Inclinada (120kg), Curl Femoral Sentado (60kg), Máquina de Abductores / Glúteo (70->80->90kg), Extensión de Cuádriceps (50kg), Hiperextensiones 45° (sin peso / PC), Elevaciones Talones Máquina (+20kg), Plancha Lateral Antirrotacional.
+     • Día 3 Full Body: Sentadilla Trasera / Búlgara (70kg), Press Militar Mancuernas (18kg), Hip Thrust / Glúteos (80kg), Remo Unilateral (22kg), Face Pull Polea (25kg), Crunch Polea / Talones (35kg).
    - Desglosa cada ejercicio con sus series, repeticiones, peso en kg y RPE.
    - Categorías permitidas: Pecho, Espalda, Pierna, Hombro, Brazo, Core.
 
