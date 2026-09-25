@@ -147,36 +147,109 @@ export const initialFrequentFoods: Record<string, FrequentFood> = {
     protein_g: 17.3,
     fat_g: 7.3,
   },
+  queso_fresco_batido: {
+    name: 'Queso Fresco Batido 0% Hacendado',
+    unit: '100g',
+    referenceGrams: 100,
+    calories: 46,
+    carbs_g: 3.5,
+    protein_g: 8.0,
+    fat_g: 0.1,
+  },
+  salmon_fresco: {
+    name: 'Salmón Fresco a la Plancha',
+    unit: '100g',
+    referenceGrams: 100,
+    calories: 208,
+    carbs_g: 0.0,
+    protein_g: 20.4,
+    fat_g: 13.4,
+  },
+  patata_cocida: {
+    name: 'Patata Cocida / Asada / Vapor',
+    unit: '100g',
+    referenceGrams: 100,
+    calories: 77,
+    carbs_g: 17.5,
+    protein_g: 2.0,
+    fat_g: 0.1,
+    fiber_g: 2.2,
+  },
+  arroz_cocido: {
+    name: 'Arroz Blanco Cocido',
+    unit: '100g',
+    referenceGrams: 100,
+    calories: 130,
+    carbs_g: 28.2,
+    protein_g: 2.7,
+    fat_g: 0.3,
+  },
+  frutos_secos: {
+    name: 'Nueces o Almendras Tostadas sin Sal',
+    unit: '100g',
+    referenceGrams: 100,
+    calories: 610,
+    carbs_g: 14.0,
+    protein_g: 21.0,
+    fat_g: 54.0,
+  },
+  verduras_vapor: {
+    name: 'Verduras al Vapor (Brócoli, Judías, Zanahoria)',
+    unit: '100g',
+    referenceGrams: 100,
+    calories: 35,
+    carbs_g: 5.5,
+    protein_g: 2.5,
+    fat_g: 0.2,
+    fiber_g: 3.0,
+  },
 };
 
-// Protocolo activo en memoria
+// Protocolo activo en memoria (Plan Oficial 2.400 kcal - Recomposición y Media Maratón)
 export const activeProtocol: UserProtocol = {
   athleteName: 'Álvaro',
   weightKg: 101.0,
-  goal: 'Recomposición corporal + preparación Maratón (fuerza + running)',
-  strategy: 'Déficit moderado (~300–500 kcal) con periodización según exigencia del entreno',
+  goal: 'Transición a Media Maratón 21.097 km (28 Feb) + Recomposición (85-88 kg)',
+  strategy: 'Déficit seguro (~500–600 kcal) con NEAT alto (>10k pasos). 2.400 kcal y 202 g proteína.',
   currentDayType: 'running',
   targets: {
-    calories: 2350,
-    proteinMin: 167,
-    proteinMax: 187,
-    carbsMin: 200,
-    carbsMax: 280,
-    fatMin: 60,
-    fatMax: 75,
-    waterMl: 3000,
+    calories: 2400,
+    proteinMin: 195,
+    proteinMax: 205, // 2 g/kg = ~202 g
+    carbsMin: 220,
+    carbsMax: 240, // ~230 g
+    fatMin: 70,
+    fatMax: 80, // ~75 g
+    waterMl: 3800, // 3.5 - 4.0 L
     creatineGrams: 5,
     creatineTakenToday: false,
   },
   frequentFoods: initialFrequentFoods,
   scheduleTiming: [
-    { slot: 'Desayuno', time: '08:30 – 09:15', description: 'Base proteica alta + grasas saludables + hidratos moderados (pan 100% integral, jamón, pavo, leche, café)' },
-    { slot: 'Media Mañana', time: '11:30 – 12:00', description: 'Opcional (teletrabajo): fruta, huevo cocido o frutos secos según apetito y grasas restantes' },
-    { slot: 'Comida', time: '14:00 – 14:45', description: 'Carga principal de hidratos complejos + proteína magra + verdura (>5h antes de entrenar)' },
-    { slot: 'Merienda Pre-Entreno', time: '18:15 – 18:45', description: 'Bol avena + yogur griego ligero + whey + fruta + 5g creatina (~75-90 min antes del entreno)' },
-    { slot: 'Café Pre-Entreno', time: '19:15 – 19:30', description: 'Café solo con agua (sin calorías), 30-45 min antes del entreno' },
-    { slot: 'Entrenamiento', time: '20:00 – 21:30', description: 'Fuerza / Pierna o Running / Series' },
-    { slot: 'Cena Post-Entreno', time: '22:00 – 22:30', description: 'Proteína magra alta + verduras + hidratos ajustados según desgaste' },
+    {
+      slot: 'Desayuno',
+      time: '08:00 – 08:30',
+      description:
+        'Proteína y Energía (~580 kcal | 38g P, 60g HC, 21g G): 3 huevos revueltos + 2 claras, 70g avena/3 tostadas integrales, 1 plátano + café solo.',
+    },
+    {
+      slot: 'Almuerzo',
+      time: '13:30 – 14:15',
+      description:
+        'Comida Principal (~670 kcal | 60g P, 68g HC, 17g G): 220g pechuga pollo/pavo/ternera magra, 220g arroz cocido o 280g patata/boniato, ensalada grande + 12g AOVE.',
+    },
+    {
+      slot: 'Merienda',
+      time: '17:30 – 18:00',
+      description:
+        'Pre/Post Entreno (~510 kcal | 54g P, 40g HC, 15g G): 300g queso fresco batido 0%, 1 manzana grande + 30g whey + 20g nueces/almendras + 5g creatina.',
+    },
+    {
+      slot: 'Cena',
+      time: '21:00 – 21:45',
+      description:
+        'Reparación Nocturna (~540 kcal | 50g P, 35g HC, 22g G): 220g salmón/merluza/atún fresco, plato grande verduras vapor (brócoli, judías, zanahoria), 180g patata vapor + 10g AOVE.',
+    },
   ],
 };
 
@@ -184,30 +257,31 @@ export const activeProtocol: UserProtocol = {
  * Obtener targets adaptados al tipo de día
  */
 export function getTargetsForDay(dayType: DayType, weightKg = activeProtocol.weightKg): NutritionTargets {
-  let calories = 2350;
+  let calories = 2400;
   let carbsMin = 220;
-  let carbsMax = 270;
+  let carbsMax = 240;
 
   if (dayType === 'strength') {
-    // Días de pierna / fuerza: recarga glucógeno y recuperación
-    calories = 2380;
-    carbsMin = 250;
-    carbsMax = 280;
-  } else if (dayType === 'running') {
-    // Días de carrera: hidratos limpios y digestión rápida pre-carrera
+    // Días de fuerza / torso / pierna: 2.400 kcal
     calories = 2400;
-    carbsMin = 260;
-    carbsMax = 290;
+    carbsMin = 225;
+    carbsMax = 245;
+  } else if (dayType === 'running') {
+    // Días de carrera: hidratos limpios y buena hidratación
+    calories = 2400;
+    carbsMin = 230;
+    carbsMax = 250;
   } else if (dayType === 'rest_refeed') {
-    // Descanso / Refeed a mantenimiento
-    calories = 2500;
-    carbsMin = 200;
-    carbsMax = 240;
+    // Descanso / Regeneración: 2.400 kcal con carbohidratos estables para reparar tendones
+    calories = 2400;
+    carbsMin = 210;
+    carbsMax = 230;
   }
 
-  // Ratio de proteína: 1.65 a 1.85 g/kg de peso corporal
-  const proteinMin = Math.round(weightKg * 1.65);
-  const proteinMax = Math.round(weightKg * 1.85);
+  // Ratio de proteína científico: 2 g/kg de peso corporal (blindaje muscular y tendones)
+  const proteinTarget = Math.round(weightKg * 2.0);
+  const proteinMin = proteinTarget - 7;
+  const proteinMax = proteinTarget + 7;
 
   return {
     calories,
@@ -215,9 +289,9 @@ export function getTargetsForDay(dayType: DayType, weightKg = activeProtocol.wei
     proteinMax,
     carbsMin,
     carbsMax,
-    fatMin: 60,
-    fatMax: 75,
-    waterMl: 3000,
+    fatMin: 70,
+    fatMax: 80,
+    waterMl: 3800,
     creatineGrams: 5,
     creatineTakenToday: activeProtocol.targets.creatineTakenToday,
   };

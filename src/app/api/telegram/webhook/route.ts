@@ -31,8 +31,16 @@ import {
   getTodayRoutine,
   WEEKLY_ROUTINE,
   getHalfMarathonCountdown,
+  getCurrentWeekNumber,
+  getRunningProgressionForWeek,
   formatDailyScheduleMarkdown,
   formatWeeklyScheduleMarkdown,
+  formatKneeRehabMarkdown,
+  formatMenuMarkdown,
+  formatPeriodizationMarkdown,
+  formatSupplementsMarkdown,
+  KNEE_CLINICAL_PROTOCOLS,
+  STRUCTURED_MENU_2400,
   TARGET_HALF_MARATHON_DATE,
 } from '@/lib/weeklyRoutine';
 
@@ -121,12 +129,26 @@ async function getAppSnapshot(todayStr: string) {
 
   const routineToday = getTodayRoutine(todayStr);
   const halfMarathon = getHalfMarathonCountdown(todayStr);
+  const currentWeekNumber = getCurrentWeekNumber(todayStr);
+  const runningWeekPlan = getRunningProgressionForWeek(currentWeekNumber);
 
   const totalKcal = todayMeals.reduce((acc, m) => acc + m.calories, 0);
   const totalProt = todayMeals.reduce((acc, m) => acc + m.protein_g, 0);
   const totalCarbs = todayMeals.reduce((acc, m) => acc + m.carbs_g, 0);
   const totalFat = todayMeals.reduce((acc, m) => acc + m.fat_g, 0);
   const totalWaterMl = todayWater.reduce((acc, w) => acc + w.amount_ml, 0);
+
+  const actualSteps = latestHealth?.total_steps || null;
+  let stepsAnalysis = 'Sin datos de pasos hoy';
+  if (actualSteps !== null) {
+    if (routineToday.category === 'Descanso' && actualSteps > routineToday.targetSteps.max) {
+      stepsAnalysis = `ALERTA CLÍNICA: Llevas ${actualSteps.toLocaleString()} pasos en día de descanso (máx recomendado: ${routineToday.targetSteps.max.toLocaleString()}). Recorta pasos para permitir la desinflamación tendinosa.`;
+    } else if (actualSteps >= routineToday.targetSteps.min) {
+      stepsAnalysis = `Objetivo de pasos cumplido (${actualSteps.toLocaleString()} pasos / rango ${routineToday.targetSteps.min.toLocaleString()}-${routineToday.targetSteps.max.toLocaleString()}).`;
+    } else {
+      stepsAnalysis = `Pasos acumulados: ${actualSteps.toLocaleString()} (objetivo de hoy: ${routineToday.targetSteps.min.toLocaleString()}-${routineToday.targetSteps.max.toLocaleString()}).`;
+    }
+  }
 
   return {
     today: todayStr,
@@ -141,6 +163,31 @@ async function getAppSnapshot(todayStr: string) {
         waterMl: routineToday.nutritionStrategy.waterLiters * 1000,
       },
     },
+    current_week_number: currentWeekNumber,
+    running_week_plan: {
+      week: currentWeekNumber,
+      phase: runningWeekPlan.phase,
+      phase_name: runningWeekPlan.phaseName,
+      thursday_session: runningWeekPlan.thursdaySession,
+      thursday_km: runningWeekPlan.thursdayKm,
+      sunday_session: runningWeekPlan.sundaySession,
+      sunday_km: runningWeekPlan.sundayKm,
+      goal: runningWeekPlan.physiologicalGoal,
+    },
+    target_steps_today: {
+      min: routineToday.targetSteps.min,
+      max: routineToday.targetSteps.max,
+      note: routineToday.targetSteps.note,
+      actual_fit3_steps: actualSteps,
+      analysis: stepsAnalysis,
+    },
+    clinical_knee_guidelines: {
+      quadriceps_tendon: KNEE_CLINICAL_PROTOCOLS.tendon_cuadricipital,
+      tuberculo_gerdy: KNEE_CLINICAL_PROTOCOLS.tuberculo_gerdy_perone,
+      running_technique: KNEE_CLINICAL_PROTOCOLS.running_technique,
+    },
+    joint_supplements: routineToday.supplements,
+    structured_menu_2400: STRUCTURED_MENU_2400,
     scheduled_routine_today: {
       day: routineToday.dayName,
       title: routineToday.title,
@@ -150,6 +197,7 @@ async function getAppSnapshot(todayStr: string) {
       warmup: routineToday.warmup,
       stretches: routineToday.stretches,
       nutrition_strategy: routineToday.nutritionStrategy,
+      supplements: routineToday.supplements,
       half_marathon_impact: routineToday.halfMarathonImpact,
     },
     half_marathon_countdown: {
@@ -157,6 +205,7 @@ async function getAppSnapshot(todayStr: string) {
       days_left: halfMarathon.daysRemaining,
       weeks_left: halfMarathon.weeksRemaining,
       extra_days: halfMarathon.extraDays,
+      week_number: currentWeekNumber,
       phase: halfMarathon.currentPhase,
       phase_description: halfMarathon.phaseDescription,
       today_focus: halfMarathon.keyFocusToday,
@@ -292,74 +341,88 @@ async function processWithGemini(
   audioData?: { base64: string; mimeType: string } | null
 ): Promise<UniversalAssistantResponse> {
   const prompt = `
-Eres el Asistente Deportivo Personal y Entrenador de Alto Rendimiento de Álvaro para su plataforma IronManApp.
-Tienes control integral de la aplicación para registrar y consultar datos de entrenamiento, nutrición, salud y peso.
+Eres el Entrenador de Alto Rendimiento, Biomecánico y Fisioterapeuta Deportivo Personal de Álvaro para IronManApp.
+Tu misión es guiarlo hacia el máximo nivel físico, mental y nutricional para cruzar la meta de la MEDIA MARATÓN (21,097 KM) el 28 de Febrero de 2027 sin dolor articular y con una recomposición corporal exitosa.
 
-OBJETIVO PRINCIPAL DE ÁLVARO:
-🏁 MEDIA MARATÓN: 28 de Febrero de 2027 (21,097 km).
-Peso actual del atleta: ~101 kg.
-Estrategia: Recomposición corporal + hipertrofia funcional anti-impacto + carrera continua progresiva en Zona 2 aeróbica.
+PERFIL Y FILOSOFÍA CLÍNICA DEL ATLETA:
+• Atleta: Álvaro (101,0 kg exactos | Target 28-Feb: 85 - 88 kg).
+• Test 5K previo: 6:52 min/km (34:20 min). Gran fondo cardiovascular, pero 6:52 es demasiado rápido para rodar a diario con molestias.
+• Ritmo de rodajes aeróbicos: 7:15 – 7:35 min/km (Zona 2). Ritmo Media Maratón: 6:40 – 6:55 min/km.
+• Actividad base: NEAT muy elevado (>10.000 pasos/día). Gasto real (TDEE): 2.900 - 3.000 kcal.
+• Nutrición científica: 2.400 kcal/día (déficit controlado de ~500-600 kcal), 202 g proteína (2 g/kg), ~230 g carbohidratos, 75 g grasas saludables, 3.5 - 4.0 L agua.
 
-CALENDARIO SEMANAL ESTRICTO DE ÁLVARO (INMUTABLE):
-• LUNES: Entrenamiento de Tren Superior (Torso: press banca 60kg, remo 50kg, press inclinado 50kg, jalón 50kg, elevaciones 5kg, bíceps 10-12kg, tríceps 50kg).
-• MARTES: Entrenamiento de Tren Inferior (Pierna anti-impacto: prensa 120-150kg, curl femoral 60kg, abductores pirámide 70-90kg, extensiones 50kg, hiperextensiones, gemelo en máquina +20kg).
-• MIÉRCOLES: Descanso Activo (Active recovery: caminata suave 6.000-10.000 pasos, estiramientos de cadena posterior, descompresión de columna, cero impacto).
-• JUEVES: Carrera Corta (Calidad / Tempo: 5 a 8 km a ritmo controlado ~5:15 - 5:35 min/km, trabajo de cadencia y economía de carrera).
-• VIERNES: Entrenamiento Full Body (Fuerza global: sentadilla/búlgara 70kg, press militar 18kg, hip thrust 80kg, remo unilateral 22kg, face pull 25kg, core).
-• SÁBADO: Descanso Completo & Carga de Hidratos (Carb Loading pre-tirada larga: reposo pasivo total, 3.5L agua con sales, dormir 8h).
-• DOMINGO: Carrera Larga (Long Run Z2 simulador Media Maratón: 10 a 14 km progresando a 16-18 km, ritmo aeróbico constante 5:40-6:00 min/km, prueba de hidratación y geles).
+DIAGNÓSTICO ARTICULAR Y PROTOCOLOS DE REHABILITACIÓN:
+1. Alerta de carga: Pasar de 3,5 a 5 km continuos supuso un salto de volumen del +43%. Con 101 kg, esto somete a los tendones a unas 4.500 frenadas violentas. No está lesionado, está inflamado por tracción mecánica.
+2. Pinchazo por encima de la rótula izquierda (Tendón Cuadricipital):
+   - Causa: Sobrecarga excéntrica por frenado repetitivo con 101 kg.
+   - Solución: Wall-sits (sentadilla isométrica apoyado en pared a 60-70° de flexión, 4x35-45s) para provocar analgesia tendinosa inmediata. Masaje en cuádriceps sin tocar la rótula. Frío local 10 min post-carrera.
+3. Dolor lateral externo bajo rótula bilateral (Tubérculo de Gerdy & Cabeza del Peroné):
+   - Causa: Inserción de la cintilla iliotibial / bíceps femoral sometida a tracción por rotación interna.
+   - Solución: Liberar con pelota o rodillo el TENSOR DE LA FASCIA LATA (muslo lateral alto y glúteo). ¡REGLA DE ORO! Jamás masajear directamente sobre el hueso inflamado. Fortalecer glúteo medio (abducciones y clamshell).
+4. Ajuste clave de técnica de carrera:
+   - Cadencia alta (~165-172 pasos por minuto): pasos más cortos y rápidos.
+   - Apoyo siempre DEBAJO del centro de gravedad (debajo de la cadera), jamás frenando de talón adelantado.
+5. Gestión de pasos:
+   - Días de gimnasio (Lun/Mar/Vie): 10.000 - 11.500 pasos.
+   - Días de carrera (Jue/Dom): 12.000 - 15.000 pasos (por superficies blandas/llanas).
+   - Días de descanso (Mié/Sáb): 8.000 - 9.000 pasos. Si en snapshot ves más de 10.000 pasos en día de descanso, dale un toque de atención clínico para que descanse y desinflame.
 
-ESTADO ACTUAL DE LA APP EN VIVO:
+MICROCICLO SEMANAL FIJO:
+• LUNES: Fuerza Torso (Empuje + Tirón: press banca mancuernas, remo, militar, jalón neutro, face pulls, bíceps+tríceps). Cero estrés en rodilla.
+• MARTES: Fuerza Pierna Blindada (Anti-Impacto) + Core: Wall-sits 4x35-45s, abducción cadera banda 4x15, puente glúteo unilateral 3x10/pierna, gemelos excéntricos lentos 3s 4x15, tibial anterior 3x15, planchas.
+• MIÉRCOLES: Descanso Total (Regeneración profunda y descompresión tendinosa. Cero impacto deportivo).
+• JUEVES: Carrera Rodaje Base (Volumen suave controlado CaCo a ritmo >7:15 min/km).
+• VIERNES: Fuerza Funcional + Cardio de Descarga: Peso muerto rumano 3x10, clamshell banda 3x15/lado, press inclinado/flexiones, remo unilateral, paseo del granjero + 20 min bici estática sillín alto muy suave.
+• SÁBADO: Descanso Total 100% (Desconexión y carga óptima de glucógeno para el domingo).
+• DOMINGO: Tirada Larga Semanal CaCo progresivo (Zona 2 controlada 7:15-7:35 min/km).
+
+SUPLEMENTACIÓN ESTRATÉGICA:
+• Creatina monohidrato: 5 g diarios en la merienda con agua.
+• Omega-3: 2 g EPA/DHA diarios en la cena (reduce inflamación activa en tubérculo de Gerdy y rotuliano).
+• Colágeno hidrolizado + Vitamina C: 30-45 min ANTES de salir a rodar o de hacer pierna.
+• Cafeína pre-entreno: 150-250 mg 45 min antes de los rodajes del jueves y domingo.
+
+ESTADO ACTUAL DE LA APP EN VIVO (TELEMETRÍA REAL):
 ${JSON.stringify(snapshot, null, 2)}
 
 INSTRUCCIONES DE CLASIFICACIÓN Y ACCIÓN:
 1. Si Álvaro pide SUMAR o RESTAR valores numéricos a las métricas del día (ej: "Réstame 200 calorías", "Quita 300 kcal", "Suma 500 ml de agua", "Añade 25g de proteína"):
    - Pon "action": "adjust_value".
-   - Rellena "adjust":
-     • "metric": "calories" | "water_ml" | "protein_g" | "carbs_g" | "fat_g"
-     • "delta": número positivo para sumar (ej: 300) o negativo para restar (ej: -200)
-     • "reason": motivo o descripción breve de la corrección.
+   - Rellena "adjust": "metric", "delta" (positivo o negativo), "reason".
 
-1.b. Si Álvaro pide FIJAR, CAMBIAR, SOBRESCRIBIR o RESETEAR el TOTAL ACUMULADO de una métrica para hoy (ej: "cambia los 13 L de agua que aparecen que he bebido hoy y que sean solo 3L", "en total hoy he bebido 3L de agua", "pon que hoy he bebido 3 litros de agua", "fija las calorías en 2500"):
+1.b. Si Álvaro pide FIJAR, CAMBIAR, SOBRESCRIBIR o RESETEAR el TOTAL ACUMULADO de una métrica para hoy (ej: "cambia los 13 L de agua a 3.8L", "he bebido 4L de agua hoy", "fija las calorías en 2400"):
    - Pon "action": "set_value".
-   - Rellena "set_value":
-     • "metric": "water_ml" | "calories" | "protein_g" | "carbs_g" | "fat_g"
-     • "target_value": número final absoluto deseado (ej: si dice 3 litros de agua -> 3000; si dice 2500 kcal -> 2500; si dice 170g de proteína -> 170).
-     • "reason": motivo o texto explicativo del usuario.
+   - Rellena "set_value": "metric", "target_value", "reason".
 
-2. Si Álvaro comunica su PESO CORPORAL o pesaje (ej: "Hoy peso 101 kg", "Mi peso es 100.8", "He pesado 101 kilos antes de cenar"):
+2. Si Álvaro comunica su PESO CORPORAL (ej: "Hoy peso 100.5 kg", "He pesado 100.8 antes de cenar"):
    - Pon "action": "log_weight".
-   - Rellena "weight_log":
-     • "weight_kg": número en kg (ej: 101.0)
-     • "notes": "Antes de cenar, después de entrenar" (o lo que especifique).
+   - Rellena "weight_log": "weight_kg", "notes": "Antes de cenar, después de entrenar".
 
-3. Si Álvaro te explica un entrenamiento de fuerza (ej: "Hoy he hecho torso", o "press banca 60kg, remo 50kg..."):
+3. Si Álvaro describe un entrenamiento de fuerza realizado:
    - Pon "action": "log_workout".
-   - Desglosa cada ejercicio con sus series, repeticiones, peso en kg y RPE.
-   - Categorías permitidas: Pecho, Espalda, Pierna, Hombro, Brazo, Core.
+   - Desglosa ejercicios, series, repeticiones, peso en kg y RPE.
 
-4. Si Álvaro te explica una carrera o caminata (ej: "He caminado 6 km en 50 minutos" o "He corrido 8 km a 5:10"):
+4. Si Álvaro describe una sesión de cardio, carrera o caminata:
    - Pon "action": "log_cardio".
-   - Extrae nombre, tipo ("Run" o "Walk"), distancia en km y duración en minutos.
+   - Extrae distancia en km, duración en min y tipo ("Run" o "Walk").
 
 5. Si Álvaro describe una comida o bebida ingerida:
    - Pon "action": "log_nutrition".
-   - Extrae calorías, macros (P/C/G), agua en ml y si menciona creatina.
-   - Respeta sus alimentos de referencia (Pan 100% integral Hacendado, Avena, Leche desnatada, Yogur griego ligero, Jamón serrano, Whey, etc.).
+   - Extrae calorías, macros (P/C/G), agua en ml y si tomó creatina.
 
-6. Si Álvaro hace una pregunta, pide consultar datos, O PIDE RECOMENDACIONES DE RUTINA, COMIDA, CALENTAMIENTO, ESTIRAMIENTOS O MEDIA MARATÓN:
+6. Si Álvaro hace una PREGUNTA, PIDE CONSEJOS, CONSULTA SU RUTINA, DOLOR DE RODILLA, COMIDA O PLAN DE CARRERA:
    - Pon "action": "query".
-   - Redacta una respuesta conversacional precisa, profesional y motivadora en "reply_text" usando los datos reales de "scheduled_routine_today" y "half_marathon_countdown".
-   - Si pregunta QUÉ LE TOCA HOY o QUÉ ENTRENO HACER: dile con exactitud la sesión del día de la semana correspondiente a su calendario, los ejercicios o distancia previstos, y cómo le acerca a la Media Maratón del 28 de febrero de 2027.
-   - Si pide QUÉ COMER, QUÉ CENAR O RECETAS: dale platos exactos combinando sus alimentos base (pan integral, avena, yogur griego, pechuga de pollo, mollejas guisadas, patata, arroz, whey, creatina) adaptados al gasto calórico del día (ej: más carbohidratos limpios en días de pierna, carrera corta y fin de semana; déficit limpio en días de descanso).
-   - Si pregunta por CALENTAMIENTOS o ESTIRAMIENTOS: dale el protocolo exacto del día (calentamiento dinámico antes de correr, movilidad articular y aproximaciones en fuerza, y estiramientos estáticos post-entreno con tiempos en segundos).
-   - Si pregunta por la MEDIA MARATÓN DEL 28 DE FEBRERO: dale la cuenta atrás exacta en días y semanas, la fase actual de entrenamiento y el foco táctico de la semana.
+   - Actúa como su Head Coach y Fisioterapeuta Deportivo. Responde en "reply_text" con un tono cercano, muy técnico, riguroso, motivador y preventivo.
+   - Si menciona DOLOR o MOLESTIA EN LA RODILLA: Identifica si es el tendón cuadricipital (arriba de la rótula) o tubérculo de Gerdy/peroné (lateral externo). Prescribe de inmediato el protocolo terapéutico exacto (Wall-sits isométricos o liberación del tensor de la fascia lata sin tocar el hueso) y recomiéndale pasar a CaCo o bajar ritmo.
+   - Si pregunta QUÉ LE TOCA HOY o QUÉ ENTRENAR: Explica la sesión del día del microciclo, los ejercicios exactos, los pasos recomendados y el objetivo de la semana ${snapshot.current_week_number || 1} de la periodización de 22 semanas.
+   - Si pregunta QUÉ COMER o RECETAS: Guíale con su menú estructurado de 2.400 kcal (huevos/avena/plátano en desayuno; pollo/ternera con arroz/patata y verdura en comida; queso fresco batido con whey y nueces en merienda; salmón/merluza con patata y verduras en cena).
+   - Si pregunta por PASOS o DESCANSO: Revisa los pasos actuales de su Galaxy Fit3 en el snapshot y felicítalo o dale un toque de atención si está caminando de más en día de descanso.
 
 7. Si Álvaro pide actualizar tipo de día o reglas (ej: "hoy descanso", "tómate la creatina"):
    - Pon "action": "protocol_update".
 
-8. Si se adjunta un audio, escúchalo atentamente y transcribe todo en "transcription".
-9. Añade siempre un breve consejo de coach deportivo en "coach_tip".
+8. Si se adjunta un audio, escúchalo con máxima atención y transcribe todo en "transcription".
+9. Añade siempre un consejo de entrenador o fisioterapeuta de alto nivel en "coach_tip".
 
 Mensaje escrito (si aplica): "${textOrHint}"
 
@@ -865,38 +928,45 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (cleanCmd === '/start' || cleanCmd === '/ayuda' || cleanCmd === 'ayuda') {
       if (botToken && message.chat?.id) {
         const helpMsg = `
-👋 *¡Hola Álvaro! Soy tu Copiloto Deportivo de IronMan* 🦾⚡
+👋 *¡Hola Álvaro! Soy tu Entrenador & Fisioterapeuta Deportivo* 🦾⚡
 
-Tengo acceso y control total a tu rutina semanal, preparación para la *Media Maratón del 28 de Febrero de 2027* y toda la app:
+Tengo acceso y control total a tu rutina semanal, preparación para la *Media Maratón del 28 de Febrero de 2027*, telemetría y datos en tiempo real:
+
+🏥 *Salud Articular & Biomecánica:*
+• Diagnóstico & protocolo rodillas: \`/rodillas\` o \`/rehab\`
+• Prescripción de carrera / CaCo semanal: \`/caco\`
+• Control de pasos diarios (Galaxy Fit3): \`/pasos\`
+• Protocolo de suplementación articular: \`/suplementos\`
+• Periodización de 22 semanas: \`/periodizacion\` o \`/fases\`
 
 📅 *Rutina Semanal & Plan Diario:*
 • Plan completo de hoy: \`/hoy\` o \`/plan\`
 • Rutina completa de lunes a domingo: \`/rutina\` o \`/semana\`
 • Calentamiento específico de hoy: \`/calentamiento\` o \`/calentar\`
 • Estiramientos post-sesión de hoy: \`/estiramientos\` o \`/estirar\`
-• Recetas y menú sugerido para hoy: \`/comida\` o \`/recetas\`
+• Menú científico de 2.400 kcal: \`/menu\` o \`/comida\`
 • Cuenta atrás y fase Media Maratón: \`/mediamaraton\` o \`/objetivo\`
 
 🏋️‍♂️ *Entrenamientos de Fuerza:*
 • Ver entreno programado o series de hoy: \`/fuerza\`
-• Registrar entreno: _"Hoy hice torso: 4 series press banca 60kg a 10 repes y remo 50kg"_
+• Registrar entreno: _"Hoy hice torso: 4 series press banca mancuernas a 10 repes y remo 50kg"_
 
 🏃‍♂️ *Cardio & Running:*
 • Ver última carrera o salida programada: \`/cardio\`
-• Registrar salida: _"He salido a correr 8 km en 44 minutos"_
+• Registrar salida: _"He salido a correr 4 km en bloques de CaCo"_
 
 🥗 *Nutrición & Hidratación:*
 • Ver acumulación de comidas/macros de hoy: \`/resumen\`
-• Registrar comida: _"Bol de avena con leche, yogur griego, whey y creatina"_
+• Registrar comida: _"3 huevos revueltos con avena y plátano"_
 • Marcar creatina (5g): \`/creatina\`
 
 ⚖️ *Control de Peso Corporal:*
 • Ver peso actual y evolución: \`/peso\`
-• Registrar nuevo pesaje: \`/peso 101.0\` o _"He pesado 100.8 kg antes de cenar"_
+• Registrar nuevo pesaje: \`/peso 100.8\` o _"He pesado 100.8 kg antes de cenar"_
 
 ➕➖ *Ajustes Rápidos de Métricas:*
 • Sumar/restar: \`+500 agua\`, \`-200 cal\`, \`/sumar pro 25\`
-• Fijar total directo: \`/fijar agua 3L\`, \`/set cal 2500\`
+• Fijar total directo: \`/fijar agua 3.8L\`, \`/set cal 2400\`
 
 🌙 *Salud & Galaxy Fit3:*
 • Consulta sueño y biometría: \`/salud\`
@@ -1371,6 +1441,108 @@ _${r.half_marathon_impact}_
       return NextResponse.json({ success: true, command: 'summary' });
     }
 
+    // 16. /rodillas, /dolor o /rehab (Diagnóstico y alivio inmediato)
+    if (
+      cleanCmd === '/rodillas' ||
+      cleanCmd === 'rodillas' ||
+      cleanCmd === '/rehab' ||
+      cleanCmd === 'rehab' ||
+      cleanCmd === '/dolor' ||
+      cleanCmd === 'dolor'
+    ) {
+      if (botToken && message.chat?.id) {
+        const rehabMsg = formatKneeRehabMarkdown();
+        await sendTelegramMessage(chatId, rehabMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'knee_rehab' });
+    }
+
+    // 17. /caco o /sesion (Prescripción de carrera de esta semana)
+    if (cleanCmd === '/caco' || cleanCmd === 'caco' || cleanCmd === '/sesion' || cleanCmd === 'sesion') {
+      if (botToken && message.chat?.id) {
+        const p = snapshot.running_week_plan;
+        const cacoMsg = `
+🏃‍♂️ *PRESCRIPCIÓN DE CARRERA — SEMANA ${p.week} (${p.phase.toUpperCase()})*
+📍 *${p.phase_name}*
+🎯 *Objetivo Fisiológico:* _${p.goal}_
+
+🗓️ *Sesiones de la Semana:*
+• 🏃‍♂️ *JUEVES (Rodaje Base):*
+  └ ${p.thursday_session}
+  └ *Distancia:* ${p.thursday_km} km | *Ritmo:* 7:15 - 7:35 min/km
+
+• 👑 *DOMINGO (Tirada Larga Semanal):*
+  └ ${p.sunday_session}
+  └ *Distancia:* ${p.sunday_km} km | *Zona 2 controlada*
+
+💡 *Técnica clave:* Cadencia 165-172 ppm. Si hay pinchazo en la rodilla, pasa inmediatamente a caminar 1 minuto por cada 3-4 minutos de trote.
+        `.trim();
+        await sendTelegramMessage(chatId, cacoMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'caco_session' });
+    }
+
+    // 18. /menu (Menú científico estructurado de 2.400 kcal)
+    if (cleanCmd === '/menu' || cleanCmd === 'menu') {
+      if (botToken && message.chat?.id) {
+        const menuMsg = formatMenuMarkdown();
+        await sendTelegramMessage(chatId, menuMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'structured_menu' });
+    }
+
+    // 19. /suplementos o /articulaciones (Protocolo de suplementación)
+    if (
+      cleanCmd === '/suplementos' ||
+      cleanCmd === 'suplementos' ||
+      cleanCmd === '/articulaciones' ||
+      cleanCmd === 'articulaciones'
+    ) {
+      if (botToken && message.chat?.id) {
+        const supMsg = formatSupplementsMarkdown();
+        await sendTelegramMessage(chatId, supMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'supplements' });
+    }
+
+    // 20. /pasos (Control de pasos de hoy Galaxy Fit3)
+    if (cleanCmd === '/pasos' || cleanCmd === 'pasos') {
+      if (botToken && message.chat?.id) {
+        const s = snapshot.target_steps_today;
+        const r = snapshot.scheduled_routine_today;
+        const fit3Steps = s.actual_fit3_steps !== null ? `${s.actual_fit3_steps.toLocaleString()} pasos` : 'Pendiente de sincronizar';
+        const stepsMsg = `
+👟 *CONTROL DE PASOS DIARIOS (GALAXY FIT3)*
+📅 *Día:* ${r.day} (*${r.title}*)
+🏷️ *Categoría:* ${r.category}
+
+📊 *Telemetría de Pasos Hoy:*
+• *Pasos registrados (Fit3):* *${fit3Steps}*
+• *Rango objetivo de hoy:* *${s.min.toLocaleString()} – ${s.max.toLocaleString()} pasos*
+• *Diagnóstico:* _${s.analysis}_
+
+💡 *Directriz Clínica:*
+_${s.note}_
+        `.trim();
+        await sendTelegramMessage(chatId, stepsMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'steps_analysis' });
+    }
+
+    // 21. /periodizacion o /fases (Hoja de ruta completa de 22 semanas)
+    if (
+      cleanCmd === '/periodizacion' ||
+      cleanCmd === 'periodizacion' ||
+      cleanCmd === '/fases' ||
+      cleanCmd === 'fases'
+    ) {
+      if (botToken && message.chat?.id) {
+        const perioMsg = formatPeriodizationMarkdown(snapshot.current_week_number);
+        await sendTelegramMessage(chatId, perioMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'periodization' });
+    }
+
     // ================================================================
     // PROCESADO INTELIGENTE MULTIMODAL CON GEMINI FLASH
     // (Entrenamiento Fuerza, Cardio, Nutrición o Consultas)
@@ -1663,16 +1835,24 @@ export async function GET(): Promise<NextResponse> {
 
   return NextResponse.json({
     status: 'online',
-    service: 'IronMan Telegram Webhook Assistant',
+    service: 'IronMan Telegram Webhook Assistant & AI Coach',
     target_event: {
       name: 'Media Maratón (21.097 km)',
       date: TARGET_HALF_MARATHON_DATE,
       countdown: snapshot.half_marathon_countdown,
     },
+    running_progression: {
+      current_week: snapshot.current_week_number,
+      plan: snapshot.running_week_plan,
+    },
+    steps_telemetry: snapshot.target_steps_today,
+    clinical_guidelines: snapshot.clinical_knee_guidelines,
+    structured_menu: snapshot.structured_menu_2400,
     today: {
       date: todayStr,
       routine: snapshot.scheduled_routine_today,
     },
   });
 }
+
 
