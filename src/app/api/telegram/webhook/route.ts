@@ -27,6 +27,14 @@ import {
   toggleCreatine,
   DayType,
 } from '@/lib/nutritionProtocol';
+import {
+  getTodayRoutine,
+  WEEKLY_ROUTINE,
+  getHalfMarathonCountdown,
+  formatDailyScheduleMarkdown,
+  formatWeeklyScheduleMarkdown,
+  TARGET_HALF_MARATHON_DATE,
+} from '@/lib/weeklyRoutine';
 
 // --------------------------------------------------------------------
 // 1. UTILIDAD: DESCARGA DE AUDIO DE TELEGRAM
@@ -81,13 +89,38 @@ async function sendTelegramMessage(chatId: number, messageText: string, botToken
 // --------------------------------------------------------------------
 // 3. CAPTURA DEL ESTADO COMPLETO DE LA APP (SNAPSHOT PARA GEMINI)
 // --------------------------------------------------------------------
-function getAppSnapshot(todayStr: string) {
-  const latestHealth = mockStore.dailyMetrics[0] || null;
-  const todayMeals = mockStore.nutritionLogs.filter((m) => m.date === todayStr);
-  const todayWater = mockStore.waterLogs.filter((w) => w.date === todayStr);
-  const todayGymLogs = mockStore.gymLogs.filter((l) => l.date === todayStr);
-  const recentActivities = mockStore.stravaActivities.slice(0, 3);
-  const recentWeights = mockStore.weightLogs || [];
+async function getAppSnapshot(todayStr: string) {
+  let latestHealth = mockStore.dailyMetrics[0] || null;
+  let todayMeals = mockStore.nutritionLogs.filter((m) => m.date === todayStr);
+  let todayWater = mockStore.waterLogs.filter((w) => w.date === todayStr);
+  let todayGymLogs = mockStore.gymLogs.filter((l) => l.date === todayStr);
+  let recentActivities = mockStore.stravaActivities.slice(0, 3);
+  let recentWeights = mockStore.weightLogs || [];
+
+  if (isSupabaseConfigured && supabaseAdmin) {
+    try {
+      const [mealsRes, waterRes, gymRes, weightsRes, activitiesRes, healthRes] = await Promise.all([
+        supabaseAdmin.from('nutrition_logs').select('*').eq('date', todayStr),
+        supabaseAdmin.from('water_logs').select('*').eq('date', todayStr),
+        supabaseAdmin.from('gym_workout_logs').select('*, gym_exercises(name, category)').eq('date', todayStr),
+        supabaseAdmin.from('weight_logs').select('*').order('date', { ascending: false }).limit(6),
+        supabaseAdmin.from('strava_activities').select('*').order('start_date', { ascending: false }).limit(3),
+        supabaseAdmin.from('daily_health_metrics').select('*').order('date', { ascending: false }).limit(1),
+      ]);
+
+      if (mealsRes.data && mealsRes.data.length > 0) todayMeals = mealsRes.data;
+      if (waterRes.data && waterRes.data.length > 0) todayWater = waterRes.data;
+      if (gymRes.data && gymRes.data.length > 0) todayGymLogs = gymRes.data;
+      if (weightsRes.data && weightsRes.data.length > 0) recentWeights = weightsRes.data;
+      if (activitiesRes.data && activitiesRes.data.length > 0) recentActivities = activitiesRes.data;
+      if (healthRes.data && healthRes.data.length > 0) latestHealth = healthRes.data[0];
+    } catch (err) {
+      console.warn('Aviso sincronizando snapshot desde Supabase:', err);
+    }
+  }
+
+  const routineToday = getTodayRoutine(todayStr);
+  const halfMarathon = getHalfMarathonCountdown(todayStr);
 
   const totalKcal = todayMeals.reduce((acc, m) => acc + m.calories, 0);
   const totalProt = todayMeals.reduce((acc, m) => acc + m.protein_g, 0);
@@ -97,11 +130,36 @@ function getAppSnapshot(todayStr: string) {
 
   return {
     today: todayStr,
+    day_name: routineToday.dayName,
     athlete: {
       name: activeProtocol.athleteName,
       weight_kg: activeProtocol.weightKg,
-      current_day_type: activeProtocol.currentDayType,
-      targets: activeProtocol.targets,
+      current_day_type: routineToday.dayType,
+      targets: {
+        ...activeProtocol.targets,
+        calories: routineToday.nutritionStrategy.calorieTarget,
+        waterMl: routineToday.nutritionStrategy.waterLiters * 1000,
+      },
+    },
+    scheduled_routine_today: {
+      day: routineToday.dayName,
+      title: routineToday.title,
+      category: routineToday.category,
+      description: routineToday.description,
+      exercises: routineToday.workoutSummary,
+      warmup: routineToday.warmup,
+      stretches: routineToday.stretches,
+      nutrition_strategy: routineToday.nutritionStrategy,
+      half_marathon_impact: routineToday.halfMarathonImpact,
+    },
+    half_marathon_countdown: {
+      target_date: TARGET_HALF_MARATHON_DATE,
+      days_left: halfMarathon.daysRemaining,
+      weeks_left: halfMarathon.weeksRemaining,
+      extra_days: halfMarathon.extraDays,
+      phase: halfMarathon.currentPhase,
+      phase_description: halfMarathon.phaseDescription,
+      today_focus: halfMarathon.keyFocusToday,
     },
     weight_tracking: {
       current_weight_kg: activeProtocol.weightKg,
@@ -145,8 +203,8 @@ function getAppSnapshot(todayStr: string) {
       })),
       sets_logged_today: todayGymLogs.length,
       logs: todayGymLogs.map((l) => {
-        const ex = mockStore.gymExercises.find((e) => e.id === l.exercise_id);
-        return `${ex?.name || 'Ejercicio'}: Serie ${l.set_number} -> ${l.reps} reps @ ${l.weight_kg} kg (RPE ${l.rpe || 'N/A'})`;
+        const exName = (l as any).gym_exercises?.name || mockStore.gymExercises.find((e) => e.id === l.exercise_id)?.name || 'Ejercicio';
+        return `${exName}: Serie ${l.set_number} -> ${l.reps} reps @ ${l.weight_kg} kg (RPE ${l.rpe || 'N/A'})`;
       }),
     },
     cardio_activities: recentActivities.map((a) => ({
@@ -235,33 +293,41 @@ async function processWithGemini(
 ): Promise<UniversalAssistantResponse> {
   const prompt = `
 Eres el Asistente Deportivo Personal y Entrenador de Alto Rendimiento de Álvaro para su plataforma IronManApp.
-Tienes control integral de la aplicación para registrar y consultar datos de:
-1. Nutrición e hidratación (incluyendo sumar, restar, fijar o corregir ingestas acumuladas).
-2. Peso corporal y evolución antropométrica (pesajes antes de cenar, después de entrenar).
-3. Entrenamientos de fuerza (gimnasio / pesas).
-4. Caminatas y carreras de running (cardio).
-5. Métricas de salud (Galaxy Fit3: sueño, pulso en reposo, pasos, SpO2).
-6. Biometría y protocolo.
+Tienes control integral de la aplicación para registrar y consultar datos de entrenamiento, nutrición, salud y peso.
+
+OBJETIVO PRINCIPAL DE ÁLVARO:
+🏁 MEDIA MARATÓN: 28 de Febrero de 2027 (21,097 km).
+Peso actual del atleta: ~101 kg.
+Estrategia: Recomposición corporal + hipertrofia funcional anti-impacto + carrera continua progresiva en Zona 2 aeróbica.
+
+CALENDARIO SEMANAL ESTRICTO DE ÁLVARO (INMUTABLE):
+• LUNES: Entrenamiento de Tren Superior (Torso: press banca 60kg, remo 50kg, press inclinado 50kg, jalón 50kg, elevaciones 5kg, bíceps 10-12kg, tríceps 50kg).
+• MARTES: Entrenamiento de Tren Inferior (Pierna anti-impacto: prensa 120-150kg, curl femoral 60kg, abductores pirámide 70-90kg, extensiones 50kg, hiperextensiones, gemelo en máquina +20kg).
+• MIÉRCOLES: Descanso Activo (Active recovery: caminata suave 6.000-10.000 pasos, estiramientos de cadena posterior, descompresión de columna, cero impacto).
+• JUEVES: Carrera Corta (Calidad / Tempo: 5 a 8 km a ritmo controlado ~5:15 - 5:35 min/km, trabajo de cadencia y economía de carrera).
+• VIERNES: Entrenamiento Full Body (Fuerza global: sentadilla/búlgara 70kg, press militar 18kg, hip thrust 80kg, remo unilateral 22kg, face pull 25kg, core).
+• SÁBADO: Descanso Completo & Carga de Hidratos (Carb Loading pre-tirada larga: reposo pasivo total, 3.5L agua con sales, dormir 8h).
+• DOMINGO: Carrera Larga (Long Run Z2 simulador Media Maratón: 10 a 14 km progresando a 16-18 km, ritmo aeróbico constante 5:40-6:00 min/km, prueba de hidratación y geles).
 
 ESTADO ACTUAL DE LA APP EN VIVO:
 ${JSON.stringify(snapshot, null, 2)}
 
 INSTRUCCIONES DE CLASIFICACIÓN Y ACCIÓN:
-1. Si Álvaro pide SUMAR o RESTAR valores numéricos a las métricas del día (ej: "Réstame 200 calorías", "Quita 300 kcal que me equivoqué", "Suma 500 ml de agua", "He bebido medio litro más", "Añade 25g de proteína", "Resta 15g de hidratos", "+300 cal", "-200 kcal", "+500 agua"):
+1. Si Álvaro pide SUMAR o RESTAR valores numéricos a las métricas del día (ej: "Réstame 200 calorías", "Quita 300 kcal", "Suma 500 ml de agua", "Añade 25g de proteína"):
    - Pon "action": "adjust_value".
    - Rellena "adjust":
      • "metric": "calories" | "water_ml" | "protein_g" | "carbs_g" | "fat_g"
      • "delta": número positivo para sumar (ej: 300) o negativo para restar (ej: -200)
      • "reason": motivo o descripción breve de la corrección.
 
-1.b. Si Álvaro pide FIJAR, CAMBIAR, SOBRESCRIBIR o RESETEAR el TOTAL ACUMULADO de una métrica para hoy (ej: "cambia los 13 L de agua que aparecen que he bebido hoy y que sean solo 3L", "en total hoy he bebido 3L de agua", "pon que hoy he bebido 3 litros de agua", "deja el agua en 3000", "cambia las calorías a 2500", "pon las calorías en 2600", "fija la proteína en 170g", "resetea el agua a 3L"):
+1.b. Si Álvaro pide FIJAR, CAMBIAR, SOBRESCRIBIR o RESETEAR el TOTAL ACUMULADO de una métrica para hoy (ej: "cambia los 13 L de agua que aparecen que he bebido hoy y que sean solo 3L", "en total hoy he bebido 3L de agua", "pon que hoy he bebido 3 litros de agua", "fija las calorías en 2500"):
    - Pon "action": "set_value".
    - Rellena "set_value":
      • "metric": "water_ml" | "calories" | "protein_g" | "carbs_g" | "fat_g"
      • "target_value": número final absoluto deseado (ej: si dice 3 litros de agua -> 3000; si dice 2500 kcal -> 2500; si dice 170g de proteína -> 170).
      • "reason": motivo o texto explicativo del usuario.
 
-2. Si Álvaro comunica su PESO CORPORAL o pesaje (ej: "Hoy peso 101 kg", "Mi peso es 100.8", "He pesado 101 kilos antes de cenar", "Pesaje post-entreno: 101.2"):
+2. Si Álvaro comunica su PESO CORPORAL o pesaje (ej: "Hoy peso 101 kg", "Mi peso es 100.8", "He pesado 101 kilos antes de cenar"):
    - Pon "action": "log_weight".
    - Rellena "weight_log":
      • "weight_kg": número en kg (ej: 101.0)
@@ -269,10 +335,6 @@ INSTRUCCIONES DE CLASIFICACIÓN Y ACCIÓN:
 
 3. Si Álvaro te explica un entrenamiento de fuerza (ej: "Hoy he hecho torso", o "press banca 60kg, remo 50kg..."):
    - Pon "action": "log_workout".
-   - Reconoce sus 3 días y ejercicios habituales:
-     • Día 1 Torso: Press de Banca (60kg), Remo con Barra / Polea (50kg), Press Inclinado Mancuernas (50kg), Jalón al Pecho (50kg), Elevaciones Laterales (5kg/lado), Curl Bíceps Banco Inclinado (10-12.5kg), Extensión Tríceps en Polea (50kg).
-     • Día 2 Pierna Anti-impacto: Prensa Inclinada (120kg), Curl Femoral Sentado (60kg), Máquina de Abductores / Glúteo (70->80->90kg), Extensión de Cuádriceps (50kg), Hiperextensiones 45° (sin peso / PC), Elevaciones Talones Máquina (+20kg), Plancha Lateral Antirrotacional.
-     • Día 3 Full Body: Sentadilla Trasera / Búlgara (70kg), Press Militar Mancuernas (18kg), Hip Thrust / Glúteos (80kg), Remo Unilateral (22kg), Face Pull Polea (25kg), Crunch Polea / Talones (35kg).
    - Desglosa cada ejercicio con sus series, repeticiones, peso en kg y RPE.
    - Categorías permitidas: Pecho, Espalda, Pierna, Hombro, Brazo, Core.
 
@@ -280,14 +342,18 @@ INSTRUCCIONES DE CLASIFICACIÓN Y ACCIÓN:
    - Pon "action": "log_cardio".
    - Extrae nombre, tipo ("Run" o "Walk"), distancia en km y duración en minutos.
 
-5. Si Álvaro describe una comida o bebida ingerida (ej: "He comido 200g de pollo con arroz", o "bol de avena con creatina"):
+5. Si Álvaro describe una comida o bebida ingerida:
    - Pon "action": "log_nutrition".
    - Extrae calorías, macros (P/C/G), agua en ml y si menciona creatina.
    - Respeta sus alimentos de referencia (Pan 100% integral Hacendado, Avena, Leche desnatada, Yogur griego ligero, Jamón serrano, Whey, etc.).
 
-6. Si Álvaro hace una pregunta o pide consultar datos (ej: "¿Cómo he dormido?", "¿Cuánto levanté en banca?", "¿Qué carreras he hecho?", "¿Cómo voy hoy?", "¿Cuánto he perdido de peso?", "¿Cuál es mi peso actual?"):
+6. Si Álvaro hace una pregunta, pide consultar datos, O PIDE RECOMENDACIONES DE RUTINA, COMIDA, CALENTAMIENTO, ESTIRAMIENTOS O MEDIA MARATÓN:
    - Pon "action": "query".
-   - Redacta una respuesta conversacional precisa, profesional y directa en "reply_text" usando los datos reales del ESTADO ACTUAL.
+   - Redacta una respuesta conversacional precisa, profesional y motivadora en "reply_text" usando los datos reales de "scheduled_routine_today" y "half_marathon_countdown".
+   - Si pregunta QUÉ LE TOCA HOY o QUÉ ENTRENO HACER: dile con exactitud la sesión del día de la semana correspondiente a su calendario, los ejercicios o distancia previstos, y cómo le acerca a la Media Maratón del 28 de febrero de 2027.
+   - Si pide QUÉ COMER, QUÉ CENAR O RECETAS: dale platos exactos combinando sus alimentos base (pan integral, avena, yogur griego, pechuga de pollo, mollejas guisadas, patata, arroz, whey, creatina) adaptados al gasto calórico del día (ej: más carbohidratos limpios en días de pierna, carrera corta y fin de semana; déficit limpio en días de descanso).
+   - Si pregunta por CALENTAMIENTOS o ESTIRAMIENTOS: dale el protocolo exacto del día (calentamiento dinámico antes de correr, movilidad articular y aproximaciones en fuerza, y estiramientos estáticos post-entreno con tiempos en segundos).
+   - Si pregunta por la MEDIA MARATÓN DEL 28 DE FEBRERO: dale la cuenta atrás exacta en días y semanas, la fase actual de entrenamiento y el foco táctico de la semana.
 
 7. Si Álvaro pide actualizar tipo de día o reglas (ej: "hoy descanso", "tómate la creatina"):
    - Pon "action": "protocol_update".
@@ -789,7 +855,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const cleanCmd = spokenText.trim().toLowerCase();
     const parts = spokenText.trim().split(/\s+/);
     const mainCommand = parts[0].toLowerCase();
-    const snapshot = getAppSnapshot(todayStr);
+    const snapshot = await getAppSnapshot(todayStr);
 
     // ================================================================
     // COMANDOS DIRECTOS (SHORTCUTS RÁPIDOS)
@@ -801,38 +867,41 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const helpMsg = `
 👋 *¡Hola Álvaro! Soy tu Copiloto Deportivo de IronMan* 🦾⚡
 
-Tengo acceso y control total a toda tu app. Puedes hablarme o dictarme audios de:
+Tengo acceso y control total a tu rutina semanal, preparación para la *Media Maratón del 28 de Febrero de 2027* y toda la app:
+
+📅 *Rutina Semanal & Plan Diario:*
+• Plan completo de hoy: \`/hoy\` o \`/plan\`
+• Rutina completa de lunes a domingo: \`/rutina\` o \`/semana\`
+• Calentamiento específico de hoy: \`/calentamiento\` o \`/calentar\`
+• Estiramientos post-sesión de hoy: \`/estiramientos\` o \`/estirar\`
+• Recetas y menú sugerido para hoy: \`/comida\` o \`/recetas\`
+• Cuenta atrás y fase Media Maratón: \`/mediamaraton\` o \`/objetivo\`
+
+🏋️‍♂️ *Entrenamientos de Fuerza:*
+• Ver entreno programado o series de hoy: \`/fuerza\`
+• Registrar entreno: _"Hoy hice torso: 4 series press banca 60kg a 10 repes y remo 50kg"_
+
+🏃‍♂️ *Cardio & Running:*
+• Ver última carrera o salida programada: \`/cardio\`
+• Registrar salida: _"He salido a correr 8 km en 44 minutos"_
+
+🥗 *Nutrición & Hidratación:*
+• Ver acumulación de comidas/macros de hoy: \`/resumen\`
+• Registrar comida: _"Bol de avena con leche, yogur griego, whey y creatina"_
+• Marcar creatina (5g): \`/creatina\`
 
 ⚖️ *Control de Peso Corporal:*
 • Ver peso actual y evolución: \`/peso\`
-• Registrar nuevo pesaje: \`/peso 101.0\` o _"Hoy he pesado 101 kg antes de cenar"_
+• Registrar nuevo pesaje: \`/peso 101.0\` o _"He pesado 100.8 kg antes de cenar"_
 
-➕➖ *Sumar y Restar Valores (Calorías, Agua, Macros):*
-• Sumar: \`/sumar cal 200\`, \`/sumar agua 500\`, \`+500 agua\`
-• Restar: \`/restar cal 150\`, \`/restar agua 250\`, \`-200 cal\`
-• Lenguaje natural: _"Resta 200 calorías a hoy"_ o _"He bebido 500 ml más de agua"_
-
-🎯 *Fijar o Resetear Totales Directos:*
-• Fijar agua: \`/fijar agua 3L\`, \`/set agua 3000\` o _"Cambia el agua de hoy a 3L"_
-• Fijar calorías/macros: \`/fijar cal 2500\`, \`/set pro 170\` o _"Pon 2500 kcal para hoy"_
-
-🏋️‍♂️ *Entrenamientos de Fuerza:*
-• Dicta tu entreno: _"Hoy hice pierna: 3 series de sentadillas con 100kg a 8 repes y prensa con 150kg"_
-• Consulta: \`/fuerza\`
-
-🏃‍♂️ *Cardio & Running:*
-• Registra salidas: _"He salido a correr 5 km en 35 minutos"_
-• Consulta: \`/cardio\`
-
-🥗 *Nutrición & Agua:*
-• Registra comidas: _"Bol de avena con leche, yogur griego, whey y creatina con medio litro de agua"_
-• Consulta: \`/resumen\`
+➕➖ *Ajustes Rápidos de Métricas:*
+• Sumar/restar: \`+500 agua\`, \`-200 cal\`, \`/sumar pro 25\`
+• Fijar total directo: \`/fijar agua 3L\`, \`/set cal 2500\`
 
 🌙 *Salud & Galaxy Fit3:*
-• Consulta sueño y pulso: \`/salud\`
+• Consulta sueño y biometría: \`/salud\`
 
-📊 *Reporte 360° del día:* \`/reporte\` o \`/todo\`
-📋 *Protocolo:* \`/protocolo\`
+📊 *Reporte Integral 360°:* \`/reporte\` o \`/todo\`
         `.trim();
         await sendTelegramMessage(chatId, helpMsg, botToken);
       }
@@ -899,13 +968,23 @@ ${c ? `• ${c.name} (${c.type}): *${c.distance_km} km* en *${c.time_min} min* (
       return NextResponse.json({ success: true, command: 'health' });
     }
 
-    // 4. /fuerza o /entreno (Series de gimnasio de hoy)
+    // 4. /fuerza o /entreno (Series de gimnasio de hoy o rutina programada)
     if (cleanCmd === '/fuerza' || cleanCmd === '/entreno' || cleanCmd === 'fuerza') {
       if (botToken && message.chat?.id) {
         const g = snapshot.gym_workout;
-        let gymMsg = `🏋️‍♂️ *Entrenamiento de Fuerza (${todayStr})*\n\n`;
+        const r = snapshot.scheduled_routine_today;
+        let gymMsg = `🏋️‍♂️ *Entrenamiento de Fuerza (${todayStr} — ${r.day.toUpperCase()})*\n\n`;
+
         if (g.logs.length === 0) {
-          gymMsg += `_No tienes series registradas hoy._\n_Puedes dictarme un audio diciendo qué ejercicios, pesos y repes has hecho y los guardaré al momento._`;
+          if (r.category === 'Fuerza') {
+            gymMsg += `📋 *Rutina Programada para Hoy:* *${r.title}*\n`;
+            gymMsg += `🎯 *Ejercicios previstos:*\n` + r.exercises.map((e) => `• ${e}`).join('\n') + `\n\n`;
+            gymMsg += `🔥 *Calentamiento (${r.warmup.durationMinutes} min):* _${r.warmup.description}_\n\n`;
+            gymMsg += `_No tienes series registradas todavía hoy._\n_Díctame tus series o escríbelas (ej: "press banca 60kg 10 repes") y las registraré al vuelo._`;
+          } else {
+            gymMsg += `Hoy es *${r.day}* (*${r.title}*).\n`;
+            gymMsg += `_No es día programado de fuerza pesada, pero si has hecho alguna serie dímelo y la guardo._`;
+          }
         } else {
           gymMsg += `Total de series: *${g.sets_logged_today}*\n\n` + g.logs.map((l) => `• ${l}`).join('\n');
         }
@@ -914,16 +993,26 @@ ${c ? `• ${c.name} (${c.type}): *${c.distance_km} km* en *${c.time_min} min* (
       return NextResponse.json({ success: true, command: 'gym' });
     }
 
-    // 5. /cardio o /carrera (Última actividad)
+    // 5. /cardio o /carrera (Última actividad y previsión para Media Maratón)
     if (cleanCmd === '/cardio' || cleanCmd === '/carrera' || cleanCmd === 'cardio') {
       if (botToken && message.chat?.id) {
         const c = snapshot.cardio_activities[0];
-        let cardioMsg = `🏃‍♂️ *Actividades de Cardio / Running Recientes*\n\n`;
+        const r = snapshot.scheduled_routine_today;
+        const cd = snapshot.half_marathon_countdown;
+        let cardioMsg = `🏃‍♂️ *Cardio & Running (${todayStr} — ${r.day.toUpperCase()})*\n\n`;
+
+        if (r.category === 'Cardio') {
+          cardioMsg += `🎯 *Sesión Prevista para Hoy:* *${r.title}*\n`;
+          cardioMsg += r.exercises.map((e) => `• ${e}`).join('\n') + `\n\n`;
+          cardioMsg += `🏁 *Media Maratón (28/02):* Faltan *${cd.days_left} días* | *${cd.phase}*\n\n`;
+        }
+
         if (!c) {
-          cardioMsg += `_No hay actividades de cardio registradas._`;
+          cardioMsg += `_No hay actividades de cardio registradas hoy._\n_Al salir a correr o caminar, dímelo o sincroniza con Strava._`;
         } else {
+          cardioMsg += `📊 *Últimas actividades registradas:*\n`;
           snapshot.cardio_activities.forEach((act, idx) => {
-            cardioMsg += `${idx + 1}. *${act.name}* (${act.type})\n   📍 Distancia: *${act.distance_km} km* | ⏱️ Tiempo: *${act.time_min} min* | 💓 FC Media: *${act.avg_hr} bpm*\n\n`;
+            cardioMsg += `${idx + 1}. *${act.name}* (${act.type})\n   📍 Distancia: *${act.distance_km} km* | ⏱️ Tiempo: *${act.time_min} min* | 💓 FC: *${act.avg_hr} bpm*\n\n`;
           });
         }
         await sendTelegramMessage(chatId, cardioMsg, botToken);
@@ -1120,23 +1209,161 @@ Escribe ej: \`/peso 100.8\` o díctamelo: _"Hoy he pesado 100.8 antes de cenar"_
       return NextResponse.json({ success: true, command: 'creatine', taken });
     }
 
-    // 9. /resumen (Nutrición)
-    if (cleanCmd === '/resumen' || cleanCmd === 'resumen' || cleanCmd === '/hoy' || cleanCmd === 'hoy') {
+    // 9. /hoy o /plan (Rutina, entrenamiento, nutrición y objetivo de hoy)
+    if (cleanCmd === '/hoy' || cleanCmd === 'hoy' || cleanCmd === '/plan' || cleanCmd === 'plan') {
+      if (botToken && message.chat?.id) {
+        const dailyMsg = formatDailyScheduleMarkdown(todayStr);
+        await sendTelegramMessage(chatId, dailyMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'today_routine' });
+    }
+
+    // 10. /rutina o /semana (Calendario semanal completo)
+    if (cleanCmd === '/rutina' || cleanCmd === 'rutina' || cleanCmd === '/semana' || cleanCmd === 'semana') {
+      if (botToken && message.chat?.id) {
+        const weeklyMsg = formatWeeklyScheduleMarkdown();
+        await sendTelegramMessage(chatId, weeklyMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'weekly_routine' });
+    }
+
+    // 11. /calentamiento o /calentar (Calentamiento específico guiado de hoy)
+    if (
+      cleanCmd === '/calentamiento' ||
+      cleanCmd === 'calentamiento' ||
+      cleanCmd === '/calentar' ||
+      cleanCmd === 'calentar'
+    ) {
+      if (botToken && message.chat?.id) {
+        const r = snapshot.scheduled_routine_today;
+        const warmupMsg = `
+🔥 *Calentamiento Sugerido para Hoy (${r.day.toUpperCase()}):*
+🎯 *Sesión:* *${r.title}*
+⏱️ *Duración:* *${r.warmup.durationMinutes} minutos*
+
+📝 *Enfoque:*
+_${r.warmup.description}_
+
+🏃‍♂️ *Ejercicios de activación:*
+${r.warmup.exercises.length > 0 ? r.warmup.exercises.map((e) => `• ${e}`).join('\n') : '• _Día de descanso: sin calentamiento necesario._'}
+
+💡 *Recuerda:* Un buen calentamiento eleva la temperatura intramuscular y previene tirones y sobrecargas en tendones.
+        `.trim();
+        await sendTelegramMessage(chatId, warmupMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'warmup' });
+    }
+
+    // 12. /estiramientos o /estirar (Protocolo de estiramientos post-entreno)
+    if (
+      cleanCmd === '/estiramientos' ||
+      cleanCmd === 'estiramientos' ||
+      cleanCmd === '/estirar' ||
+      cleanCmd === 'estirar'
+    ) {
+      if (botToken && message.chat?.id) {
+        const r = snapshot.scheduled_routine_today;
+        const stretchMsg = `
+🧘‍♂️ *Protocolo de Estiramientos para Hoy (${r.day.toUpperCase()}):*
+🎯 *Sesión:* *${r.title}*
+⏱️ *Duración:* *${r.stretches.durationMinutes} minutos*
+
+📝 *Enfoque de recuperación:*
+_${r.stretches.description}_
+
+✨ *Ejercicios y tiempos guiados:*
+${r.stretches.exercises.map((e) => `• ${e}`).join('\n')}
+
+💡 *Importante:* No rebotes al estirar. Mantén la tensión constante sin dolor agudo, respirando hondo por la nariz.
+        `.trim();
+        await sendTelegramMessage(chatId, stretchMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'stretches' });
+    }
+
+    // 13. /comida, /recetas, /receta o /dieta (Menú y platos sugeridos para hoy)
+    if (
+      cleanCmd === '/comida' ||
+      cleanCmd === 'comida' ||
+      cleanCmd === '/recetas' ||
+      cleanCmd === 'recetas' ||
+      cleanCmd === '/receta' ||
+      cleanCmd === 'receta' ||
+      cleanCmd === '/dieta' ||
+      cleanCmd === 'dieta'
+    ) {
+      if (botToken && message.chat?.id) {
+        const r = snapshot.scheduled_routine_today;
+        const s = r.nutrition_strategy;
+        const mealMsg = `
+🍽️ *Estrategia Nutricional & Recetas para Hoy (${r.day.toUpperCase()}):*
+🎯 *Objetivo:* *${s.calorieTarget} kcal* | 🥩 *${s.proteinTarget}* | 💧 *${s.waterLiters} L*
+
+💡 *Directriz Metabólica:*
+_${s.guidelines}_
+
+🥗 *Platos Recomendados de Hoy:*
+${s.recommendedMeals.map((m) => `• *${m.slot}:* *${m.dish}*\n  └ _${m.details}_`).join('\n\n')}
+
+⚡ *Suplementación:* 5g de Creatina Monohidrato en merienda con agua.
+        `.trim();
+        await sendTelegramMessage(chatId, mealMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'meals_recommendation' });
+    }
+
+    // 14. /mediamaraton, /maraton o /objetivo (Cuenta atrás y plan 28/02/2027)
+    if (
+      cleanCmd === '/mediamaraton' ||
+      cleanCmd === 'mediamaraton' ||
+      cleanCmd === '/maraton' ||
+      cleanCmd === 'maraton' ||
+      cleanCmd === '/objetivo' ||
+      cleanCmd === 'objetivo'
+    ) {
+      if (botToken && message.chat?.id) {
+        const c = snapshot.half_marathon_countdown;
+        const r = snapshot.scheduled_routine_today;
+        const marathonMsg = `
+🏁 *OBJETIVO: MEDIA MARATÓN (21,097 KM)*
+📅 *Fecha de la prueba:* *${c.target_date}*
+
+⏳ *Cuenta Atrás:*
+• Quedan *${c.days_left} días* (*${c.weeks_left} semanas y ${c.extra_days} días*)
+
+📍 *Fase de Entrenamiento:*
+*${c.phase}*
+_${c.phase_description}_
+
+🎯 *Foco Táctico de Esta Semana:*
+_${c.today_focus}_
+
+💪 *Impacto de la sesión de hoy (${r.day}):*
+_${r.half_marathon_impact}_
+        `.trim();
+        await sendTelegramMessage(chatId, marathonMsg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'half_marathon' });
+    }
+
+    // 15. /resumen (Nutrición acumulada hoy)
+    if (cleanCmd === '/resumen' || cleanCmd === 'resumen') {
       if (botToken && message.chat?.id) {
         const n = snapshot.nutrition;
         const t = snapshot.athlete.targets;
-        let nutriMsg = `📊 *Resumen Nutricional: ${todayStr}*\n\n`;
+        const r = snapshot.scheduled_routine_today;
+        let nutriMsg = `📊 *Resumen Nutricional: ${todayStr} (${r.day})*\n\n`;
         if (n.meals.length === 0) {
-          nutriMsg += `_Sin comidas registradas hoy._\n`;
+          nutriMsg += `_Sin comidas registradas hoy._\n\n`;
         } else {
           nutriMsg += `🍽️ *Comidas (${n.meals_count}):*\n` + n.meals.map((m) => `• ${m}`).join('\n') + '\n\n';
         }
-        nutriMsg += `🎯 *Acumulado:*
-• 🔥 Calorías: *${n.calories}* / ${t.calories} kcal
-• 🥩 Proteína: *${n.protein_g.toFixed(0)}* / ${t.proteinMin}–${t.proteinMax} g
-• 🍚 Carbos: *${n.carbs_g.toFixed(0)}* / ${t.carbsMin}–${t.carbsMax} g
-• 🥑 Grasas: *${n.fat_g.toFixed(0)}* / ${t.fatMin}–${t.fatMax} g
-• 💧 Agua: *${(n.water_ml / 1000).toFixed(2)}* / ${(t.waterMl / 1000).toFixed(1)} L
+        nutriMsg += `🎯 *Acumulado vs Objetivo de Hoy:*
+• 🔥 Calorías: *${n.calories}* / *${t.calories} kcal*
+• 🥩 Proteína: *${n.protein_g.toFixed(0)}* / *${t.proteinMin}–${t.proteinMax} g*
+• 🍚 Carbos: *${n.carbs_g.toFixed(0)}* / *${t.carbsMin}–${t.carbsMax} g*
+• 🥑 Grasas: *${n.fat_g.toFixed(0)}* / *${t.fatMin}–${t.fatMax} g*
+• 💧 Agua: *${(n.water_ml / 1000).toFixed(2)}* / *${(t.waterMl / 1000).toFixed(1)} L*
 • ⚡ Creatina: *${n.creatine_taken ? '✅ Tomada' : '⏳ Pendiente'}*`;
 
         await sendTelegramMessage(chatId, nutriMsg, botToken);
@@ -1426,3 +1653,26 @@ ${aiResult.coach_tip ? `\n💡 *Coach:* _${aiResult.coach_tip}_` : ''}
     return NextResponse.json({ error: error.message || 'Error interno' }, { status: 500 });
   }
 }
+
+// --------------------------------------------------------------------
+// 10. DIAGNÓSTICO Y HEALTHCHECK: ROUTE GET
+// --------------------------------------------------------------------
+export async function GET(): Promise<NextResponse> {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const snapshot = await getAppSnapshot(todayStr);
+
+  return NextResponse.json({
+    status: 'online',
+    service: 'IronMan Telegram Webhook Assistant',
+    target_event: {
+      name: 'Media Maratón (21.097 km)',
+      date: TARGET_HALF_MARATHON_DATE,
+      countdown: snapshot.half_marathon_countdown,
+    },
+    today: {
+      date: todayStr,
+      routine: snapshot.scheduled_routine_today,
+    },
+  });
+}
+
