@@ -27,6 +27,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isReseeding, setIsReseeding] = useState(false);
   const [reseedStatus, setReseedStatus] = useState<string | null>(null);
+  const [telegramStatus, setTelegramStatus] = useState<string | null>(null);
+  const [isActivatingTelegram, setIsActivatingTelegram] = useState(false);
+
+  const handleActivateTelegram = async () => {
+    setIsActivatingTelegram(true);
+    setTelegramStatus(null);
+    try {
+      const res = await fetch('/api/telegram/webhook?setup=true');
+      const data = await res.json();
+      if (data.telegram_bot?.webhook_setup_result?.ok) {
+        setTelegramStatus('✅ Webhook vinculado y activo en Telegram con éxito.');
+      } else if (!data.telegram_bot?.bot_token_configured) {
+        setTelegramStatus('⚠️ Falta configurar TELEGRAM_BOT_TOKEN en las variables de entorno de Vercel.');
+      } else if (data.telegram_bot?.telegram_api_webhook_info?.ok) {
+        const info = data.telegram_bot.telegram_api_webhook_info.result;
+        setTelegramStatus(
+          `ℹ️ Estado Telegram: ${info.url ? `Conectado a ${info.url}` : 'Sin URL registrada'}. Pendientes: ${info.pending_update_count}${info.last_error_message ? ` | Error: ${info.last_error_message}` : ''}`
+        );
+      } else {
+        setTelegramStatus('ℹ️ Verificado. Revisa la configuración de Telegram.');
+      }
+    } catch (err: any) {
+      setTelegramStatus('❌ Error al conectar con el servidor.');
+    } finally {
+      setIsActivatingTelegram(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -110,13 +137,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="text-[10px] text-zinc-500">Verify Token: <code className="text-orange-400">ironman_strava_webhook_token_secure</code></div>
         </div>
 
-        {/* 3. TELEGRAM BOT (NUTRICIÓN CON IA) */}
-        <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 space-y-2">
+        {/* 3. TELEGRAM BOT (NUTRICIÓN CON IA & ASISTENTE 360) */}
+        <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 space-y-3">
           <div className="flex items-center gap-2 text-blue-400">
             <Mic className="w-4 h-4" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-white">Bot de Telegram (Dieta por Voz)</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-white">Bot de Telegram (Entrenador & Dieta por Voz)</h3>
           </div>
-          <p className="text-[11px] text-zinc-400">Configura este webhook en Telegram con BotFather para procesar tus notas de voz.</p>
+          <p className="text-[11px] text-zinc-400">URL del Webhook para recibir audios, registrar comidas/entrenamientos y responder dudas clínicas.</p>
           <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300">
             <span className="truncate pr-2">{telegramWebhookUrl}</span>
             <button
@@ -125,6 +152,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             >
               {copiedKey === 'telegram' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
             </button>
+          </div>
+
+          <div className="pt-1">
+            <button
+              onClick={handleActivateTelegram}
+              disabled={isActivatingTelegram}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600/30 text-xs font-bold transition-all disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isActivatingTelegram ? 'animate-spin' : ''}`} />
+              {isActivatingTelegram ? 'Comprobando en Telegram...' : '⚡ Comprobar & Vincular Webhook'}
+            </button>
+            {telegramStatus && (
+              <p className="mt-2 text-[11px] text-zinc-300 bg-zinc-900 p-2 rounded-lg border border-zinc-800">
+                {telegramStatus}
+              </p>
+            )}
           </div>
         </div>
 

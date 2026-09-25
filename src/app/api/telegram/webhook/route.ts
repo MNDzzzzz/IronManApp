@@ -80,7 +80,7 @@ async function downloadTelegramAudio(
 // --------------------------------------------------------------------
 async function sendTelegramMessage(chatId: number, messageText: string, botToken: string) {
   try {
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -89,6 +89,20 @@ async function sendTelegramMessage(chatId: number, messageText: string, botToken
         parse_mode: 'Markdown',
       }),
     });
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      console.warn('Fallo Telegram con Markdown, reintentando como texto plano:', errBody);
+      // Reintento en texto plano si falló por entidades Markdown
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: messageText,
+        }),
+      });
+    }
   } catch (e) {
     console.error('Error enviando mensaje de Telegram:', e);
   }
@@ -410,9 +424,10 @@ INSTRUCCIONES DE CLASIFICACIÓN Y ACCIÓN:
    - Pon "action": "log_nutrition".
    - Extrae calorías, macros (P/C/G), agua en ml y si tomó creatina.
 
-6. Si Álvaro hace una PREGUNTA, PIDE CONSEJOS, CONSULTA SU RUTINA, DOLOR DE RODILLA, COMIDA O PLAN DE CARRERA:
+6. Si Álvaro hace CUALQUIER PREGUNTA, CONSULTA CIENTÍFICA, TÉCNICA O CURIOSIDAD DEPORTIVA:
+   - Aplica tanto a preguntas sobre sus métricas en la app como a dudas de fisiología del ejercicio, calzado y zapatillas de running (drop, amortiguación, placas), zonas de entrenamiento, VDOT, nutrición deportiva avanzada, suplementos, biomecánica o recuperación que estén FUERA de los datos de la app.
    - Pon "action": "query".
-   - Actúa como su Head Coach y Fisioterapeuta Deportivo. Responde en "reply_text" con un tono cercano, muy técnico, riguroso, motivador y preventivo.
+   - Actúa como su Head Coach, Biomecánico y Fisioterapeuta Deportivo. Responde en "reply_text" con rigor científico, empatía pedagógica y enfoque práctico, contextualizando siempre para su perfil actual (101 kg hacia 85-88 kg, cuidando al máximo la salud de sus rodillas rumbo a la Media Maratón del 28 de Febrero de 2027).
    - Si menciona DOLOR o MOLESTIA EN LA RODILLA: Identifica si es el tendón cuadricipital (arriba de la rótula) o tubérculo de Gerdy/peroné (lateral externo). Prescribe de inmediato el protocolo terapéutico exacto (Wall-sits isométricos o liberación del tensor de la fascia lata sin tocar el hueso) y recomiéndale pasar a CaCo o bajar ritmo.
    - Si pregunta QUÉ LE TOCA HOY o QUÉ ENTRENAR: Explica la sesión del día del microciclo, los ejercicios exactos, los pasos recomendados y el objetivo de la semana ${snapshot.current_week_number || 1} de la periodización de 22 semanas.
    - Si pregunta QUÉ COMER o RECETAS: Guíale con su menú estructurado de 2.400 kcal (huevos/avena/plátano en desayuno; pollo/ternera con arroz/patata y verdura en comida; queso fresco batido con whey y nueces en merienda; salmón/merluza con patata y verduras en cena).
@@ -482,7 +497,15 @@ DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin mark
 }
 `;
 
-  const models = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'];
+  // Modelos estables y prioritarios de Gemini Flash
+  const models = [
+    'gemini-flash-latest',
+    'gemini-flash-lite-latest',
+    'gemini-3.1-flash-lite',
+    'gemini-3.7-flash',
+    'gemini-3.8-flash',
+    'gemini-3.5-flash',
+  ];
 
   for (const model of models) {
     try {
@@ -517,7 +540,42 @@ DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin mark
     }
   }
 
-  // Fallback heurístico básico
+  // Fallback heurístico inteligente
+  const lowerHint = (textOrHint || '').toLowerCase();
+  const isQuestion =
+    lowerHint.includes('?') ||
+    lowerHint.includes('¿') ||
+    lowerHint.includes('qué') ||
+    lowerHint.includes('que') ||
+    lowerHint.includes('cómo') ||
+    lowerHint.includes('como') ||
+    lowerHint.includes('por qué') ||
+    lowerHint.includes('cuál') ||
+    lowerHint.includes('cuanto') ||
+    lowerHint.includes('cuánto') ||
+    lowerHint.includes('duele') ||
+    lowerHint.includes('rodilla') ||
+    lowerHint.includes('dolor') ||
+    lowerHint.includes('opinas') ||
+    lowerHint.includes('puedo') ||
+    lowerHint.includes('recomiendas') ||
+    lowerHint.includes('consejo');
+
+  if (isQuestion) {
+    let reply = `Álvaro, como tu Head Coach y Fisioterapeuta Deportivo:`;
+    if (lowerHint.includes('rodilla') || lowerHint.includes('dolor') || lowerHint.includes('duele')) {
+      reply += `\n\nSi la molestia es encima de la rótula (tendón cuadricipital), haz 4 series de Wall-sits isométricos de 35-45s y aplica frío. Si es lateral externo (tubérculo de Gerdy), libera el tensor de la fascia lata con rodillo (¡jamás sobre el hueso!). Para tu próxima carrera, usa bloques CaCo (>7:15 min/km) y cadencia 165-172 ppm.`;
+    } else {
+      reply += `\n\nHe recibido tu consulta sobre "${textOrHint}". Todo tu plan está enfocado a llegar al máximo a la Media Maratón del 28 de febrero de 2027 protegiendo tus articulaciones con 101 kg. Mantén el déficit a 2.400 kcal, 202 g de proteína y respeta los descansos programados.`;
+    }
+    return {
+      action: 'query',
+      transcription: textOrHint,
+      reply_text: reply,
+      coach_tip: 'Prioriza siempre la longevidad articular y la constancia sobre la intensidad puntual.',
+    };
+  }
+
   return {
     action: 'log_nutrition',
     transcription: textOrHint,
@@ -1829,13 +1887,58 @@ ${aiResult.coach_tip ? `\n💡 *Coach:* _${aiResult.coach_tip}_` : ''}
 // --------------------------------------------------------------------
 // 10. DIAGNÓSTICO Y HEALTHCHECK: ROUTE GET
 // --------------------------------------------------------------------
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   const todayStr = new Date().toISOString().split('T')[0];
   const snapshot = await getAppSnapshot(todayStr);
+
+  const urlObj = new URL(request.url);
+  const setupParam = urlObj.searchParams.get('setup');
+  const tokenParam = urlObj.searchParams.get('token');
+  const botToken = tokenParam || process.env.TELEGRAM_BOT_TOKEN;
+
+  // Determinar la URL del webhook en el host actual (o producción de Vercel)
+  const currentOrigin = urlObj.origin.includes('localhost')
+    ? 'https://iron-man-app.vercel.app'
+    : urlObj.origin;
+  const targetWebhookUrl = `${currentOrigin}/api/telegram/webhook`;
+
+  let setupResult: any = null;
+  let webhookInfo: any = null;
+
+  if (botToken) {
+    // Si se solicita setup=true, registrar automáticamente el webhook en la API de Telegram
+    if (setupParam === 'true') {
+      try {
+        const setRes = await fetch(
+          `https://api.telegram.org/bot${botToken}/setWebhook?url=${encodeURIComponent(targetWebhookUrl)}&drop_pending_updates=false`
+        );
+        setupResult = await setRes.json();
+      } catch (err: any) {
+        setupResult = { ok: false, error: err.message };
+      }
+    }
+
+    // Consultar estado actual del webhook en Telegram
+    try {
+      const infoRes = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`);
+      webhookInfo = await infoRes.json();
+    } catch (err: any) {
+      webhookInfo = { ok: false, error: err.message };
+    }
+  }
 
   return NextResponse.json({
     status: 'online',
     service: 'IronMan Telegram Webhook Assistant & AI Coach',
+    telegram_bot: {
+      bot_token_configured: Boolean(process.env.TELEGRAM_BOT_TOKEN),
+      token_preview: botToken
+        ? `${botToken.substring(0, 4)}...${botToken.substring(botToken.length - 4)}`
+        : 'NO CONFIGURADO (añade TELEGRAM_BOT_TOKEN en Vercel o usa ?token=TU_TOKEN&setup=true)',
+      target_webhook_url: targetWebhookUrl,
+      webhook_setup_result: setupResult,
+      telegram_api_webhook_info: webhookInfo,
+    },
     target_event: {
       name: 'Media Maratón (21.097 km)',
       date: TARGET_HALF_MARATHON_DATE,
