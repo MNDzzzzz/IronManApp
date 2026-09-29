@@ -98,26 +98,127 @@ export default function Home() {
     loadAllData();
   }, [loadAllData]);
 
-  // Manejador rápido para añadir agua
-  const handleQuickAddWater = async (amountMl: number) => {
-    try {
-      const res = await fetch('/api/nutrition', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'water', amount_ml: amountMl }),
-      });
-      if (res.ok) {
+  // Manejador rápido y optimista para añadir o restar agua
+  const handleQuickAddWater = async (amountMl: number, date?: string) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const targetDate = date || todayStr;
+    const isToday = targetDate === todayStr;
+
+    if (amountMl > 0) {
+      const tempId = `water-temp-${Date.now()}`;
+      const tempWater: WaterLog = {
+        id: tempId,
+        date: targetDate,
+        timestamp: new Date().toISOString(),
+        amount_ml: amountMl,
+      };
+
+      // 1. Actualización optimista inmediata (0 ms)
+      setWaterLogs((prev) => [tempWater, ...prev]);
+      if (isToday) {
         setNutritionTotals((prev) => ({
           ...prev,
           water_ml: prev.water_ml + amountMl,
         }));
       }
-    } catch (e) {
-      console.error('Error añadiendo agua:', e);
+
+      // 2. Persistencia en backend
+      try {
+        const res = await fetch('/api/nutrition', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'water', amount_ml: amountMl, date: targetDate }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.water) {
+            setWaterLogs((prev) => prev.map((w) => (w.id === tempId ? data.water : w)));
+          }
+        } else {
+          // Revertir en caso de error
+          setWaterLogs((prev) => prev.filter((w) => w.id !== tempId));
+          if (isToday) {
+            setNutritionTotals((prev) => ({
+              ...prev,
+              water_ml: Math.max(0, prev.water_ml - amountMl),
+            }));
+          }
+        }
+      } catch (e) {
+        setWaterLogs((prev) => prev.filter((w) => w.id !== tempId));
+        if (isToday) {
+          setNutritionTotals((prev) => ({
+            ...prev,
+            water_ml: Math.max(0, prev.water_ml - amountMl),
+          }));
+        }
+      }
+    } else if (amountMl < 0) {
+      // Restar agua optimista
+      const subAmount = Math.abs(amountMl);
+      let subtractedActual = 0;
+
+      setWaterLogs((prev) => {
+        const dateLogs = prev.filter((w) => w.date === targetDate);
+        if (dateLogs.length === 0) return prev;
+        const latest = dateLogs[0];
+        if (latest.amount_ml <= subAmount) {
+          subtractedActual = latest.amount_ml;
+          return prev.filter((w) => w.id !== latest.id);
+        } else {
+          subtractedActual = subAmount;
+          return prev.map((w) =>
+            w.id === latest.id ? { ...w, amount_ml: w.amount_ml - subAmount } : w
+          );
+        }
+      });
+
+      if (isToday) {
+        setNutritionTotals((prev) => ({
+          ...prev,
+          water_ml: Math.max(0, prev.water_ml - subAmount),
+        }));
+      }
+
+      try {
+        await fetch('/api/nutrition', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'water', amount_ml: amountMl, date: targetDate }),
+        });
+      } catch (e) {
+        console.error('Error restando agua:', e);
+      }
     }
   };
 
-  // Manejador para registrar serie de gimnasio
+  // Manejador para eliminar una toma de agua específica
+  const handleDeleteWater = async (waterId: string) => {
+    const target = waterLogs.find((w) => w.id === waterId);
+    if (!target) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isToday = target.date === todayStr;
+
+    // Optimista
+    setWaterLogs((prev) => prev.filter((w) => w.id !== waterId));
+    if (isToday) {
+      setNutritionTotals((prev) => ({
+        ...prev,
+        water_ml: Math.max(0, prev.water_ml - target.amount_ml),
+      }));
+    }
+
+    try {
+      await fetch(`/api/nutrition?id=${encodeURIComponent(waterId)}&type=water`, {
+        method: 'DELETE',
+      });
+    } catch (e) {
+      console.error('Error eliminando agua:', e);
+    }
+  };
+
+  // Manejador optimista para registrar serie de gimnasio
   const handleAddGymSet = async (logData: {
     exercise_id: string;
     set_number: number;
@@ -125,6 +226,22 @@ export default function Home() {
     weight_kg: number;
     rpe?: number;
   }) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const tempId = `log-temp-${Date.now()}`;
+    const tempLog: GymWorkoutLog = {
+      id: tempId,
+      date: todayStr,
+      exercise_id: logData.exercise_id,
+      set_number: logData.set_number,
+      reps: logData.reps,
+      weight_kg: logData.weight_kg,
+      rpe: logData.rpe,
+      created_at: new Date().toISOString(),
+    };
+
+    // Actualización optimista inmediata
+    setGymLogs((prev) => [...prev, tempLog]);
+
     try {
       const res = await fetch('/api/gym', {
         method: 'POST',
@@ -133,15 +250,66 @@ export default function Home() {
       });
       if (res.ok) {
         const data = await res.json();
-        setGymLogs((prev) => [...prev, data.log]);
+        if (data.log) {
+          setGymLogs((prev) => prev.map((l) => (l.id === tempId ? data.log : l)));
+        }
+      } else {
+        setGymLogs((prev) => prev.filter((l) => l.id !== tempId));
       }
     } catch (e) {
-      console.error('Error guardando serie:', e);
+      setGymLogs((prev) => prev.filter((l) => l.id !== tempId));
     }
   };
 
-  // Manejador para añadir comida manual
+  // Manejador para eliminar serie de gimnasio
+  const handleDeleteGymSet = async (logId: string) => {
+    setGymLogs((prev) => prev.filter((l) => l.id !== logId));
+    try {
+      await fetch(`/api/gym?id=${encodeURIComponent(logId)}`, {
+        method: 'DELETE',
+      });
+    } catch (e) {
+      console.error('Error eliminando serie:', e);
+    }
+  };
+
+  // Manejador optimista para añadir comida manual
   const handleAddMeal = async (mealData: Partial<NutritionLog>) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const mealDate = mealData.date || todayStr;
+    const isToday = mealDate === todayStr;
+
+    const tempId = `nutri-temp-${Date.now()}`;
+    const caloriesNum = Number(mealData.calories || 0);
+    const proteinNum = Number(mealData.protein_g || 0);
+    const carbsNum = Number(mealData.carbs_g || 0);
+    const fatNum = Number(mealData.fat_g || 0);
+
+    const tempMeal: NutritionLog = {
+      id: tempId,
+      timestamp: new Date().toISOString(),
+      date: mealDate,
+      meal_type: mealData.meal_type || 'Snack',
+      description: mealData.description || 'Comida',
+      calories: caloriesNum,
+      protein_g: proteinNum,
+      carbs_g: carbsNum,
+      fat_g: fatNum,
+    };
+
+    // 1. Optimista inmediato
+    setNutritionMeals((prev) => [tempMeal, ...prev]);
+    if (isToday) {
+      setNutritionTotals((prev) => ({
+        ...prev,
+        calories: prev.calories + caloriesNum,
+        protein_g: Number((prev.protein_g + proteinNum).toFixed(1)),
+        carbs_g: Number((prev.carbs_g + carbsNum).toFixed(1)),
+        fat_g: Number((prev.fat_g + fatNum).toFixed(1)),
+      }));
+    }
+
+    // 2. Red en background
     try {
       const res = await fetch('/api/nutrition', {
         method: 'POST',
@@ -150,39 +318,119 @@ export default function Home() {
       });
       if (res.ok) {
         const data = await res.json();
-        setNutritionMeals((prev) => [data.meal, ...prev]);
-        setNutritionTotals((prev) => ({
-          ...prev,
-          calories: prev.calories + Number(mealData.calories || 0),
-          protein_g: prev.protein_g + Number(mealData.protein_g || 0),
-          carbs_g: prev.carbs_g + Number(mealData.carbs_g || 0),
-          fat_g: prev.fat_g + Number(mealData.fat_g || 0),
-        }));
+        if (data.meal) {
+          setNutritionMeals((prev) => prev.map((m) => (m.id === tempId ? data.meal : m)));
+        }
+      } else {
+        // Rollback
+        setNutritionMeals((prev) => prev.filter((m) => m.id !== tempId));
+        if (isToday) {
+          setNutritionTotals((prev) => ({
+            ...prev,
+            calories: Math.max(0, prev.calories - caloriesNum),
+            protein_g: Math.max(0, Number((prev.protein_g - proteinNum).toFixed(1))),
+            carbs_g: Math.max(0, Number((prev.carbs_g - carbsNum).toFixed(1))),
+            fat_g: Math.max(0, Number((prev.fat_g - fatNum).toFixed(1))),
+          }));
+        }
       }
     } catch (e) {
-      console.error('Error guardando comida:', e);
+      setNutritionMeals((prev) => prev.filter((m) => m.id !== tempId));
+      if (isToday) {
+        setNutritionTotals((prev) => ({
+          ...prev,
+          calories: Math.max(0, prev.calories - caloriesNum),
+          protein_g: Math.max(0, Number((prev.protein_g - proteinNum).toFixed(1))),
+          carbs_g: Math.max(0, Number((prev.carbs_g - carbsNum).toFixed(1))),
+          fat_g: Math.max(0, Number((prev.fat_g - fatNum).toFixed(1))),
+        }));
+      }
     }
   };
 
-  // Manejador para registrar pesaje
+  // Manejador optimista para eliminar comida
+  const handleDeleteMeal = async (mealId: string) => {
+    const targetMeal = nutritionMeals.find((m) => m.id === mealId);
+    if (!targetMeal) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isToday = targetMeal.date === todayStr;
+
+    // Optimista inmediato
+    setNutritionMeals((prev) => prev.filter((m) => m.id !== mealId));
+    if (isToday) {
+      setNutritionTotals((prev) => ({
+        ...prev,
+        calories: Math.max(0, prev.calories - targetMeal.calories),
+        protein_g: Math.max(0, Number((prev.protein_g - targetMeal.protein_g).toFixed(1))),
+        carbs_g: Math.max(0, Number((prev.carbs_g - targetMeal.carbs_g).toFixed(1))),
+        fat_g: Math.max(0, Number((prev.fat_g - targetMeal.fat_g).toFixed(1))),
+      }));
+    }
+
+    try {
+      await fetch(`/api/nutrition?id=${encodeURIComponent(mealId)}&type=meal`, {
+        method: 'DELETE',
+      });
+    } catch (e) {
+      console.error('Error eliminando comida:', e);
+    }
+  };
+
+  // Manejador optimista para registrar pesaje
   const handleAddWeight = async (weightKg: number, notes?: string, date?: string) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const logDate = date || todayStr;
+    const tempId = `weight-temp-${Date.now()}`;
+    const tempLog: WeightLog = {
+      id: tempId,
+      date: logDate,
+      timestamp: new Date().toISOString(),
+      weight_kg: weightKg,
+      notes: notes || 'Antes de cenar, después de entrenar',
+      created_at: new Date().toISOString(),
+    };
+
+    // Optimista
+    setCurrentWeight(weightKg);
+    setWeightLogs((prev) => {
+      const filtered = prev.filter((p) => p.date !== logDate);
+      return [tempLog, ...filtered];
+    });
+
     try {
       const res = await fetch('/api/weight', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ weight_kg: weightKg, notes, date }),
+        body: JSON.stringify({ weight_kg: weightKg, notes, date: logDate }),
       });
       if (res.ok) {
         const data = await res.json();
-        setCurrentWeight(weightKg);
-        setWeightLogs((prev) => {
-          const logDate = date || new Date().toISOString().split('T')[0];
-          const filtered = prev.filter((p) => p.date !== logDate);
-          return [data.log, ...filtered];
-        });
+        if (data.log) {
+          setWeightLogs((prev) => prev.map((w) => (w.id === tempId ? data.log : w)));
+        }
       }
     } catch (e) {
       console.error('Error guardando peso:', e);
+    }
+  };
+
+  // Manejador optimista para eliminar pesaje
+  const handleDeleteWeight = async (weightId: string) => {
+    setWeightLogs((prev) => {
+      const next = prev.filter((w) => w.id !== weightId);
+      if (next.length > 0) {
+        setCurrentWeight(next[0].weight_kg);
+      }
+      return next;
+    });
+
+    try {
+      await fetch(`/api/weight?id=${encodeURIComponent(weightId)}`, {
+        method: 'DELETE',
+      });
+    } catch (e) {
+      console.error('Error eliminando pesaje:', e);
     }
   };
 
@@ -231,6 +479,7 @@ export default function Home() {
             exercises={gymExercises}
             logs={gymLogs}
             onAddSet={handleAddGymSet}
+            onDeleteSet={handleDeleteGymSet}
           />
         )}
 
@@ -240,7 +489,9 @@ export default function Home() {
             waterLogs={waterLogs}
             totals={nutritionTotals}
             onAddWater={handleQuickAddWater}
+            onDeleteWater={handleDeleteWater}
             onAddMeal={handleAddMeal}
+            onDeleteMeal={handleDeleteMeal}
           />
         )}
 
@@ -251,6 +502,7 @@ export default function Home() {
             weightLogs={weightLogs}
             currentWeight={currentWeight}
             onAddWeight={handleAddWeight}
+            onDeleteWeight={handleDeleteWeight}
           />
         )}
       </main>

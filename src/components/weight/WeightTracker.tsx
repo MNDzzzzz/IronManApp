@@ -12,6 +12,7 @@ import {
   Sparkles,
   History,
   Target,
+  Trash2,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -28,6 +29,7 @@ interface WeightTrackerProps {
   logs: WeightLog[];
   currentWeight: number;
   onAddWeight?: (weightKg: number, notes?: string, date?: string) => Promise<void>;
+  onDeleteWeight?: (weightId: string) => Promise<void>;
 }
 
 type TimeframeType = 'dias' | 'semanas' | 'meses';
@@ -36,6 +38,7 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
   logs = [],
   currentWeight = 101.0,
   onAddWeight,
+  onDeleteWeight,
 }) => {
   const [isMounted, setIsMounted] = useState(false);
   const [timeframe, setTimeframe] = useState<TimeframeType>('dias');
@@ -370,18 +373,34 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
                   </span>
                 </div>
 
-                <div className="text-right">
-                  <span className="text-sm font-black text-white block">
-                    {item.weight_kg.toFixed(1)} <span className="text-[10px] font-normal text-zinc-400">kg</span>
-                  </span>
-                  <span
-                    className={`text-[10px] font-semibold ${
-                      item.weight_kg - initialWeight <= 0 ? 'text-emerald-400' : 'text-amber-400'
-                    }`}
-                  >
-                    {item.weight_kg - initialWeight <= 0 ? '' : '+'}
-                    {(item.weight_kg - initialWeight).toFixed(1)} kg
-                  </span>
+                <div className="flex items-center gap-2.5">
+                  <div className="text-right">
+                    <span className="text-sm font-black text-white block">
+                      {item.weight_kg.toFixed(1)} <span className="text-[10px] font-normal text-zinc-400">kg</span>
+                    </span>
+                    <span
+                      className={`text-[10px] font-semibold ${
+                        item.weight_kg - initialWeight <= 0 ? 'text-emerald-400' : 'text-amber-400'
+                      }`}
+                    >
+                      {item.weight_kg - initialWeight <= 0 ? '' : '+'}
+                      {(item.weight_kg - initialWeight).toFixed(1)} kg
+                    </span>
+                  </div>
+                  {onDeleteWeight && item.id && (
+                    <button
+                      onClick={() => {
+                        if (confirm(`¿Eliminar pesaje de ${item.weight_kg}kg del ${item.date}?`)) {
+                          onDeleteWeight(item.id);
+                        }
+                      }}
+                      className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 active:scale-90 transition-all"
+                      title="Eliminar pesaje"
+                      aria-label="Eliminar pesaje"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             );

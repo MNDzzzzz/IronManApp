@@ -80,3 +80,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    let id = searchParams.get('id');
+
+    if (!id) {
+      try {
+        const body = await request.json();
+        id = body.id;
+      } catch (_) {}
+    }
+
+    if (!id) {
+      return NextResponse.json({ error: 'Falta el id de la serie' }, { status: 400 });
+    }
+
+    if (isSupabaseConfigured && supabaseAdmin) {
+      await supabaseAdmin.from('gym_workout_logs').delete().eq('id', id);
+    }
+    mockStore.gymLogs = mockStore.gymLogs.filter((l) => l.id !== id);
+
+    return NextResponse.json({ success: true, deleted: id });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+

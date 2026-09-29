@@ -8,6 +8,7 @@ import {
   Footprints,
   Droplet,
   Plus,
+  Minus,
   ArrowUpRight,
   TrendingDown,
   Sparkles,
@@ -221,13 +222,24 @@ export const TodayView: React.FC<TodayViewProps> = ({
         <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 flex flex-col justify-between">
           <div className="flex items-center justify-between text-blue-400">
             <Droplet className="w-5 h-5 fill-blue-400/20" />
-            <button
-              onClick={() => onQuickAddWater(250)}
-              className="p-1 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-300 hover:bg-blue-500/30 active:scale-90"
-              title="Añadir 250ml"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => onQuickAddWater(-250)}
+                className="p-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 active:scale-90 transition-all"
+                title="Restar 250ml"
+                aria-label="Restar 250ml"
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => onQuickAddWater(250)}
+                className="p-1 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-300 hover:bg-blue-500/30 active:scale-90 transition-all"
+                title="Añadir 250ml"
+                aria-label="Añadir 250ml"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
           <div className="mt-3">
             <span className="text-[11px] text-zinc-400">Agua ({nutritionTotals.water_ml} ml)</span>

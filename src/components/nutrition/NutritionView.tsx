@@ -5,6 +5,8 @@ import {
   Utensils,
   Droplet,
   Plus,
+  Minus,
+  Trash2,
   Mic,
   Sparkles,
   Flame,
@@ -30,8 +32,10 @@ interface NutritionViewProps {
     fat_g: number;
     water_ml: number;
   };
-  onAddWater: (amountMl: number) => Promise<void>;
+  onAddWater: (amountMl: number, date?: string) => Promise<void>;
+  onDeleteWater?: (waterId: string) => Promise<void>;
   onAddMeal: (mealData: Partial<NutritionLog>) => Promise<void>;
+  onDeleteMeal?: (mealId: string) => Promise<void>;
 }
 
 export const NutritionView: React.FC<NutritionViewProps> = ({
@@ -39,7 +43,9 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   waterLogs,
   totals,
   onAddWater,
+  onDeleteWater,
   onAddMeal,
+  onDeleteMeal,
 }) => {
   // Fecha seleccionada (por defecto hoy, con opción de ver ayer Martes 22 y Miércoles 23)
   const todayStr = new Date().toISOString().split('T')[0];
@@ -364,27 +370,64 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
           />
         </div>
 
-        {/* Botones de suma rápida */}
-        <div className="grid grid-cols-3 gap-2 pt-1">
+        {/* Botones de suma y resta rápida */}
+        <div className="grid grid-cols-4 gap-2 pt-1">
           <button
-            onClick={() => onAddWater(250)}
+            onClick={() => onAddWater(-250, selectedDate)}
+            className="py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-400 hover:text-white hover:bg-zinc-800 active:scale-95 transition-all"
+            title="Restar 250ml"
+          >
+            -250 ml
+          </button>
+          <button
+            onClick={() => onAddWater(250, selectedDate)}
             className="py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-blue-300 hover:bg-zinc-800 active:scale-95 transition-all"
           >
             +250 ml
           </button>
           <button
-            onClick={() => onAddWater(500)}
+            onClick={() => onAddWater(500, selectedDate)}
             className="py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-blue-300 hover:bg-zinc-800 active:scale-95 transition-all"
           >
             +500 ml
           </button>
           <button
-            onClick={() => onAddWater(1000)}
+            onClick={() => onAddWater(1000, selectedDate)}
             className="py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-blue-300 hover:bg-zinc-800 active:scale-95 transition-all"
           >
-            +1.0 Litro
+            +1.0L
           </button>
         </div>
+
+        {/* Listado de tomas individuales de agua para la fecha seleccionada */}
+        {displayedWater.length > 0 && (
+          <div className="pt-2 border-t border-zinc-900/80 space-y-1.5">
+            <div className="flex items-center justify-between text-[10px] text-zinc-500">
+              <span>Tomas registradas ({displayedWater.length})</span>
+              <span className="font-mono">{displayedWater.reduce((s, w) => s + w.amount_ml, 0)} ml total</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {displayedWater.map((w) => (
+                <div
+                  key={w.id}
+                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-zinc-900/80 border border-zinc-800 text-[11px] text-zinc-300"
+                >
+                  <span className="font-medium text-blue-300">+{w.amount_ml} ml</span>
+                  {onDeleteWater && (
+                    <button
+                      onClick={() => onDeleteWater(w.id)}
+                      className="text-zinc-500 hover:text-rose-400 p-0.5 rounded transition-colors"
+                      title="Eliminar esta toma"
+                      aria-label="Eliminar toma"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* LISTADO DE COMIDAS REGISTRADAS */}
@@ -407,7 +450,24 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 font-bold">
                     {meal.meal_type}
                   </span>
-                  <span className="text-xs font-black text-white">{meal.calories} kcal</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-white">{meal.calories} kcal</span>
+                    {onDeleteMeal && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`¿Eliminar "${meal.description.slice(0, 35)}..."?`)) {
+                            onDeleteMeal(meal.id);
+                          }
+                        }}
+                        className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 active:scale-90 transition-all"
+                        title="Eliminar comida"
+                        aria-label="Eliminar comida"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <p className="text-xs text-zinc-200 font-medium">{meal.description}</p>
                 <div className="flex items-center gap-3 text-[10px] text-zinc-400 font-mono">

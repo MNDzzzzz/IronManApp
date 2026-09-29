@@ -80,14 +80,58 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const todayStr = new Date().toISOString().split('T')[0];
+    const logDate = body.date || todayStr;
 
-    // Registro de agua
+    // Registro o resta de agua
     if (body.type === 'water') {
+      const amount = Number(body.amount_ml) || 0;
+
+      // Resta de agua (amount negativo)
+      if (amount < 0) {
+        const subAmount = Math.abs(amount);
+        let deletedOrUpdated = false;
+
+        if (isSupabaseConfigured && supabaseAdmin) {
+          const { data: dbWater } = await supabaseAdmin
+            .from('water_logs')
+            .select('*')
+            .eq('date', logDate)
+            .order('timestamp', { ascending: false });
+
+          if (dbWater && dbWater.length > 0) {
+            const latest = dbWater[0];
+            if (latest.amount_ml <= subAmount) {
+              await supabaseAdmin.from('water_logs').delete().eq('id', latest.id);
+            } else {
+              await supabaseAdmin
+                .from('water_logs')
+                .update({ amount_ml: latest.amount_ml - subAmount })
+                .eq('id', latest.id);
+            }
+            deletedOrUpdated = true;
+          }
+        }
+
+        // MockStore fallback
+        const mockIdx = mockStore.waterLogs.findIndex((w) => w.date === logDate);
+        if (mockIdx >= 0) {
+          if (mockStore.waterLogs[mockIdx].amount_ml <= subAmount) {
+            mockStore.waterLogs.splice(mockIdx, 1);
+          } else {
+            mockStore.waterLogs[mockIdx].amount_ml -= subAmount;
+          }
+          deletedOrUpdated = true;
+        }
+
+        return NextResponse.json({ success: true, action: 'subtracted', amount_ml: subAmount, date: logDate, modified: deletedOrUpdated });
+      }
+
+      // Adición normal de agua
       const newWater: WaterLog = {
         id: `water-${Date.now()}`,
         timestamp: new Date().toISOString(),
-        date: body.date || todayStr,
-        amount_ml: Number(body.amount_ml) || 250,
+        date: logDate,
+        amount_ml: amount || 250,
       };
 
       if (isSupabaseConfigured && supabaseAdmin) {
@@ -101,7 +145,7 @@ export async function POST(request: NextRequest) {
     const newMeal: NutritionLog = {
       id: `nutri-${Date.now()}`,
       timestamp: new Date().toISOString(),
-      date: body.date || todayStr,
+      date: logDate,
       meal_type: body.meal_type || 'Snack',
       description: body.description || 'Comida rápida',
       calories: Number(body.calories) || 0,
@@ -120,3 +164,42 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    let id = searchParams.get('id');
+    let type = searchParams.get('type');
+
+    if (!id) {
+      try {
+        const body = await request.json();
+        id = body.id;
+        type = body.type || type;
+      } catch (_) {}
+    }
+
+    if (!id) {
+      return NextResponse.json({ error: 'Falta el parámetro id' }, { status: 400 });
+    }
+
+    const isWater = type === 'water' || id.startsWith('water-');
+
+    if (isWater) {
+      if (isSupabaseConfigured && supabaseAdmin) {
+        await supabaseAdmin.from('water_logs').delete().eq('id', id);
+      }
+      mockStore.waterLogs = mockStore.waterLogs.filter((w) => w.id !== id);
+      return NextResponse.json({ success: true, deleted: id, type: 'water' });
+    } else {
+      if (isSupabaseConfigured && supabaseAdmin) {
+        await supabaseAdmin.from('nutrition_logs').delete().eq('id', id);
+      }
+      mockStore.nutritionLogs = mockStore.nutritionLogs.filter((m) => m.id !== id);
+      return NextResponse.json({ success: true, deleted: id, type: 'meal' });
+    }
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+

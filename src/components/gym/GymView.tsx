@@ -12,6 +12,7 @@ import {
   Info,
   Clock,
   ChevronRight,
+  Trash2,
 } from 'lucide-react';
 import { GymExercise, GymWorkoutLog } from '@/types/database';
 
@@ -19,9 +20,10 @@ interface GymViewProps {
   exercises: GymExercise[];
   logs: GymWorkoutLog[];
   onAddSet: (logData: { exercise_id: string; set_number: number; reps: number; weight_kg: number; rpe?: number }) => Promise<void>;
+  onDeleteSet?: (logId: string) => Promise<void>;
 }
 
-export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet }) => {
+export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onDeleteSet }) => {
   const todayStr = new Date().toISOString().split('T')[0];
 
   // Filtro de día (Torso, Pierna, Full Body, o Todos)
@@ -305,6 +307,25 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet }) =
               <Plus className="w-4 h-4" />
               {isSaving ? 'Guardando serie...' : 'Guardar Serie'}
             </button>
+
+            {/* Resumen de series de hoy y opción de deshacer */}
+            {currentExerciseLogs.length > 0 && (
+              <div className="flex items-center justify-between pt-1 text-[11px] text-zinc-400">
+                <span>
+                  Hoy: <strong className="text-white">{currentExerciseLogs.length}</strong> {currentExerciseLogs.length === 1 ? 'serie' : 'series'} (
+                  {currentExerciseLogs.map((l) => `${l.reps}x${l.weight_kg > 0 ? `${l.weight_kg}k` : 'PC'}`).join(', ')})
+                </span>
+                {onDeleteSet && (
+                  <button
+                    onClick={() => onDeleteSet(currentExerciseLogs[currentExerciseLogs.length - 1].id)}
+                    className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 font-semibold transition-colors active:scale-95"
+                    title="Deshacer última serie guardada"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Deshacer
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* CHECKLIST DE LA RUTINA */}
@@ -453,11 +474,27 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet }) =
                         Serie #{log.set_number} • {log.date === todayStr ? 'Hoy' : log.date} • RPE {log.rpe || 8}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <span className="text-sm font-black text-orange-400">
-                        {log.weight_kg > 0 ? `${log.weight_kg} kg` : 'Peso Corp.'}
-                      </span>
-                      <p className="text-[10px] text-zinc-500">{log.reps} reps</p>
+                    <div className="flex items-center gap-2.5">
+                      <div className="text-right">
+                        <span className="text-sm font-black text-orange-400">
+                          {log.weight_kg > 0 ? `${log.weight_kg} kg` : 'Peso Corp.'}
+                        </span>
+                        <p className="text-[10px] text-zinc-500">{log.reps} reps</p>
+                      </div>
+                      {onDeleteSet && (
+                        <button
+                          onClick={() => {
+                            if (confirm(`¿Eliminar Serie #${log.set_number} de ${ex?.name || 'este ejercicio'}?`)) {
+                              onDeleteSet(log.id);
+                            }
+                          }}
+                          className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 active:scale-90 transition-all"
+                          title="Eliminar serie"
+                          aria-label="Eliminar serie"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

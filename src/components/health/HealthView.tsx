@@ -20,6 +20,7 @@ interface HealthViewProps {
   weightLogs?: WeightLog[];
   currentWeight?: number;
   onAddWeight?: (weightKg: number, notes?: string, date?: string) => Promise<void>;
+  onDeleteWeight?: (weightId: string) => Promise<void>;
 }
 
 export const HealthView: React.FC<HealthViewProps> = ({
@@ -28,6 +29,7 @@ export const HealthView: React.FC<HealthViewProps> = ({
   weightLogs = [],
   currentWeight = 101.0,
   onAddWeight,
+  onDeleteWeight,
 }) => {
   const current = health;
   const totalSleepMinutes = current?.sleep_duration_minutes || 0;
@@ -63,6 +65,7 @@ export const HealthView: React.FC<HealthViewProps> = ({
         logs={weightLogs}
         currentWeight={currentWeight}
         onAddWeight={onAddWeight}
+        onDeleteWeight={onDeleteWeight}
       />
 
       {/* 2. SUEÑO Y RECUPERACIÓN (GALAXY FIT3) */}
