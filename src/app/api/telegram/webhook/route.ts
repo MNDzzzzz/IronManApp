@@ -133,6 +133,7 @@ async function analyzeStravaScreenshotWithGemini(
   avg_hr?: number;
   max_hr?: number;
   avg_cadence?: number;
+  activity_date?: string;
   splits?: Array<{
     km: number;
     pace: string;
@@ -144,6 +145,11 @@ async function analyzeStravaScreenshotWithGemini(
   coach_assessment?: string;
 } | null> {
   const visionModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
+  const todayStr = new Date().toISOString().split('T')[0];
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+
   const prompt = `
 Eres un entrenador de atletismo, fisioterapeuta biomecánico y analista de telemetría deportiva para Álvaro (101 kg, en preparación para la Media Maratón del 28 de Febrero de 2027).
 Analiza esta imagen (captura de pantalla de la app Strava, Garmin, Apple Fitness o similar) y el comentario adjunto si lo hay: "${userCaption || ''}".
@@ -152,26 +158,28 @@ Tu objetivo es extraer de forma estructurada y con la máxima precisión matemá
 1. Si la imagen es una sesión de carrera, rodaje, caminata o cardio (is_cardio_screenshot = true).
 2. Título de la actividad: el nombre que aparece en Strava (ej: "Carrera matutina", "Rodaje suave CaCo") o un nombre adecuado.
 3. Tipo: "Run" o "Walk".
-4. Distancia en kilómetros (número float, ej: 4.82).
-5. Tiempo en movimiento en segundos (ej: 26:40 -> 1600 segundos).
-6. Ritmo medio en formato texto ("5:32 /km").
-7. Desnivel positivo acumulado en metros (ej: 34).
-8. Calorías quemadas (kcal).
-9. Pulso medio (avg_hr) y pulso máximo (max_hr) si aparece en la captura o si Álvaro lo mencionó en el comentario/caption.
-10. Cadencia media (ppm) si aparece o en el caption.
-11. PARCIALES POR KILÓMETRO (SPLITS): Si la captura muestra la tabla o desglose de parciales km a km (ej: 1, 2, 3... con sus ritmos y desniveles), extrae CADA KILÓMETRO en el array "splits" con:
+4. FECHA DE LA ACTIVIDAD (activity_date): Extrae la fecha exacta en formato 'YYYY-MM-DD' en que se realizó la carrera. Strava suele mostrar la fecha debajo del título o en la cabecera (ej: 'Ayer', 'Hoy', '24 de septiembre', 'domingo por la mañana', '26 sept 2026'). Hoy es ${todayStr}. Si dice 'Ayer', calcula ${yesterdayStr}; si da una fecha de este año (2026), conviértela a 'YYYY-MM-DD'. Si no se ve ninguna fecha, usa '${todayStr}'.
+5. Distancia en kilómetros (número float, ej: 4.82).
+6. Tiempo en movimiento en segundos (ej: 26:40 -> 1600 segundos).
+7. Ritmo medio en formato texto ("5:32 /km").
+8. Desnivel positivo acumulado en metros (ej: 34).
+9. Calorías quemadas (kcal).
+10. Pulso medio (avg_hr) y pulso máximo (max_hr) si aparece en la captura o si Álvaro lo mencionó en el comentario/caption.
+11. Cadencia media (ppm) si aparece o en el caption.
+12. PARCIALES POR KILÓMETRO (SPLITS): Si la captura muestra la tabla o desglose de parciales km a km (ej: 1, 2, 3... con sus ritmos y desniveles), extrae CADA KILÓMETRO en el array "splits" con:
     - km: número del km (1, 2, 3...)
     - pace: string de ritmo ("5:40 /km")
     - elevation_diff_m: número si aparece (+/- metros)
     - avg_hr: número si aparece
-12. ELEVATION_PROFILE: Si hay gráfica de desnivel o altimetría, describe en 1-2 frases el relieve (ej: "Subida progresiva en los km 1-3 (+25m) con posterior bajada suave").
-13. COACH_ASSESSMENT: Análisis conciso enfocado en la prevención articular de Álvaro (101 kg: cuidar tendón rotuliano y cintilla iliotibial, valorar si el ritmo fue regular o progresivo, y recordar la meta de la Media Maratón del 28 Feb).
+13. ELEVATION_PROFILE: Si hay gráfica de desnivel o altimetría, describe en 1-2 frases el relieve (ej: "Subida progresiva en los km 1-3 (+25m) con posterior bajada suave").
+14. COACH_ASSESSMENT: Análisis conciso enfocado en la prevención articular de Álvaro (101 kg: cuidar tendón rotuliano y cintilla iliotibial, valorar si el ritmo fue regular o progresivo, y recordar la meta de la Media Maratón del 28 Feb).
 
 Devuelve ÚNICAMENTE un JSON con esta estructura exacta:
 {
   "is_cardio_screenshot": true,
   "name": "Rodaje Strava",
   "type": "Run",
+  "activity_date": "${todayStr}",
   "distance_km": 5.0,
   "moving_time_seconds": 1650,
   "elapsed_time_seconds": 1700,
@@ -969,7 +977,7 @@ async function handleSaveGymWorkout(workoutData: any, todayStr: string) {
 }
 
 // --------------------------------------------------------------------
-// 6. MANEJADOR DE ACCIÓN: GUARDAR ACTIVIDAD CARDIO (RUN / WALK)
+// 6. MANEJADOR DE ACCIÓN: GUARDAR O FUSIONAR ACTIVIDAD CARDIO (RUN / WALK)
 // --------------------------------------------------------------------
 async function handleSaveCardio(cardioData: any, todayStr: string) {
   const distMeters = Math.round((Number(cardioData.distance_km) || 5) * 1000);
@@ -983,55 +991,95 @@ async function handleSaveCardio(cardioData: any, todayStr: string) {
   const calculatedPaceStr = `${paceMinutes}:${paceSeconds < 10 ? '0' : ''}${paceSeconds} min/km`;
   const paceStr = cardioData.avg_pace_str || calculatedPaceStr;
 
-  const newActivity: CardioActivity = {
-    id: Date.now(),
-    name: cardioData.name || (cardioData.type === 'Run' ? 'Rodaje Strava' : 'Caminata Activa'),
-    type: cardioData.type || 'Run',
-    start_date: cardioData.start_date || `${todayStr}T18:00:00Z`,
+  const targetDate = cardioData.activity_date || cardioData.date || todayStr;
+  const targetStartTime = `${targetDate}T18:00:00Z`;
+
+  // 1. Comprobar si ya existe una actividad registrada en esa misma fecha
+  let existingIndex = mockStore.stravaActivities.findIndex((a) => a.start_date.startsWith(targetDate));
+  let existingDbActivity: any = null;
+
+  if (existingIndex < 0 && isSupabaseConfigured && supabaseAdmin) {
+    const { data } = await supabaseAdmin
+      .from('strava_activities')
+      .select('*')
+      .gte('start_date', `${targetDate}T00:00:00Z`)
+      .lte('start_date', `${targetDate}T23:59:59Z`)
+      .order('start_date', { ascending: false })
+      .limit(1);
+
+    if (data && data.length > 0) {
+      existingDbActivity = data[0];
+    }
+  }
+
+  const existing = existingIndex >= 0 ? mockStore.stravaActivities[existingIndex] : existingDbActivity;
+  const isUpdate = !!existing;
+
+  const existingStreams = typeof existing?.streams_data === 'object' && existing?.streams_data !== null ? existing.streams_data : {};
+  const mergedSplits = cardioData.splits && cardioData.splits.length > 0
+    ? cardioData.splits
+    : (existing?.splits || existingStreams.splits || []);
+
+  const mergedElevationProfile = cardioData.elevation_profile ||
+    (existing?.elevation_profile || existingStreams.elevation_profile || '');
+
+  const finalActivity: CardioActivity = {
+    id: existing?.id || Date.now(),
+    name: cardioData.name || existing?.name || (cardioData.type === 'Run' ? 'Rodaje Strava' : 'Caminata Activa'),
+    type: cardioData.type || existing?.type || 'Run',
+    start_date: existing?.start_date || targetStartTime,
     elapsed_time: Number(cardioData.elapsed_time_seconds) || durationSec,
-    moving_time: durationSec,
-    distance: distMeters,
-    total_elevation_gain: Number(cardioData.elevation_gain_m) || Number(cardioData.total_elevation_gain) || 15.0,
-    avg_hr: cardioData.avg_hr || 142,
-    max_hr: cardioData.max_hr || (cardioData.avg_hr ? cardioData.avg_hr + 14 : 156),
-    avg_cadence: cardioData.avg_cadence || 168,
-    calories: cardioData.calories || Math.round((distMeters / 1000) * 85),
-    splits: cardioData.splits || [],
-    elevation_profile: cardioData.elevation_profile || '',
+    moving_time: durationSec > 0 ? durationSec : (existing?.moving_time || 1800),
+    distance: distMeters > 0 ? distMeters : (existing?.distance || 4000),
+    total_elevation_gain: Number(cardioData.elevation_gain_m) || Number(cardioData.total_elevation_gain) || (existing?.total_elevation_gain || 15.0),
+    avg_hr: cardioData.avg_hr || existing?.avg_hr || 142,
+    max_hr: cardioData.max_hr || existing?.max_hr || 156,
+    avg_cadence: cardioData.avg_cadence || existing?.avg_cadence || 168,
+    calories: cardioData.calories || existing?.calories || Math.round((distMeters / 1000) * 85),
+    splits: mergedSplits,
+    elevation_profile: mergedElevationProfile,
     source: cardioData.source || 'strava_screenshot',
-    notes: cardioData.notes || cardioData.coach_assessment || 'Registrado mediante captura de Strava en Telegram.',
-    created_at: new Date().toISOString(),
+    notes: cardioData.notes || cardioData.coach_assessment || existing?.notes || 'Registrado mediante captura de Strava en Telegram.',
+    created_at: existing?.created_at || new Date().toISOString(),
   };
 
-  mockStore.stravaActivities.unshift(newActivity);
+  if (isUpdate && existingIndex >= 0) {
+    mockStore.stravaActivities[existingIndex] = finalActivity;
+  } else {
+    mockStore.stravaActivities.unshift(finalActivity);
+  }
+
   if (isSupabaseConfigured && supabaseAdmin) {
-    await supabaseAdmin.from('strava_activities').insert([
+    await supabaseAdmin.from('strava_activities').upsert(
       {
-        id: newActivity.id,
-        name: newActivity.name,
-        type: newActivity.type,
-        start_date: newActivity.start_date,
-        elapsed_time: newActivity.elapsed_time,
-        moving_time: newActivity.moving_time,
-        distance: newActivity.distance,
-        total_elevation_gain: newActivity.total_elevation_gain,
-        avg_hr: newActivity.avg_hr,
-        max_hr: newActivity.max_hr,
+        id: finalActivity.id,
+        name: finalActivity.name,
+        type: finalActivity.type,
+        start_date: finalActivity.start_date,
+        elapsed_time: finalActivity.elapsed_time,
+        moving_time: finalActivity.moving_time,
+        distance: finalActivity.distance,
+        total_elevation_gain: finalActivity.total_elevation_gain,
+        avg_hr: finalActivity.avg_hr,
+        max_hr: finalActivity.max_hr,
         streams_data: {
-          avg_cadence: newActivity.avg_cadence,
-          calories: newActivity.calories,
-          source: newActivity.source,
-          notes: newActivity.notes,
-          splits: newActivity.splits,
-          elevation_profile: newActivity.elevation_profile,
+          avg_cadence: finalActivity.avg_cadence,
+          calories: finalActivity.calories,
+          source: finalActivity.source,
+          notes: finalActivity.notes,
+          splits: finalActivity.splits,
+          elevation_profile: finalActivity.elevation_profile,
         },
       },
-    ]);
+      { onConflict: 'id' }
+    );
   }
 
   return {
-    activity: newActivity,
+    activity: finalActivity,
     paceStr,
+    isUpdate,
+    targetDate,
   };
 }
 
@@ -1336,8 +1384,8 @@ Hubo una dificultad técnica decodificando el audio o el sonido era imperceptibl
           geminiKey
         );
 
-        if (analysis && analysis.is_cardio_screenshot && (analysis.distance_km || 0) > 0) {
-          const { activity, paceStr } = await handleSaveCardio(
+        if (analysis && analysis.is_cardio_screenshot && ((analysis.distance_km || 0) > 0 || (analysis.splits && analysis.splits.length > 0))) {
+          const { activity, paceStr, isUpdate, targetDate } = await handleSaveCardio(
             {
               ...analysis,
               source: 'strava_screenshot',
@@ -1345,36 +1393,58 @@ Hubo una dificultad técnica decodificando el audio o el sonido era imperceptibl
             todayStr
           );
 
-          // Formatear parciales (splits) si los hay
+          // Formatear parciales (splits) consolidados
           let splitsText = '';
-          if (analysis.splits && analysis.splits.length > 0) {
+          const currentSplits = activity.splits || analysis.splits || [];
+          if (currentSplits.length > 0) {
             splitsText = '\n📊 *Parciales por Kilómetro (Splits):*\n';
-            analysis.splits.forEach((s: any) => {
+            currentSplits.forEach((s: any) => {
               const elev = s.elevation_diff_m ? ` (${s.elevation_diff_m > 0 ? `+${s.elevation_diff_m}` : s.elevation_diff_m}m)` : '';
               splitsText += `• *Km ${s.km}:* \`${s.pace}\`${elev}\n`;
             });
           }
 
           const countdown = getHalfMarathonCountdown(todayStr);
+          const dateDisplay = targetDate === todayStr ? 'Hoy' : targetDate;
+          const statusHeader = isUpdate
+            ? `🔄 *Captura Fusionada con Carrera Previa (${dateDisplay})*`
+            : `📸 *Captura de Strava Procesada con Éxito (${dateDisplay})*`;
+
+          const dateNote = targetDate === todayStr
+            ? `📅 *Fecha:* *Hoy (${targetDate})*`
+            : `📅 *Fecha Histórica Detectada:* *${targetDate}* _(Guardada en su historial)_`;
+
+          const updateNote = isUpdate
+            ? `\nℹ️ _Datos y parciales fusionados con la actividad de esa fecha sin duplicar la sesión._\n`
+            : '';
+
+          const elevProfile = activity.elevation_profile || analysis.elevation_profile;
+          const elevProfileText = elevProfile ? `⛰️ *Perfil de Desnivel:* _${elevProfile}_\n\n` : '';
 
           const replyMsg = `
-📸 *Captura de Strava Procesada con Éxito*
+${statusHeader}
 🏃‍♂️ *${activity.name}*
-
+${dateNote}
+${updateNote}
 📍 *Distancia:* *${(activity.distance / 1000).toFixed(2)} km*
 ⏱️ *Tiempo:* *${Math.round(activity.elapsed_time / 60)} min* (\`${paceStr}\`)
 ⛰️ *Desnivel:* *+${Math.round(activity.total_elevation_gain || 0)} m* | 🔥 *Calorías:* *${activity.calories || '--'} kcal*
 💓 *Pulso:* *${activity.avg_hr ? `${activity.avg_hr} bpm` : 'Fit3'}* | 👟 *Cadencia:* *${activity.avg_cadence || 168} ppm*
 ${splitsText}
-${analysis.elevation_profile ? `⛰️ *Perfil de Desnivel:* _${analysis.elevation_profile}_\n\n` : ''}
-🩺 *Análisis del Coach (101 kg • Media Maratón):*
+${elevProfileText}🩺 *Análisis del Coach (101 kg • Media Maratón):*
 _${analysis.coach_assessment || 'Buen rodaje registrado. Recuerda mantener la cadencia viva (165-175 ppm) para amortiguar el impacto sobre el tendón rotuliano.'}_
 
 🏁 *Media Maratón 28 Feb:* Faltan *${countdown.daysRemaining} días* (${countdown.currentPhase}).
           `.trim();
 
           await sendTelegramMessage(chatId, replyMsg, botToken);
-          return NextResponse.json({ success: true, processed: 'strava_screenshot', activity_id: activity.id });
+          return NextResponse.json({
+            success: true,
+            processed: 'strava_screenshot',
+            activity_id: activity.id,
+            is_update: isUpdate,
+            target_date: targetDate,
+          });
         }
       }
     }

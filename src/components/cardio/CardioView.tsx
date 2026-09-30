@@ -205,8 +205,12 @@ export const CardioView: React.FC<CardioViewProps> = ({
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-emerald-400 font-mono">
-                      Fit3 OK
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
+                      activity.source === 'strava_screenshot'
+                        ? 'bg-orange-950/80 border border-orange-800/60 text-orange-400'
+                        : 'bg-zinc-900 border border-zinc-800 text-emerald-400'
+                    }`}>
+                      {activity.source === 'strava_screenshot' ? 'Strava' : 'Fit3 OK'}
                     </span>
                     <ChevronRight className="w-4 h-4 text-zinc-500" />
                   </div>
@@ -378,7 +382,7 @@ export const CardioView: React.FC<CardioViewProps> = ({
                 <X className="w-5 h-5" />
               </button>
               <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">
-                Detalle Galaxy Fit3
+                {selectedActivity.source === 'strava_screenshot' ? 'Telemetría Strava (Captura)' : 'Detalle Galaxy Fit3'}
               </span>
               <div className="w-9" />
             </div>
