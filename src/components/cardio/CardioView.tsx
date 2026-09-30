@@ -424,6 +424,77 @@ export const CardioView: React.FC<CardioViewProps> = ({
               </div>
             )}
 
+            {/* Perfil de Desnivel (Strava) */}
+            {selectedActivity.elevation_profile && (
+              <div className="p-3.5 rounded-2xl bg-zinc-900/60 border border-zinc-800 text-xs text-zinc-300 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-amber-400 tracking-wider flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5" /> Perfil de Desnivel & Relieve (Strava)
+                </span>
+                <p className="leading-relaxed text-[11px] text-zinc-300">{selectedActivity.elevation_profile}</p>
+              </div>
+            )}
+
+            {/* Parciales por Kilómetro (Splits Strava) */}
+            {selectedActivity.splits && selectedActivity.splits.length > 0 && (
+              <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 space-y-3 shadow-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400">
+                      <Activity className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                        Parciales por Kilómetro (Splits)
+                      </h3>
+                      <p className="text-[10px] text-zinc-500">Ritmo exacto y desnivel detectados de Strava</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-orange-400 font-bold">
+                    {selectedActivity.splits.length} km
+                  </span>
+                </div>
+
+                <div className="space-y-1.5 pt-1">
+                  {selectedActivity.splits.map((split) => {
+                    return (
+                      <div
+                        key={split.km}
+                        className="flex items-center justify-between p-2.5 rounded-2xl bg-zinc-900/50 border border-zinc-800/80 text-xs hover:border-zinc-700 transition-all"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-6 h-6 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 font-black text-[11px] flex items-center justify-center font-mono">
+                            {split.km}k
+                          </span>
+                          <span className="font-bold text-white tracking-tight">{split.pace}</span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          {split.elevation_diff_m !== undefined && split.elevation_diff_m !== null && (
+                            <span
+                              className={`text-[11px] font-mono flex items-center gap-0.5 ${
+                                split.elevation_diff_m > 0
+                                  ? 'text-amber-400'
+                                  : split.elevation_diff_m < 0
+                                  ? 'text-cyan-400'
+                                  : 'text-zinc-500'
+                              }`}
+                            >
+                              {split.elevation_diff_m > 0 ? `+${split.elevation_diff_m}m` : `${split.elevation_diff_m}m`}
+                            </span>
+                          )}
+                          {split.avg_hr && (
+                            <span className="text-[10px] font-mono text-rose-400">
+                              {split.avg_hr} bpm
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* GRÁFICA MULTICAPA O TELEMETRÍA */}
             <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 space-y-3">
               <div className="flex items-center justify-between">

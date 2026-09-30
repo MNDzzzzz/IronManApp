@@ -35,6 +35,14 @@ export interface StreamDataPoint {
   zone?: string; // Z1, Z2, Z3, Z4, Z5
 }
 
+export interface CardioSplit {
+  km: number;
+  pace: string; // ej: "5:28 /km"
+  time_seconds?: number;
+  elevation_diff_m?: number;
+  avg_hr?: number;
+}
+
 export interface CardioActivity {
   id: number | string;
   name: string;
@@ -51,6 +59,8 @@ export interface CardioActivity {
   max_hr?: number | null;
   avg_cadence?: number | null; // pasos por minuto
   calories?: number | null;
+  splits?: CardioSplit[];
+  elevation_profile?: string;
   zone_distribution?: {
     z1_pct?: number;
     z2_pct?: number;
@@ -63,7 +73,7 @@ export interface CardioActivity {
     zone4_minutes?: number;
     zone5_minutes?: number;
   };
-  source?: 'galaxy_fit3' | 'manual' | 'telegram' | string;
+  source?: 'galaxy_fit3' | 'manual' | 'telegram' | 'strava_screenshot' | string;
   notes?: string;
   created_at?: string;
 }

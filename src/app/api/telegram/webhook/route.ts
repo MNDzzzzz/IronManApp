@@ -78,6 +78,168 @@ async function downloadTelegramAudio(
 }
 
 /**
+ * Descarga una foto enviada a Telegram con la máxima resolución disponible
+ */
+async function downloadTelegramPhoto(
+  photos: any[],
+  botToken: string
+): Promise<{ base64: string; mimeType: string } | null> {
+  try {
+    if (!photos || photos.length === 0) return null;
+    // La última foto del array es siempre la de mayor resolución en Telegram
+    const bestPhoto = photos[photos.length - 1];
+    const fileId = bestPhoto.file_id;
+
+    const resInfo = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`);
+    if (!resInfo.ok) return null;
+    const fileData = await resInfo.json();
+    const filePath = fileData.result?.file_path;
+    if (!filePath) return null;
+
+    const resFile = await fetch(`https://api.telegram.org/file/bot${botToken}/${filePath}`);
+    if (!resFile.ok) return null;
+
+    const arrayBuffer = await resFile.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+    let mimeType = 'image/jpeg';
+    if (filePath.endsWith('.png')) mimeType = 'image/png';
+    else if (filePath.endsWith('.webp')) mimeType = 'image/webp';
+
+    return { base64, mimeType };
+  } catch (err) {
+    console.error('Error descargando foto de Telegram:', err);
+    return null;
+  }
+}
+
+/**
+ * Analiza una captura de pantalla de Strava (resumen, parciales, gráfica de elevación)
+ * utilizando Gemini Vision multimodal para extraer métricas y splits km a km.
+ */
+async function analyzeStravaScreenshotWithGemini(
+  imageData: { base64: string; mimeType: string },
+  userCaption: string,
+  apiKey: string
+): Promise<{
+  is_cardio_screenshot: boolean;
+  name?: string;
+  type?: string;
+  distance_km?: number;
+  moving_time_seconds?: number;
+  elapsed_time_seconds?: number;
+  avg_pace_str?: string;
+  elevation_gain_m?: number;
+  calories?: number;
+  avg_hr?: number;
+  max_hr?: number;
+  avg_cadence?: number;
+  splits?: Array<{
+    km: number;
+    pace: string;
+    time_seconds?: number;
+    elevation_diff_m?: number;
+    avg_hr?: number;
+  }>;
+  elevation_profile?: string;
+  coach_assessment?: string;
+} | null> {
+  const visionModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
+  const prompt = `
+Eres un entrenador de atletismo, fisioterapeuta biomecánico y analista de telemetría deportiva para Álvaro (101 kg, en preparación para la Media Maratón del 28 de Febrero de 2027).
+Analiza esta imagen (captura de pantalla de la app Strava, Garmin, Apple Fitness o similar) y el comentario adjunto si lo hay: "${userCaption || ''}".
+
+Tu objetivo es extraer de forma estructurada y con la máxima precisión matemática:
+1. Si la imagen es una sesión de carrera, rodaje, caminata o cardio (is_cardio_screenshot = true).
+2. Título de la actividad: el nombre que aparece en Strava (ej: "Carrera matutina", "Rodaje suave CaCo") o un nombre adecuado.
+3. Tipo: "Run" o "Walk".
+4. Distancia en kilómetros (número float, ej: 4.82).
+5. Tiempo en movimiento en segundos (ej: 26:40 -> 1600 segundos).
+6. Ritmo medio en formato texto ("5:32 /km").
+7. Desnivel positivo acumulado en metros (ej: 34).
+8. Calorías quemadas (kcal).
+9. Pulso medio (avg_hr) y pulso máximo (max_hr) si aparece en la captura o si Álvaro lo mencionó en el comentario/caption.
+10. Cadencia media (ppm) si aparece o en el caption.
+11. PARCIALES POR KILÓMETRO (SPLITS): Si la captura muestra la tabla o desglose de parciales km a km (ej: 1, 2, 3... con sus ritmos y desniveles), extrae CADA KILÓMETRO en el array "splits" con:
+    - km: número del km (1, 2, 3...)
+    - pace: string de ritmo ("5:40 /km")
+    - elevation_diff_m: número si aparece (+/- metros)
+    - avg_hr: número si aparece
+12. ELEVATION_PROFILE: Si hay gráfica de desnivel o altimetría, describe en 1-2 frases el relieve (ej: "Subida progresiva en los km 1-3 (+25m) con posterior bajada suave").
+13. COACH_ASSESSMENT: Análisis conciso enfocado en la prevención articular de Álvaro (101 kg: cuidar tendón rotuliano y cintilla iliotibial, valorar si el ritmo fue regular o progresivo, y recordar la meta de la Media Maratón del 28 Feb).
+
+Devuelve ÚNICAMENTE un JSON con esta estructura exacta:
+{
+  "is_cardio_screenshot": true,
+  "name": "Rodaje Strava",
+  "type": "Run",
+  "distance_km": 5.0,
+  "moving_time_seconds": 1650,
+  "elapsed_time_seconds": 1700,
+  "avg_pace_str": "5:30 /km",
+  "elevation_gain_m": 20,
+  "calories": 420,
+  "avg_hr": 142,
+  "max_hr": 158,
+  "avg_cadence": 168,
+  "splits": [
+    { "km": 1, "pace": "5:38 /km", "elevation_diff_m": 5 },
+    { "km": 2, "pace": "5:29 /km", "elevation_diff_m": -2 }
+  ],
+  "elevation_profile": "Perfil llano con ligero repecho en el km 1.",
+  "coach_assessment": "Ritmo muy constante y controlado en Zona 2..."
+}
+
+Si la imagen NO es de deporte o carrera (por ejemplo, si es una foto de comida o texto irrelevante), devuelve:
+{ "is_cardio_screenshot": false }
+`.trim();
+
+  for (const model of visionModels) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: prompt },
+                  {
+                    inline_data: {
+                      mime_type: imageData.mimeType,
+                      data: imageData.base64,
+                    },
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              responseMimeType: 'application/json',
+            },
+          }),
+        }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (rawText) {
+          const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+          const parsed = JSON.parse(cleanJson);
+          return parsed;
+        }
+      }
+    } catch (err) {
+      console.warn(`Error analizando captura con ${model}:`, err);
+    }
+  }
+
+  return null;
+}
+
+/**
  * Transcribe un audio recibido de Telegram de forma ultrarrápida y precisa utilizando
  * el modelo especializado gemini-3.5-transcribe (latencia ~1.2s), con respaldo en gemini-flash-lite.
  */
@@ -811,27 +973,33 @@ async function handleSaveGymWorkout(workoutData: any, todayStr: string) {
 // --------------------------------------------------------------------
 async function handleSaveCardio(cardioData: any, todayStr: string) {
   const distMeters = Math.round((Number(cardioData.distance_km) || 5) * 1000);
-  const durationSec = Math.round((Number(cardioData.duration_minutes) || 30) * 60);
+  const durationSec = Math.round(
+    Number(cardioData.moving_time_seconds) ||
+      (Number(cardioData.duration_minutes) ? Number(cardioData.duration_minutes) * 60 : 1800)
+  );
   const paceSecondsPerKm = distMeters > 0 ? durationSec / (distMeters / 1000) : 300;
   const paceMinutes = Math.floor(paceSecondsPerKm / 60);
   const paceSeconds = Math.round(paceSecondsPerKm % 60);
-  const paceStr = `${paceMinutes}:${paceSeconds < 10 ? '0' : ''}${paceSeconds} min/km`;
+  const calculatedPaceStr = `${paceMinutes}:${paceSeconds < 10 ? '0' : ''}${paceSeconds} min/km`;
+  const paceStr = cardioData.avg_pace_str || calculatedPaceStr;
 
   const newActivity: CardioActivity = {
     id: Date.now(),
-    name: cardioData.name || (cardioData.type === 'Run' ? 'Rodaje CaCo (Galaxy Fit3)' : 'Caminata Activa (Galaxy Fit3)'),
+    name: cardioData.name || (cardioData.type === 'Run' ? 'Rodaje Strava' : 'Caminata Activa'),
     type: cardioData.type || 'Run',
-    start_date: `${todayStr}T18:00:00Z`,
-    elapsed_time: durationSec,
+    start_date: cardioData.start_date || `${todayStr}T18:00:00Z`,
+    elapsed_time: Number(cardioData.elapsed_time_seconds) || durationSec,
     moving_time: durationSec,
     distance: distMeters,
-    total_elevation_gain: 25.0,
+    total_elevation_gain: Number(cardioData.elevation_gain_m) || Number(cardioData.total_elevation_gain) || 15.0,
     avg_hr: cardioData.avg_hr || 142,
-    max_hr: cardioData.avg_hr ? cardioData.avg_hr + 14 : 156,
+    max_hr: cardioData.max_hr || (cardioData.avg_hr ? cardioData.avg_hr + 14 : 156),
     avg_cadence: cardioData.avg_cadence || 168,
-    calories: Math.round((distMeters / 1000) * 85),
-    source: 'galaxy_fit3',
-    notes: cardioData.notes || 'Registrado por dictado de voz en Telegram.',
+    calories: cardioData.calories || Math.round((distMeters / 1000) * 85),
+    splits: cardioData.splits || [],
+    elevation_profile: cardioData.elevation_profile || '',
+    source: cardioData.source || 'strava_screenshot',
+    notes: cardioData.notes || cardioData.coach_assessment || 'Registrado mediante captura de Strava en Telegram.',
     created_at: new Date().toISOString(),
   };
 
@@ -854,6 +1022,8 @@ async function handleSaveCardio(cardioData: any, todayStr: string) {
           calories: newActivity.calories,
           source: newActivity.source,
           notes: newActivity.notes,
+          splits: newActivity.splits,
+          elevation_profile: newActivity.elevation_profile,
         },
       },
     ]);
@@ -1156,8 +1326,61 @@ Hubo una dificultad técnica decodificando el audio o el sonido era imperceptibl
       }
     }
 
+    // 0. Si llega una FOTO (Captura de pantalla de Strava / Resumen de Carrera / Splits)
+    if (message.photo && Array.isArray(message.photo) && message.photo.length > 0 && botToken) {
+      const photoData = await downloadTelegramPhoto(message.photo, botToken);
+      if (photoData) {
+        const analysis = await analyzeStravaScreenshotWithGemini(
+          photoData,
+          message.caption || '',
+          geminiKey
+        );
+
+        if (analysis && analysis.is_cardio_screenshot && (analysis.distance_km || 0) > 0) {
+          const { activity, paceStr } = await handleSaveCardio(
+            {
+              ...analysis,
+              source: 'strava_screenshot',
+            },
+            todayStr
+          );
+
+          // Formatear parciales (splits) si los hay
+          let splitsText = '';
+          if (analysis.splits && analysis.splits.length > 0) {
+            splitsText = '\n📊 *Parciales por Kilómetro (Splits):*\n';
+            analysis.splits.forEach((s: any) => {
+              const elev = s.elevation_diff_m ? ` (${s.elevation_diff_m > 0 ? `+${s.elevation_diff_m}` : s.elevation_diff_m}m)` : '';
+              splitsText += `• *Km ${s.km}:* \`${s.pace}\`${elev}\n`;
+            });
+          }
+
+          const countdown = getHalfMarathonCountdown(todayStr);
+
+          const replyMsg = `
+📸 *Captura de Strava Procesada con Éxito*
+🏃‍♂️ *${activity.name}*
+
+📍 *Distancia:* *${(activity.distance / 1000).toFixed(2)} km*
+⏱️ *Tiempo:* *${Math.round(activity.elapsed_time / 60)} min* (\`${paceStr}\`)
+⛰️ *Desnivel:* *+${Math.round(activity.total_elevation_gain || 0)} m* | 🔥 *Calorías:* *${activity.calories || '--'} kcal*
+💓 *Pulso:* *${activity.avg_hr ? `${activity.avg_hr} bpm` : 'Fit3'}* | 👟 *Cadencia:* *${activity.avg_cadence || 168} ppm*
+${splitsText}
+${analysis.elevation_profile ? `⛰️ *Perfil de Desnivel:* _${analysis.elevation_profile}_\n\n` : ''}
+🩺 *Análisis del Coach (101 kg • Media Maratón):*
+_${analysis.coach_assessment || 'Buen rodaje registrado. Recuerda mantener la cadencia viva (165-175 ppm) para amortiguar el impacto sobre el tendón rotuliano.'}_
+
+🏁 *Media Maratón 28 Feb:* Faltan *${countdown.daysRemaining} días* (${countdown.currentPhase}).
+          `.trim();
+
+          await sendTelegramMessage(chatId, replyMsg, botToken);
+          return NextResponse.json({ success: true, processed: 'strava_screenshot', activity_id: activity.id });
+        }
+      }
+    }
+
     if (!spokenText && !audioData) {
-      return NextResponse.json({ success: true, message: 'Mensaje vacío' });
+      return NextResponse.json({ success: true, message: 'Mensaje vacío o no procesable' });
     }
 
     const cleanCmd = spokenText.trim().toLowerCase();

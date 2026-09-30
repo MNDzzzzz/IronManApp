@@ -31,6 +31,8 @@ export async function GET() {
             calories: act.calories || streamMeta.calories || (act.distance ? Math.round((act.distance / 1000) * 85) : 350),
             source: act.source || streamMeta.source || 'galaxy_fit3',
             notes: act.notes || streamMeta.notes || '',
+            splits: act.splits || streamMeta.splits || [],
+            elevation_profile: act.elevation_profile || streamMeta.elevation_profile || '',
             zone_distribution: act.zone_distribution || streamMeta.zone_distribution || {
               zone1_minutes: 5,
               zone2_minutes: 25,
@@ -79,6 +81,8 @@ export async function POST(request: NextRequest) {
       calories: calories,
       source: body.source || 'galaxy_fit3',
       notes: body.notes || 'Sesión registrada con Galaxy Fit3. Rodaje aeróbico en Zona 2.',
+      splits: body.splits || [],
+      elevation_profile: body.elevation_profile || '',
       zone_distribution: body.zone_distribution || {
         zone1_minutes: Math.round((elapsedSeconds / 60) * 0.15),
         zone2_minutes: Math.round((elapsedSeconds / 60) * 0.70),
@@ -106,6 +110,8 @@ export async function POST(request: NextRequest) {
             calories: newActivity.calories,
             source: newActivity.source,
             notes: newActivity.notes,
+            splits: newActivity.splits,
+            elevation_profile: newActivity.elevation_profile,
             zone_distribution: newActivity.zone_distribution,
           },
           merged_hr_data: body.merged_hr_data || [],
