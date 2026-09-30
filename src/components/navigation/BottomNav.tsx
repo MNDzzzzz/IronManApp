@@ -30,13 +30,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
               key={tab.id}
               onClick={() => onSelectTab(tab.id)}
               className={`flex flex-col items-center justify-center flex-1 py-1 transition-all duration-200 active:scale-90 ${
-                isActive ? 'text-brand-strava font-medium' : 'text-zinc-500 hover:text-zinc-300'
+                isActive ? 'text-orange-500 font-bold' : 'text-zinc-500 hover:text-zinc-300'
               }`}
             >
               <div className="relative">
                 <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} />
                 {isActive && (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-brand-strava rounded-full animate-pulse" />
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-orange-500 rounded-full animate-pulse" />
                 )}
               </div>
               <span className="text-[10px] mt-1 tracking-tight">{tab.label}</span>

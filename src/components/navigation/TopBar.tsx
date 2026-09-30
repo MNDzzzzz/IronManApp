@@ -32,7 +32,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               IRONMAN
             </span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 font-mono">
-              FIT3 + STRAVA
+              GALAXY FIT3
             </span>
           </div>
           <p className="text-[11px] text-zinc-400 capitalize mt-0.5">{todayFormatted}</p>

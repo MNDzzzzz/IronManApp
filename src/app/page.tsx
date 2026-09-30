@@ -449,7 +449,7 @@ export default function Home() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onRefresh={loadAllData}
         isRefreshing={isRefreshing}
-        lastSyncedText="Fit3 + Strava OK"
+        lastSyncedText="Galaxy Fit3 Conectada"
       />
 
       {/* Contenido Principal según Pestaña Activa */}
@@ -471,6 +471,7 @@ export default function Home() {
             activities={activities}
             selectedActivity={selectedActivity}
             onSelectActivity={setSelectedActivity}
+            onRefresh={loadAllData}
           />
         )}
 

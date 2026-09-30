@@ -707,16 +707,26 @@ function generateSampleRun(): StravaActivity {
 export const initialStravaActivities: StravaActivity[] = [
   {
     id: 124092401,
-    name: 'Tirada Corta de Running (5 km)',
+    name: 'Tirada de Running CaCo (5.0 km - Fase 1)',
     type: 'Run',
     start_date: '2026-09-24T18:30:00Z',
     elapsed_time: 2100, // 35 min
     moving_time: 2100,
     distance: 5000,
     total_elevation_gain: 24.0,
-    summary_polyline: 'o_~dFfkxU_@a@w@i@_@_Am@m@_@u@e@',
-    avg_hr: 154,
-    max_hr: 170,
+    avg_hr: 144,
+    max_hr: 162,
+    avg_cadence: 168,
+    calories: 465,
+    source: 'galaxy_fit3',
+    zone_distribution: {
+      z1_pct: 10,
+      z2_pct: 65,
+      z3_pct: 20,
+      z4_pct: 5,
+      z5_pct: 0,
+    },
+    notes: 'Método CaCo 4 min trote / 1 min andar ágil. Cero molestia en tendón rotuliano.',
     created_at: '2026-09-24T19:10:00Z',
   },
 ];

@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import {
-  Compass,
   TrendingUp,
   Clock,
   Heart,
@@ -10,6 +9,14 @@ import {
   ChevronRight,
   X,
   Activity,
+  Plus,
+  AlertTriangle,
+  CheckCircle2,
+  ShieldAlert,
+  Flame,
+  Gauge,
+  Sparkles,
+  Calendar,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -20,31 +27,133 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { StravaActivity } from '@/types/database';
+import { CardioActivity } from '@/types/database';
 
 interface CardioViewProps {
-  activities: StravaActivity[];
-  selectedActivity: StravaActivity | null;
-  onSelectActivity: (act: StravaActivity | null) => void;
+  activities: CardioActivity[];
+  selectedActivity: CardioActivity | null;
+  onSelectActivity: (act: CardioActivity | null) => void;
+  onRefresh?: () => void;
 }
 
 export const CardioView: React.FC<CardioViewProps> = ({
   activities,
   selectedActivity,
   onSelectActivity,
+  onRefresh,
 }) => {
-  const [activeMetric, setActiveMetric] = useState<'all' | 'hr' | 'alt' | 'pace'>('all');
+  const [activeMetric, setActiveMetric] = useState<'all' | 'hr' | 'alt'>('all');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Formulario para registrar rodaje Fit3
+  const [formName, setFormName] = useState('Rodaje CaCo 4.0 km (Galaxy Fit3)');
+  const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 16));
+  const [formDistanceKm, setFormDistanceKm] = useState('4.0');
+  const [formDurationMin, setFormDurationMin] = useState('32');
+  const [formAvgHr, setFormAvgHr] = useState('142');
+  const [formMaxHr, setFormMaxHr] = useState('156');
+  const [formCadence, setFormCadence] = useState('168');
+  const [formNotes, setFormNotes] = useState('Intervalos CaCo: 3 min trote suave + 1 min andar ágil. Cero molestias articulares.');
+
+  const handleCreateActivity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const distanceMeters = Math.round((parseFloat(formDistanceKm) || 4.0) * 1000);
+      const elapsedSeconds = Math.round((parseFloat(formDurationMin) || 30) * 60);
+      const avgHr = parseInt(formAvgHr, 10) || 142;
+      const maxHr = parseInt(formMaxHr, 10) || 155;
+      const avgCadence = parseInt(formCadence, 10) || 168;
+
+      const res = await fetch('/api/activities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formName,
+          type: 'Run',
+          start_date: new Date(formDate).toISOString(),
+          distance: distanceMeters,
+          elapsed_time: elapsedSeconds,
+          moving_time: elapsedSeconds,
+          avg_hr: avgHr,
+          max_hr: maxHr,
+          avg_cadence: avgCadence,
+          source: 'galaxy_fit3',
+          notes: formNotes,
+        }),
+      });
+
+      if (res.ok) {
+        setIsAddModalOpen(false);
+        if (onRefresh) onRefresh();
+      }
+    } catch (err) {
+      console.error('Error registrando rodaje:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-4 pb-24 px-4 pt-2">
+      {/* ENCABEZADO */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-black text-white tracking-tight">Actividades Strava</h1>
-          <p className="text-xs text-zinc-400">Entrenamientos con pulso de Galaxy Fit3 fusionado</p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black text-white tracking-tight">Cardio & Rodajes</h1>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-950/80 text-orange-400 border border-orange-800/50 font-bold uppercase">
+              Galaxy Fit3
+            </span>
+          </div>
+          <p className="text-xs text-zinc-400">Preparación Media Maratón 28 Feb 2027</p>
         </div>
-        <span className="text-[10px] px-2 py-1 rounded-full bg-orange-950/60 border border-orange-900/60 text-orange-400 font-mono">
-          {activities.length} sesiones
-        </span>
+        <button
+          onClick={() => setIsAddModalOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-black font-bold text-xs shadow-lg active:scale-95 transition-all"
+        >
+          <Plus className="w-3.5 h-3.5 stroke-[3]" />
+          <span>Registrar Rodaje</span>
+        </button>
+      </div>
+
+      {/* TARJETA BIOMECÁNICA: OBJETIVO ZONA 2 (101 KG) */}
+      <div className="p-4 rounded-3xl bg-gradient-to-br from-zinc-950 to-zinc-900 border border-orange-500/20 shadow-xl space-y-3 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-2xl pointer-events-none" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400">
+              <Gauge className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-xs uppercase font-black tracking-wider text-orange-400">
+                Fase 1: Base Aeróbica y CaCo
+              </span>
+              <p className="text-[11px] text-zinc-400">Control de impacto para peso de 101 kg</p>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-emerald-400">
+            Z2: 130-145 bpm
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 text-center pt-1">
+          <div className="bg-zinc-900/60 p-2 rounded-2xl border border-zinc-800/60">
+            <span className="text-[10px] text-zinc-500 block">Cadencia Meta</span>
+            <span className="text-xs font-black text-white">165-175</span>
+            <span className="text-[9px] text-zinc-400 block">ppm (pasos cortos)</span>
+          </div>
+          <div className="bg-zinc-900/60 p-2 rounded-2xl border border-zinc-800/60">
+            <span className="text-[10px] text-zinc-500 block">Estrategia</span>
+            <span className="text-xs font-black text-amber-400">Método CaCo</span>
+            <span className="text-[9px] text-zinc-400 block">Caminar / Correr</span>
+          </div>
+          <div className="bg-zinc-900/60 p-2 rounded-2xl border border-zinc-800/60">
+            <span className="text-[10px] text-zinc-500 block">Protección</span>
+            <span className="text-xs font-black text-emerald-400">Tendón / Rodilla</span>
+            <span className="text-[9px] text-zinc-400 block">Impacto mínimo</span>
+          </div>
+        </div>
       </div>
 
       {/* LISTA DE ACTIVIDADES */}
@@ -54,34 +163,39 @@ export const CardioView: React.FC<CardioViewProps> = ({
             🏃
           </div>
           <div className="space-y-1.5">
-            <h3 className="text-base font-bold text-white">Sin actividades registradas</h3>
+            <h3 className="text-base font-bold text-white">Sin rodajes registrados</h3>
             <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
-              Tus carreras y caminatas de Strava aparecerán aquí cuando salgas a entrenar o sincronices en Ajustes. También puedes dictarle una sesión al bot de Telegram.
+              Tus rodajes y sesiones CaCo aparecerán aquí al sincronizar la Galaxy Fit3 por Health Connect o registrándolos manualmente con el botón superior.
             </p>
           </div>
         </div>
       ) : (
         <div className="space-y-3">
           {activities.map((activity) => {
-            const paceMinutes = activity.moving_time
+            const distanceKm = (activity.distance / 1000).toFixed(2);
+            const paceMinPerKm = activity.moving_time && activity.distance > 0
               ? ((activity.moving_time / 60) / (activity.distance / 1000)).toFixed(2)
-              : '5.10';
+              : '5.30';
+
+            const isHighHr = (activity.avg_hr || 0) > 158;
+            const cadence = activity.avg_cadence || 168;
 
             return (
               <div
                 key={activity.id}
                 onClick={() => onSelectActivity(activity)}
-                className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 hover:border-zinc-800 active:scale-98 transition-all cursor-pointer space-y-3"
+                className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 hover:border-zinc-800 active:scale-98 transition-all cursor-pointer space-y-3 shadow-lg"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-brand-strava font-bold text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 font-bold text-sm">
                       🏃
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-white">{activity.name}</h3>
-                      <p className="text-[11px] text-zinc-500">
+                      <h3 className="text-sm font-bold text-white leading-tight">{activity.name}</h3>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">
                         {new Date(activity.start_date).toLocaleDateString('es-ES', {
+                          weekday: 'short',
                           day: 'numeric',
                           month: 'short',
                           hour: '2-digit',
@@ -90,40 +204,168 @@ export const CardioView: React.FC<CardioViewProps> = ({
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 text-zinc-400">
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-emerald-400 font-medium">
-                      Fit3 HR OK
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-emerald-400 font-mono">
+                      Fit3 OK
                     </span>
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-4 h-4 text-zinc-500" />
                   </div>
                 </div>
 
                 {/* Métricas Principales */}
-                <div className="grid grid-cols-4 gap-2 pt-2 border-t border-zinc-900/80 text-center">
-                  <div className="bg-zinc-900/40 rounded-xl p-1.5">
+                <div className="grid grid-cols-4 gap-2 pt-2 border-t border-zinc-900 text-center">
+                  <div className="bg-zinc-900/40 rounded-xl p-2">
                     <span className="text-[10px] text-zinc-500 block">Distancia</span>
-                    <span className="text-xs font-bold text-white">{(activity.distance / 1000).toFixed(2)} km</span>
+                    <span className="text-xs font-black text-white">{distanceKm} km</span>
                   </div>
-                  <div className="bg-zinc-900/40 rounded-xl p-1.5">
+                  <div className="bg-zinc-900/40 rounded-xl p-2">
                     <span className="text-[10px] text-zinc-500 block">Ritmo</span>
-                    <span className="text-xs font-bold text-white">{paceMinutes} /km</span>
+                    <span className="text-xs font-black text-white">{paceMinPerKm} /km</span>
                   </div>
-                  <div className="bg-zinc-900/40 rounded-xl p-1.5">
-                    <span className="text-[10px] text-zinc-500 block">Desnivel</span>
-                    <span className="text-xs font-bold text-white">+{Math.round(activity.total_elevation_gain)} m</span>
+                  <div className="bg-zinc-900/40 rounded-xl p-2">
+                    <span className="text-[10px] text-zinc-500 block">Cadencia</span>
+                    <span className="text-xs font-black text-amber-400">{cadence} ppm</span>
                   </div>
-                  <div className="bg-rose-950/20 border border-rose-900/30 rounded-xl p-1.5">
+                  <div className="bg-rose-950/20 border border-rose-900/30 rounded-xl p-2">
                     <span className="text-[10px] text-rose-400 block">Pulso Medio</span>
-                    <span className="text-xs font-bold text-rose-400">{activity.avg_hr || 148} bpm</span>
+                    <span className="text-xs font-black text-rose-400">{activity.avg_hr || 142} bpm</span>
                   </div>
                 </div>
+
+                {/* Nota o alerta biomecánica */}
+                {isHighHr ? (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[11px]">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Pulso superior a Zona 2. Añade más minutos caminando para cuidar tus articulaciones (101 kg).</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px]">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Zona aeróbica perfecta (Z2). Rodillas y tendón rotuliano protegidos.</span>
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      {/* MODAL DETALLE DE ACTIVIDAD CON GRÁFICA MULTICAPA SINCRONIZADA */}
+      {/* MODAL PARA REGISTRAR RODAJE FIT3 */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-zinc-950 border border-zinc-900 rounded-3xl p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-black text-white">Registrar Rodaje Fit3</h2>
+                <p className="text-xs text-zinc-400">Datos obtenidos de tu Samsung Galaxy Fit3</p>
+              </div>
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="p-2 rounded-full bg-zinc-900 text-zinc-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateActivity} className="space-y-3">
+              <div>
+                <label className="text-[11px] text-zinc-400 block mb-1">Nombre de la sesión</label>
+                <input
+                  type="text"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white focus:outline-none focus:border-orange-500"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] text-zinc-400 block mb-1">Distancia (km)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={formDistanceKm}
+                    onChange={(e) => setFormDistanceKm(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white focus:outline-none focus:border-orange-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-zinc-400 block mb-1">Duración (minutos)</label>
+                  <input
+                    type="number"
+                    value={formDurationMin}
+                    onChange={(e) => setFormDurationMin(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white focus:outline-none focus:border-orange-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[11px] text-zinc-400 block mb-1">FC Media (bpm)</label>
+                  <input
+                    type="number"
+                    value={formAvgHr}
+                    onChange={(e) => setFormAvgHr(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white focus:outline-none focus:border-orange-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-zinc-400 block mb-1">FC Máx (bpm)</label>
+                  <input
+                    type="number"
+                    value={formMaxHr}
+                    onChange={(e) => setFormMaxHr(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-zinc-400 block mb-1">Cadencia (ppm)</label>
+                  <input
+                    type="number"
+                    value={formCadence}
+                    onChange={(e) => setFormCadence(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] text-zinc-400 block mb-1">Sensaciones & Notas Biomecánicas</label>
+                <textarea
+                  rows={2}
+                  value={formNotes}
+                  onChange={(e) => setFormNotes(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white focus:outline-none focus:border-orange-500 resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 text-xs font-bold hover:text-white"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-black text-xs font-black disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Guardando...' : 'Guardar Rodaje'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DETALLE DE ACTIVIDAD CON GRÁFICA MULTICAPA */}
       {selectedActivity && (
         <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl overflow-y-auto pb-24 pt-[env(safe-area-inset-top,20px)] px-4 animate-in fade-in duration-200">
           <div className="max-w-md mx-auto space-y-4">
@@ -135,7 +377,9 @@ export const CardioView: React.FC<CardioViewProps> = ({
               >
                 <X className="w-5 h-5" />
               </button>
-              <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">Detalle de Actividad</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+                Detalle Galaxy Fit3
+              </span>
               <div className="w-9" />
             </div>
 
@@ -159,60 +403,40 @@ export const CardioView: React.FC<CardioViewProps> = ({
                 <span className="text-[9px] text-zinc-400 block">min</span>
               </div>
               <div className="p-3 rounded-2xl bg-zinc-950 border border-zinc-900 text-center">
-                <span className="text-[10px] text-zinc-500 block">Desnivel</span>
-                <span className="text-sm font-black text-white">+{Math.round(selectedActivity.total_elevation_gain)}</span>
-                <span className="text-[9px] text-zinc-400 block">m</span>
+                <span className="text-[10px] text-zinc-500 block">Cadencia</span>
+                <span className="text-sm font-black text-amber-400">{selectedActivity.avg_cadence || 168}</span>
+                <span className="text-[9px] text-zinc-400 block">ppm</span>
               </div>
               <div className="p-3 rounded-2xl bg-rose-950/20 border border-rose-900/40 text-center">
-                <span className="text-[10px] text-rose-400 block">FC Máx</span>
-                <span className="text-sm font-black text-rose-400">{selectedActivity.max_hr || 172}</span>
+                <span className="text-[10px] text-rose-400 block">FC Media</span>
+                <span className="text-sm font-black text-rose-400">{selectedActivity.avg_hr || 142}</span>
                 <span className="text-[9px] text-rose-300 block">bpm</span>
               </div>
             </div>
 
-            {/* GRÁFICA MULTICAPA SINCRONIZADA */}
+            {/* Notas Biomecánicas */}
+            {selectedActivity.notes && (
+              <div className="p-3.5 rounded-2xl bg-zinc-900/60 border border-zinc-800 text-xs text-zinc-300 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-orange-400 tracking-wider block">
+                  Notas de la sesión & Biomecánica
+                </span>
+                <p className="leading-relaxed">{selectedActivity.notes}</p>
+              </div>
+            )}
+
+            {/* GRÁFICA MULTICAPA O TELEMETRÍA */}
             <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-                    Telemetría Sincronizada
+                    Telemetría Fit3
                   </h3>
-                  <p className="text-[11px] text-zinc-500">Altitud (Strava) + Pulso (Galaxy Fit3)</p>
+                  <p className="text-[11px] text-zinc-500">Pulso continuo sensor Fit3</p>
                 </div>
                 <div className="flex items-center gap-1 text-[10px]">
                   <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
-                  <span className="text-rose-400 font-bold mr-2">FC Fit3</span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-zinc-500 inline-block" />
-                  <span className="text-zinc-400">Altitud</span>
+                  <span className="text-rose-400 font-bold">FC Fit3</span>
                 </div>
-              </div>
-
-              {/* Selector de capas */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setActiveMetric('all')}
-                  className={`text-[10px] px-2.5 py-1 rounded-lg transition-all ${
-                    activeMetric === 'all' ? 'bg-orange-500 text-white font-bold' : 'bg-zinc-900 text-zinc-400'
-                  }`}
-                >
-                  Todas las capas
-                </button>
-                <button
-                  onClick={() => setActiveMetric('hr')}
-                  className={`text-[10px] px-2.5 py-1 rounded-lg transition-all ${
-                    activeMetric === 'hr' ? 'bg-rose-500 text-white font-bold' : 'bg-zinc-900 text-zinc-400'
-                  }`}
-                >
-                  Solo Pulso Fit3
-                </button>
-                <button
-                  onClick={() => setActiveMetric('alt')}
-                  className={`text-[10px] px-2.5 py-1 rounded-lg transition-all ${
-                    activeMetric === 'alt' ? 'bg-zinc-700 text-white font-bold' : 'bg-zinc-900 text-zinc-400'
-                  }`}
-                >
-                  Solo Altitud
-                </button>
               </div>
 
               <div className="h-56 w-full pt-2">
@@ -222,12 +446,6 @@ export const CardioView: React.FC<CardioViewProps> = ({
                       data={selectedActivity.merged_hr_data}
                       margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
                     >
-                      <defs>
-                        <linearGradient id="colorAlt" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3f3f46" stopOpacity={0.6} />
-                          <stop offset="95%" stopColor="#18181b" stopOpacity={0.0} />
-                        </linearGradient>
-                      </defs>
                       <XAxis
                         dataKey="time"
                         tickFormatter={(v) => `${Math.round(v / 60)}m`}
@@ -242,41 +460,23 @@ export const CardioView: React.FC<CardioViewProps> = ({
                           borderRadius: '12px',
                           fontSize: '11px',
                         }}
-                        formatter={(value: any, name: string) => {
-                          if (name === 'bpm') return [`${value} bpm`, 'Pulso Fit3'];
-                          if (name === 'altitude') return [`${value} m`, 'Altitud'];
-                          if (name === 'velocity_smooth') return [`${(1000 / (value * 60)).toFixed(2)} min/km`, 'Ritmo'];
-                          return [value, name];
-                        }}
+                        formatter={(value: any) => [`${value} bpm`, 'Pulso Fit3']}
                         labelFormatter={(label) => `Minuto: ${(Number(label) / 60).toFixed(1)}`}
                       />
-
-                      {(activeMetric === 'all' || activeMetric === 'alt') && (
-                        <Area
-                          type="monotone"
-                          dataKey="altitude"
-                          stroke="#71717a"
-                          fillOpacity={1}
-                          fill="url(#colorAlt)"
-                          strokeWidth={1.5}
-                        />
-                      )}
-
-                      {(activeMetric === 'all' || activeMetric === 'hr') && (
-                        <Line
-                          type="monotone"
-                          dataKey="bpm"
-                          stroke="#FC5200"
-                          strokeWidth={2.5}
-                          dot={false}
-                          activeDot={{ r: 5, fill: '#FC5200' }}
-                        />
-                      )}
+                      <Line
+                        type="monotone"
+                        dataKey="bpm"
+                        stroke="#f97316"
+                        strokeWidth={2.5}
+                        dot={false}
+                        activeDot={{ r: 5, fill: '#f97316' }}
+                      />
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-xs text-zinc-500">
-                    No hay streams de telemetría disponibles para esta actividad.
+                  <div className="h-full flex flex-col items-center justify-center text-xs text-zinc-500 space-y-2">
+                    <Heart className="w-6 h-6 text-zinc-700 animate-pulse" />
+                    <span>Pulso medio registrado: {selectedActivity.avg_hr || 142} bpm</span>
                   </div>
                 )}
               </div>
@@ -284,17 +484,20 @@ export const CardioView: React.FC<CardioViewProps> = ({
 
             {/* ZONAS DE FRECUENCIA CARDÍACA (Z1 A Z5) */}
             <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-                Distribución por Zonas Cardíacas (Fit3)
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                  Distribución por Zonas Cardíacas
+                </h3>
+                <span className="text-[10px] text-zinc-500">Galaxy Fit3</span>
+              </div>
 
               <div className="space-y-2">
                 {[
-                  { zone: 'Z5', label: 'Máximo (> 171 bpm)', pct: 15, color: 'bg-rose-600' },
-                  { zone: 'Z4', label: 'Umbral (152 - 171 bpm)', pct: 45, color: 'bg-orange-500' },
-                  { zone: 'Z3', label: 'Aeróbico (133 - 152 bpm)', pct: 25, color: 'bg-amber-400' },
-                  { zone: 'Z2', label: 'Resistencia (114 - 133 bpm)', pct: 12, color: 'bg-emerald-500' },
-                  { zone: 'Z1', label: 'Recuperación (< 114 bpm)', pct: 3, color: 'bg-blue-400' },
+                  { zone: 'Z5', label: 'Máximo (> 170 bpm)', pct: 5, color: 'bg-rose-600' },
+                  { zone: 'Z4', label: 'Umbral (155 - 170 bpm)', pct: 15, color: 'bg-orange-500' },
+                  { zone: 'Z3', label: 'Aeróbico (145 - 155 bpm)', pct: 20, color: 'bg-amber-400' },
+                  { zone: 'Z2', label: 'Resistencia Base (130 - 145 bpm)', pct: 50, color: 'bg-emerald-500' },
+                  { zone: 'Z1', label: 'Recuperación (< 130 bpm)', pct: 10, color: 'bg-blue-400' },
                 ].map((z) => (
                   <div key={z.zone} className="flex items-center gap-3 text-xs">
                     <span className="w-7 font-mono font-bold text-zinc-400">{z.zone}</span>

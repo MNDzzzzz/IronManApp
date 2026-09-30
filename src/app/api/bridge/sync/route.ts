@@ -100,7 +100,73 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4. Cruce retroactivo automático con actividades de Strava pendientes de pulso
+    // 4. Procesamiento de Sesiones de Entrenamiento / Rodajes (Health Connect)
+    const incomingWorkouts = payload.workouts || [];
+    for (const w of incomingWorkouts) {
+      const actId = w.id || Date.now() + Math.floor(Math.random() * 1000);
+      const dist = Number(w.distance) || 4000;
+      const elap = Number(w.elapsed_time) || 2100;
+      const cadence = Number(w.avg_cadence) || 168;
+      const cal = Number(w.calories) || Math.round((dist / 1000) * 85);
+
+      const cardioAct = {
+        id: actId,
+        name: w.name || `Rodaje Galaxy Fit3 ${(dist / 1000).toFixed(1)} km`,
+        type: w.type || 'Run',
+        start_date: w.start_date || new Date().toISOString(),
+        elapsed_time: elap,
+        moving_time: w.moving_time || elap,
+        distance: dist,
+        total_elevation_gain: Number(w.total_elevation_gain) || 10,
+        avg_hr: w.avg_hr || 142,
+        max_hr: w.max_hr || 155,
+        avg_cadence: cadence,
+        calories: cal,
+        source: 'galaxy_fit3' as const,
+        notes: w.notes || 'Sesión de cardio sincronizada desde Galaxy Fit3.',
+        zone_distribution: w.zone_distribution || {
+          zone1_minutes: Math.round((elap / 60) * 0.15),
+          zone2_minutes: Math.round((elap / 60) * 0.70),
+          zone3_minutes: Math.round((elap / 60) * 0.15),
+          zone4_minutes: 0,
+          zone5_minutes: 0,
+        },
+      };
+
+      if (isSupabaseConfigured && supabaseAdmin) {
+        await supabaseAdmin.from('strava_activities').upsert(
+          {
+            id: cardioAct.id,
+            name: cardioAct.name,
+            type: cardioAct.type,
+            start_date: cardioAct.start_date,
+            elapsed_time: cardioAct.elapsed_time,
+            moving_time: cardioAct.moving_time,
+            distance: cardioAct.distance,
+            total_elevation_gain: cardioAct.total_elevation_gain,
+            avg_hr: cardioAct.avg_hr,
+            max_hr: cardioAct.max_hr,
+            streams_data: {
+              avg_cadence: cardioAct.avg_cadence,
+              calories: cardioAct.calories,
+              source: cardioAct.source,
+              notes: cardioAct.notes,
+              zone_distribution: cardioAct.zone_distribution,
+            },
+          },
+          { onConflict: 'id' }
+        );
+      }
+
+      const existIdx = mockStore.stravaActivities.findIndex((a) => a.id === cardioAct.id);
+      if (existIdx >= 0) {
+        mockStore.stravaActivities[existIdx] = cardioAct;
+      } else {
+        mockStore.stravaActivities.unshift(cardioAct);
+      }
+    }
+
+    // 5. Cruce retroactivo automático con actividades pendientes de pulso
     for (const activity of mockStore.stravaActivities) {
       if (!activity.merged_hr_data || activity.merged_hr_data.length === 0 || !activity.avg_hr) {
         if (activity.streams_data && activity.streams_data.length > 0) {
@@ -124,6 +190,7 @@ export async function POST(request: NextRequest) {
       records_received: {
         hr_samples: incomingHrSamples.length,
         has_daily_metric: Object.keys(incomingMetric).length > 0,
+        workouts: incomingWorkouts.length,
       },
     });
   } catch (error: any) {

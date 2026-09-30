@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'IronManApp - Analytics & Performance',
-  description: 'Métricas de salud Galaxy Fit3, entrenamientos Strava y nutrición por IA',
+  description: 'Métricas de salud Samsung Galaxy Fit3, rodajes Media Maratón y nutrición con IA',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

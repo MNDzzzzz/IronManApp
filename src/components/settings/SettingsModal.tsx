@@ -11,6 +11,7 @@ import {
   Database,
   RefreshCw,
   Sparkles,
+  Gauge,
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -95,8 +96,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         <div>
-          <h2 className="text-xl font-black text-white">Puentes & Webhooks</h2>
-          <p className="text-xs text-zinc-400">Direcciones para conectar tu Android, Strava y Telegram</p>
+          <h2 className="text-xl font-black text-white">Puentes & Integraciones</h2>
+          <p className="text-xs text-zinc-400">Direcciones para sincronizar tu Samsung Galaxy Fit3 y Telegram</p>
         </div>
 
         {/* 1. PUENTE ANDROID (GALAXY FIT3) */}
@@ -105,7 +106,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <Smartphone className="w-4 h-4" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-white">Android Puente (Health Connect)</h3>
           </div>
-          <p className="text-[11px] text-zinc-400">Endpoint HTTP POST para enviar el JSON de métricas desde el teléfono secundario.</p>
+          <p className="text-[11px] text-zinc-400">Endpoint HTTP POST para enviar el JSON de métricas (pasos, pulso continuo, sueño y SpO2) desde tu móvil secundario.</p>
           <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300">
             <span className="truncate pr-2">{bridgeUrl}</span>
             <button
@@ -118,23 +119,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="text-[10px] text-zinc-500">Cabecera obligatoria: <code className="text-orange-400">x-bridge-token: ironman_secret_fit3_token_2026</code></div>
         </div>
 
-        {/* 2. STRAVA WEBHOOK */}
+        {/* 2. REGISTRO DIRECTO FIT3 (SIN STRAVA API DE PAGO) */}
         <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 space-y-2">
-          <div className="flex items-center gap-2 text-brand-strava">
-            <Compass className="w-4 h-4" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-white">Webhook de Strava</h3>
+          <div className="flex items-center gap-2 text-orange-400">
+            <Gauge className="w-4 h-4" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-white">Flujo Cardio Galaxy Fit3</h3>
           </div>
-          <p className="text-[11px] text-zinc-400">Callback URL para recibir tus carreras y caminatas del iPhone 15 Pro.</p>
+          <p className="text-[11px] text-zinc-400">
+            La integración opera 100% libre de Strava (sin cuotas de pago). Tus rodajes, cadencia y FC se sincronizan desde Health Connect o registrándolos directamente en la pestaña Cardio.
+          </p>
           <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300">
-            <span className="truncate pr-2">{stravaWebhookUrl}</span>
+            <span className="truncate pr-2">{currentOrigin}/api/activities</span>
             <button
-              onClick={() => copyToClipboard(stravaWebhookUrl, 'strava')}
+              onClick={() => copyToClipboard(`${currentOrigin}/api/activities`, 'act')}
               className="text-orange-400 hover:text-orange-300"
             >
-              {copiedKey === 'strava' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+              {copiedKey === 'act' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
-          <div className="text-[10px] text-zinc-500">Verify Token: <code className="text-orange-400">ironman_strava_webhook_token_secure</code></div>
+          <div className="text-[10px] text-zinc-500">Método: <code className="text-orange-400">POST JSON</code> (Admite cadencia ppm, pulso y zonas)</div>
         </div>
 
         {/* 3. TELEGRAM BOT (NUTRICIÓN CON IA & ASISTENTE 360) */}

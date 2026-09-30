@@ -251,37 +251,54 @@ export const TodayView: React.FC<TodayViewProps> = ({
         </div>
       </div>
 
-      {/* 3. ÚLTIMO ENTRENAMIENTO STRAVA (CON BADGE DE PULSO FIT3 FUSIONADO) */}
+      {/* 3. ROADMAP MEDIA MARATÓN 28 FEB 2027 & ÚLTIMO RODAJE GALAXY FIT3 */}
+      <div className="p-4 rounded-3xl bg-gradient-to-r from-orange-950/40 via-zinc-950 to-zinc-950 border border-orange-500/20 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🎯</span>
+            <div>
+              <span className="text-xs font-black uppercase tracking-wider text-orange-400">
+                Media Maratón 28 Feb 2027
+              </span>
+              <p className="text-[10px] text-zinc-400">Objetivo: 21,097 km • Fase 1: CaCo & Zona 2</p>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/30 font-bold">
+            {Math.max(0, Math.ceil((new Date('2027-02-28T09:00:00').getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} días
+          </span>
+        </div>
+      </div>
+
       {latestActivity && (
         <div
           onClick={() => onSelectActivity(latestActivity)}
-          className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 hover:border-zinc-800 active:scale-98 transition-all cursor-pointer"
+          className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 hover:border-zinc-800 active:scale-98 transition-all cursor-pointer shadow-lg"
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-950/80 text-orange-400 border border-orange-800/40 font-bold uppercase tracking-wider">
-              Strava + Fit3 HR Fusionado
+              Galaxy Fit3 • Último Rodaje
             </span>
             <ArrowUpRight className="w-4 h-4 text-zinc-400" />
           </div>
 
           <h3 className="text-base font-bold text-white leading-tight">{latestActivity.name}</h3>
 
-          <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-zinc-900">
+          <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-zinc-900 text-center">
             <div>
-              <span className="text-[10px] text-zinc-500">Distancia</span>
-              <p className="text-sm font-bold text-white">{(latestActivity.distance / 1000).toFixed(2)} km</p>
+              <span className="text-[10px] text-zinc-500 block">Distancia</span>
+              <p className="text-sm font-black text-white">{(latestActivity.distance / 1000).toFixed(2)} km</p>
             </div>
             <div>
-              <span className="text-[10px] text-zinc-500">Tiempo</span>
-              <p className="text-sm font-bold text-white">{Math.round(latestActivity.elapsed_time / 60)} min</p>
+              <span className="text-[10px] text-zinc-500 block">Tiempo</span>
+              <p className="text-sm font-black text-white">{Math.round(latestActivity.elapsed_time / 60)} min</p>
             </div>
             <div>
-              <span className="text-[10px] text-zinc-500">Desnivel</span>
-              <p className="text-sm font-bold text-white">+{Math.round(latestActivity.total_elevation_gain)} m</p>
+              <span className="text-[10px] text-zinc-500 block">Cadencia</span>
+              <p className="text-sm font-black text-amber-400">{latestActivity.avg_cadence || 168} ppm</p>
             </div>
             <div>
-              <span className="text-[10px] text-rose-400">Pulso Fit3</span>
-              <p className="text-sm font-bold text-rose-400">{latestActivity.avg_hr || 148} bpm</p>
+              <span className="text-[10px] text-rose-400 block">Pulso Fit3</span>
+              <p className="text-sm font-black text-rose-400">{latestActivity.avg_hr || 142} bpm</p>
             </div>
           </div>
         </div>

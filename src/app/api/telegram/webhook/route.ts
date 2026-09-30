@@ -18,6 +18,7 @@ import {
   GymExercise,
   GymWorkoutLog,
   StravaActivity,
+  CardioActivity,
   DailyHealthMetric,
 } from '@/types/database';
 import {
@@ -816,23 +817,46 @@ async function handleSaveCardio(cardioData: any, todayStr: string) {
   const paceSeconds = Math.round(paceSecondsPerKm % 60);
   const paceStr = `${paceMinutes}:${paceSeconds < 10 ? '0' : ''}${paceSeconds} min/km`;
 
-  const newActivity: StravaActivity = {
+  const newActivity: CardioActivity = {
     id: Date.now(),
-    name: cardioData.name || (cardioData.type === 'Run' ? 'Sesión de Running' : 'Caminata Activa'),
+    name: cardioData.name || (cardioData.type === 'Run' ? 'Rodaje CaCo (Galaxy Fit3)' : 'Caminata Activa (Galaxy Fit3)'),
     type: cardioData.type || 'Run',
     start_date: `${todayStr}T18:00:00Z`,
     elapsed_time: durationSec,
     moving_time: durationSec,
     distance: distMeters,
     total_elevation_gain: 25.0,
-    avg_hr: cardioData.avg_hr || 148,
-    max_hr: cardioData.avg_hr ? cardioData.avg_hr + 18 : 168,
+    avg_hr: cardioData.avg_hr || 142,
+    max_hr: cardioData.avg_hr ? cardioData.avg_hr + 14 : 156,
+    avg_cadence: cardioData.avg_cadence || 168,
+    calories: Math.round((distMeters / 1000) * 85),
+    source: 'galaxy_fit3',
+    notes: cardioData.notes || 'Registrado por dictado de voz en Telegram.',
     created_at: new Date().toISOString(),
   };
 
   mockStore.stravaActivities.unshift(newActivity);
   if (isSupabaseConfigured && supabaseAdmin) {
-    await supabaseAdmin.from('strava_activities').insert([newActivity]);
+    await supabaseAdmin.from('strava_activities').insert([
+      {
+        id: newActivity.id,
+        name: newActivity.name,
+        type: newActivity.type,
+        start_date: newActivity.start_date,
+        elapsed_time: newActivity.elapsed_time,
+        moving_time: newActivity.moving_time,
+        distance: newActivity.distance,
+        total_elevation_gain: newActivity.total_elevation_gain,
+        avg_hr: newActivity.avg_hr,
+        max_hr: newActivity.max_hr,
+        streams_data: {
+          avg_cadence: newActivity.avg_cadence,
+          calories: newActivity.calories,
+          source: newActivity.source,
+          notes: newActivity.notes,
+        },
+      },
+    ]);
   }
 
   return {
@@ -1299,7 +1323,7 @@ ${c ? `• ${c.name} (${c.type}): *${c.distance_km} km* en *${c.time_min} min* (
         }
 
         if (!c) {
-          cardioMsg += `_No hay actividades de cardio registradas hoy._\n_Al salir a correr o caminar, dímelo o sincroniza con Strava._`;
+          cardioMsg += `_No hay actividades de cardio registradas hoy._\n_Al salir a correr o caminar, dímelo por audio o sincroniza tu Galaxy Fit3._`;
         } else {
           cardioMsg += `📊 *Últimas actividades registradas:*\n`;
           snapshot.cardio_activities.forEach((act, idx) => {

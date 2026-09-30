@@ -35,22 +35,40 @@ export interface StreamDataPoint {
   zone?: string; // Z1, Z2, Z3, Z4, Z5
 }
 
-export interface StravaActivity {
-  id: number;
+export interface CardioActivity {
+  id: number | string;
   name: string;
-  type: string;
+  type: 'Run' | 'Walk' | 'Workout' | string;
   start_date: string;
-  elapsed_time: number;
-  moving_time: number;
+  elapsed_time: number; // en segundos
+  moving_time: number; // en segundos
   distance: number; // en metros
-  total_elevation_gain: number;
+  total_elevation_gain?: number; // metros
   summary_polyline?: string;
   streams_data?: StreamDataPoint[];
   merged_hr_data?: StreamDataPoint[];
   avg_hr?: number | null;
   max_hr?: number | null;
+  avg_cadence?: number | null; // pasos por minuto
+  calories?: number | null;
+  zone_distribution?: {
+    z1_pct?: number;
+    z2_pct?: number;
+    z3_pct?: number;
+    z4_pct?: number;
+    z5_pct?: number;
+    zone1_minutes?: number;
+    zone2_minutes?: number;
+    zone3_minutes?: number;
+    zone4_minutes?: number;
+    zone5_minutes?: number;
+  };
+  source?: 'galaxy_fit3' | 'manual' | 'telegram' | string;
+  notes?: string;
   created_at?: string;
 }
+
+export type StravaActivity = CardioActivity;
 
 export interface GymExercise {
   id: string;
@@ -115,6 +133,7 @@ export interface BridgeSyncPayload {
     timestamp: string;
     bpm: number;
   }>;
+  workouts?: Partial<CardioActivity>[];
 }
 
 // Payload recibido desde Webhook de Strava
