@@ -15,6 +15,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { GymExercise, GymWorkoutLog } from '@/types/database';
+import { getSpainDate } from '@/lib/weeklyRoutine';
 
 interface GymViewProps {
   exercises: GymExercise[];
@@ -26,14 +27,28 @@ interface GymViewProps {
 export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onDeleteSet }) => {
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // Filtro de día (Torso, Pierna, Full Body, o Todos)
-  const [selectedDay, setSelectedDay] = useState<'Día 1: Torso' | 'Día 2: Pierna' | 'Día 3: Full Body' | 'Todos'>('Día 1: Torso');
+  // Filtro de día (Por defecto el día correspondiente de la semana o Día 1)
+  const initialDayFilter = useMemo<'Día 1: Torso' | 'Día 2: Pierna' | 'Día 3: Full Body' | 'Todos'>(() => {
+    const day = getSpainDate().getDay();
+    if (day === 1) return 'Día 1: Torso';
+    if (day === 2) return 'Día 2: Pierna';
+    if (day === 5) return 'Día 3: Full Body';
+    return 'Día 1: Torso';
+  }, []);
+
+  const [selectedDay, setSelectedDay] = useState<'Día 1: Torso' | 'Día 2: Pierna' | 'Día 3: Full Body' | 'Todos'>(initialDayFilter);
   
   // Pestaña principal: 'routine' o 'history'
   const [activeTab, setActiveTab] = useState<'routine' | 'history'>('routine');
 
-  // Filtro de fecha para el historial de series
-  const [historyDateFilter, setHistoryDateFilter] = useState<'all' | 'today' | '2026-09-22' | '2026-09-21'>('today');
+  // Filtro de fecha para el historial de series ('all' o fecha 'YYYY-MM-DD')
+  const [historyDateFilter, setHistoryDateFilter] = useState<string>('all');
+
+  // Extraer todas las fechas con series registradas (orden descendente)
+  const sessionDates = useMemo(() => {
+    const dates = Array.from(new Set(logs.map((l) => l.date)));
+    return dates.sort().reverse();
+  }, [logs]);
 
   const strengthExercises = useMemo(() => exercises.filter((e) => !e.is_stretch), [exercises]);
   const stretchExercises = useMemo(() => exercises.filter((e) => e.is_stretch), [exercises]);
@@ -58,22 +73,72 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
   const [rpe, setRpe] = useState<number>(8);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Registro de la última sesión completada para el ejercicio seleccionado (Sobrecarga Progresiva)
+  const previousExerciseLogs = useMemo(() => {
+    return logs
+      .filter((l) => l.exercise_id === selectedExerciseId && l.date !== todayStr)
+      .sort((a, b) => b.date.localeCompare(a.date) || b.set_number - a.set_number);
+  }, [logs, selectedExerciseId, todayStr]);
+
+  const lastSessionDate = useMemo(() => {
+    return previousExerciseLogs.length > 0 ? previousExerciseLogs[0].date : null;
+  }, [previousExerciseLogs]);
+
+  const lastSessionBenchmark = useMemo(() => {
+    if (!lastSessionDate) return null;
+    const sessionSets = previousExerciseLogs.filter((l) => l.date === lastSessionDate);
+    return [...sessionSets].sort((a, b) => b.weight_kg - a.weight_kg || b.reps - a.reps)[0] || null;
+  }, [previousExerciseLogs, lastSessionDate]);
+
+  // Función para precargar exactamente el peso y repeticiones realizados en el entrenamiento anterior
+  const preloadExerciseValues = (exId: string) => {
+    const prevLogs = logs
+      .filter((l) => l.exercise_id === exId && l.date !== todayStr)
+      .sort((a, b) => b.date.localeCompare(a.date) || b.set_number - a.set_number);
+
+    if (prevLogs.length > 0) {
+      const latestDate = prevLogs[0].date;
+      const sessionSets = prevLogs.filter((l) => l.date === latestDate);
+      const bestSet = [...sessionSets].sort((a, b) => b.weight_kg - a.weight_kg || b.reps - a.reps)[0];
+      if (bestSet) {
+        setWeightKg(bestSet.weight_kg);
+        setReps(bestSet.reps);
+        if (bestSet.rpe) setRpe(bestSet.rpe);
+        return;
+      }
+    }
+
+    const todaySets = logs.filter((l) => l.exercise_id === exId && l.date === todayStr);
+    if (todaySets.length > 0) {
+      const lastToday = todaySets[todaySets.length - 1];
+      setWeightKg(lastToday.weight_kg);
+      setReps(lastToday.reps);
+      if (lastToday.rpe) setRpe(lastToday.rpe);
+      return;
+    }
+
+    const ex = exercises.find((e) => e.id === exId);
+    if (ex) {
+      setWeightKg(ex.current_weight_kg ?? 0);
+      const parsedReps = ex.target_reps ? parseInt(ex.target_reps) : 8;
+      setReps(!isNaN(parsedReps) ? parsedReps : 8);
+      setRpe(8);
+    }
+  };
+
   // Sincronizar el ejercicio seleccionado cuando cambia el filtro de día
   useEffect(() => {
     if (filteredExercises.length > 0 && !filteredExercises.some((e) => e.id === selectedExerciseId)) {
       const nextEx = filteredExercises[0];
       setSelectedExerciseId(nextEx.id);
-      setWeightKg(nextEx.current_weight_kg ?? 0);
+      preloadExerciseValues(nextEx.id);
     }
   }, [filteredExercises, selectedExerciseId]);
 
-  // Al seleccionar un ejercicio nuevo, preestablecer su peso habitual si existe
+  // Al seleccionar un ejercicio nuevo, preestablecer los datos del entreno anterior
   const handleSelectExercise = (exId: string) => {
     setSelectedExerciseId(exId);
-    const ex = exercises.find((e) => e.id === exId);
-    if (ex) {
-      setWeightKg(ex.current_weight_kg ?? 0);
-    }
+    preloadExerciseValues(exId);
   };
 
   // Series del ejercicio seleccionado realizadas hoy
@@ -101,11 +166,9 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
 
   // Logs filtrados para la pestaña de historial
   const displayedHistoryLogs = useMemo(() => {
-    if (historyDateFilter === 'today') return logs.filter((l) => l.date === todayStr);
-    if (historyDateFilter === '2026-09-22') return logs.filter((l) => l.date === '2026-09-22');
-    if (historyDateFilter === '2026-09-21') return logs.filter((l) => l.date === '2026-09-21');
-    return logs;
-  }, [logs, historyDateFilter, todayStr]);
+    if (historyDateFilter === 'all') return logs;
+    return logs.filter((l) => l.date === historyDateFilter);
+  }, [logs, historyDateFilter]);
 
   if (exercises.length === 0) {
     return (
@@ -228,6 +291,42 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
               </div>
             )}
 
+            {/* Banner de Referencia de Sesión Anterior (Sobrecarga Progresiva) */}
+            {lastSessionBenchmark ? (
+              <div className="p-3 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center flex-shrink-0">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-orange-300 font-bold uppercase tracking-wider">
+                      Sesión Anterior ({lastSessionDate})
+                    </div>
+                    <div className="text-white font-black text-sm">
+                      {lastSessionBenchmark.reps} reps @{' '}
+                      {lastSessionBenchmark.weight_kg > 0 ? `${lastSessionBenchmark.weight_kg} kg` : 'Peso Corporal'}
+                      {lastSessionBenchmark.rpe && (
+                        <span className="text-[10px] font-normal text-zinc-400 ml-1.5 font-mono">
+                          (RPE {lastSessionBenchmark.rpe})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 font-bold border border-orange-500/30">
+                    Sobrecarga +
+                  </span>
+                  <p className="text-[9px] text-zinc-400 mt-0.5">Preestablecido</p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-2.5 rounded-2xl bg-zinc-900/50 border border-zinc-800/60 text-xs text-zinc-400 flex items-center gap-2">
+                <Info className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+                <span>Sin registros previos. Registra tu carga base de partida.</span>
+              </div>
+            )}
+
             {/* Controles de Carga (kg) y Repeticiones */}
             <div className="grid grid-cols-2 gap-3">
               {/* Carga en kg */}
@@ -345,13 +444,23 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                 const targetSets = ex.target_sets || 3;
                 const isDone = completedSets.length >= targetSets;
 
+                // Buscar serie de referencia de la última sesión
+                const prevExLogs = logs
+                  .filter((l) => l.exercise_id === ex.id && l.date !== todayStr)
+                  .sort((a, b) => b.date.localeCompare(a.date) || b.set_number - a.set_number);
+                const prevDate = prevExLogs.length > 0 ? prevExLogs[0].date : null;
+                const prevSessionSets = prevDate ? prevExLogs.filter((l) => l.date === prevDate) : [];
+                const prevBestSet = prevSessionSets.length > 0
+                  ? [...prevSessionSets].sort((a, b) => b.weight_kg - a.weight_kg || b.reps - a.reps)[0]
+                  : null;
+
                 return (
                   <div
                     key={ex.id}
                     onClick={() => handleSelectExercise(ex.id)}
                     className={`p-3 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
                       selectedExerciseId === ex.id
-                        ? 'bg-zinc-900/80 border-orange-500/60'
+                        ? 'bg-zinc-900/80 border-orange-500/60 ring-1 ring-orange-500/30'
                         : 'bg-zinc-900/30 border-zinc-900 hover:border-zinc-800'
                     }`}
                   >
@@ -372,14 +481,20 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                     </div>
                     <div className="text-right">
                       <span className="text-xs font-black text-orange-400 block">
-                        {ex.current_weight_kg !== undefined
-                          ? ex.current_weight_kg > 0
-                            ? `${ex.current_weight_kg} kg`
+                        {prevBestSet
+                          ? prevBestSet.weight_kg > 0
+                            ? `${prevBestSet.weight_kg} kg`
                             : 'Peso Corp.'
+                          : ex.current_weight_kg !== undefined && ex.current_weight_kg > 0
+                          ? `${ex.current_weight_kg} kg`
                           : 'Por determinar'}
                       </span>
                       <span className="text-[9px] text-zinc-500">
-                        {completedSets.length > 0 ? `${completedSets.length}/${targetSets} series` : 'Pendiente'}
+                        {completedSets.length > 0
+                          ? `${completedSets.length}/${targetSets} hoy`
+                          : prevBestSet
+                          ? `Ant: ${prevBestSet.reps} reps`
+                          : 'Pendiente'}
                       </span>
                     </div>
                   </div>
@@ -417,44 +532,83 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
       ) : (
         /* HISTORIAL DE SERIES REGISTRADAS */
         <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-              Historial de Series
-            </h3>
-            <div className="flex gap-1 bg-zinc-900 p-0.5 rounded-xl border border-zinc-800 text-[10px] overflow-x-auto">
-              <button
-                onClick={() => setHistoryDateFilter('today')}
-                className={`px-2 py-0.5 rounded-lg whitespace-nowrap ${
-                  historyDateFilter === 'today' ? 'bg-orange-500 text-black font-bold' : 'text-zinc-400'
-                }`}
-              >
-                Hoy
-              </button>
-              <button
-                onClick={() => setHistoryDateFilter('2026-09-22')}
-                className={`px-2 py-0.5 rounded-lg whitespace-nowrap ${
-                  historyDateFilter === '2026-09-22' ? 'bg-orange-500 text-black font-bold' : 'text-zinc-400'
-                }`}
-              >
-                M22 (Pierna)
-              </button>
-              <button
-                onClick={() => setHistoryDateFilter('2026-09-21')}
-                className={`px-2 py-0.5 rounded-lg whitespace-nowrap ${
-                  historyDateFilter === '2026-09-21' ? 'bg-orange-500 text-black font-bold' : 'text-zinc-400'
-                }`}
-              >
-                L21 (Torso)
-              </button>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+                Historial de Series ({logs.length})
+              </h3>
+              <span className="text-[10px] text-zinc-500 font-mono">
+                {sessionDates.length} sesiones registradas
+              </span>
+            </div>
+
+            {/* Selector dinámico con todas las fechas reales en BBDD */}
+            <div className="flex gap-1.5 bg-zinc-900/80 p-1 rounded-2xl border border-zinc-800 text-[10px] overflow-x-auto scrollbar-thin">
               <button
                 onClick={() => setHistoryDateFilter('all')}
-                className={`px-2 py-0.5 rounded-lg whitespace-nowrap ${
-                  historyDateFilter === 'all' ? 'bg-orange-500 text-black font-bold' : 'text-zinc-400'
+                className={`px-3 py-1.5 rounded-xl whitespace-nowrap font-bold transition-all ${
+                  historyDateFilter === 'all'
+                    ? 'bg-orange-500 text-black shadow-sm'
+                    : 'text-zinc-400 hover:text-white'
                 }`}
               >
-                Todas
+                Todas ({logs.length})
               </button>
+              {sessionDates.map((dStr) => {
+                const count = logs.filter((l) => l.date === dStr).length;
+                const isToday = dStr === todayStr;
+                const dObj = new Date(dStr + 'T12:00:00');
+                const label = isToday
+                  ? 'Hoy'
+                  : dObj.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+
+                return (
+                  <button
+                    key={dStr}
+                    onClick={() => setHistoryDateFilter(dStr)}
+                    className={`px-2.5 py-1.5 rounded-xl whitespace-nowrap font-bold transition-all flex items-center gap-1.5 ${
+                      historyDateFilter === dStr
+                        ? 'bg-orange-500 text-black shadow-sm ring-1 ring-orange-400'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <span className="capitalize">{label}</span>
+                    <span
+                      className={`text-[9px] px-1.5 py-0.2 rounded-full font-mono ${
+                        historyDateFilter === dStr ? 'bg-black/25 text-black' : 'bg-zinc-800 text-zinc-400'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
+
+            {/* Tarjeta de métricas de la sesión seleccionada */}
+            {displayedHistoryLogs.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 p-2.5 bg-zinc-900/50 rounded-2xl border border-zinc-800/80 text-center text-xs">
+                <div>
+                  <span className="text-[9px] text-zinc-500 block uppercase">Series</span>
+                  <span className="font-black text-white">{displayedHistoryLogs.length}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-zinc-500 block uppercase">Volumen</span>
+                  <span className="font-black text-orange-400">
+                    {Math.round(
+                      displayedHistoryLogs.reduce((sum, l) => sum + l.weight_kg * l.reps, 0)
+                    ).toLocaleString()}{' '}
+                    kg
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-zinc-500 block uppercase">Ejercicios</span>
+                  <span className="font-black text-amber-300">
+                    {new Set(displayedHistoryLogs.map((l) => l.exercise_id)).size}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {displayedHistoryLogs.length === 0 ? (

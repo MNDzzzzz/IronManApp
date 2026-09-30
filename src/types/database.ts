@@ -81,7 +81,7 @@ export interface NutritionLog {
   id: string;
   timestamp: string;
   date: string;
-  meal_type: 'Desayuno' | 'Almuerzo' | 'Cena' | 'Snack';
+  meal_type: 'Desayuno' | 'Almuerzo' | 'Cena' | 'Snack' | 'PESO_CORPORAL';
   description: string;
   calories: number;
   protein_g: number;

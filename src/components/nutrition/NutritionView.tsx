@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { NutritionLog, WaterLog } from '@/types/database';
 import { initialFrequentFoods, DayType } from '@/lib/nutritionProtocol';
+import { getTodayRoutine, getSpainDate } from '@/lib/weeklyRoutine';
 
 interface NutritionViewProps {
   meals: NutritionLog[];
@@ -55,6 +56,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   const [showAddModal, setShowAddModal] = useState(false);
   const [showProtocolModal, setShowProtocolModal] = useState(false);
   const [showFrequentFoods, setShowFrequentFoods] = useState(false);
+  const [showRecommendedMenu, setShowRecommendedMenu] = useState(false);
 
   // Formulario de comida manual
   const [mealType, setMealType] = useState<'Desayuno' | 'Almuerzo' | 'Cena' | 'Snack'>('Almuerzo');
@@ -66,14 +68,52 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Estado del protocolo personal del atleta
-  const [weightKg, setWeightKg] = useState(101.5);
+  const [weightKg, setWeightKg] = useState(101.0);
   const [dayType, setDayTypeState] = useState<DayType>('running');
-  const [targetCalories, setTargetCalories] = useState(2350);
-  const [targetProtein, setTargetProtein] = useState(175);
-  const [targetCarbs, setTargetCarbs] = useState(260);
-  const [targetFat, setTargetFat] = useState(68);
-  const [targetWater, setTargetWater] = useState(3000);
+  const [targetCalories, setTargetCalories] = useState(2400);
+  const [targetProtein, setTargetProtein] = useState(202);
+  const [targetCarbs, setTargetCarbs] = useState(230);
+  const [targetFat, setTargetFat] = useState(75);
+  const [targetWater, setTargetWater] = useState(3800);
   const [creatineTaken, setCreatineTaken] = useState(false);
+
+  // Rutina y prescripción oficial para la fecha seleccionada
+  const currentRoutine = useMemo(() => {
+    return getTodayRoutine(selectedDate);
+  }, [selectedDate]);
+
+  // Lista dinámica de fechas disponibles (registros reales + ventana temporal)
+  const availableDates = useMemo(() => {
+    const datesSet = new Set<string>();
+
+    // 1. Todas las fechas que tengan comidas o agua registradas
+    meals.forEach((m) => {
+      if (m.date) datesSet.add(m.date);
+    });
+    waterLogs.forEach((w) => {
+      if (w.date) datesSet.add(w.date);
+    });
+
+    // 2. Ventana continua desde inicio del plan hasta hoy + 1 día
+    const today = new Date();
+    const start = new Date('2026-09-21T12:00:00');
+    const end = new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000);
+
+    const curr = new Date(start);
+    while (curr <= end) {
+      datesSet.add(curr.toISOString().split('T')[0]);
+      curr.setDate(curr.getDate() + 1);
+    }
+
+    datesSet.add(todayStr);
+    datesSet.add(selectedDate);
+
+    return Array.from(datesSet).sort();
+  }, [meals, waterLogs, todayStr, selectedDate]);
+
+  // Objetivos nutricionales adaptados al día seleccionado
+  const activeTargetCalories = currentRoutine?.nutritionStrategy?.calorieTarget || targetCalories;
+  const activeTargetWater = Math.round((currentRoutine?.nutritionStrategy?.waterLiters || 3.8) * 1000);
 
   // Filtrar comidas e hidratación para la fecha seleccionada
   const displayedMeals = useMemo(() => {
@@ -191,38 +231,177 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         </div>
       </div>
 
-      {/* SELECTOR DE FECHAS (HISTÓRICO EXACTO DE GEMINI) */}
-      <div className="flex items-center gap-1.5 p-1 bg-zinc-950 border border-zinc-900 rounded-2xl overflow-x-auto">
-        <button
-          onClick={() => setSelectedDate('2026-09-22')}
-          className={`flex-1 py-1.5 px-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap text-center ${
-            selectedDate === '2026-09-22'
-              ? 'bg-orange-500 text-black shadow-sm'
-              : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          Martes 22 (Pierna)
-        </button>
-        <button
-          onClick={() => setSelectedDate('2026-09-23')}
-          className={`flex-1 py-1.5 px-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap text-center ${
-            selectedDate === '2026-09-23'
-              ? 'bg-orange-500 text-black shadow-sm'
-              : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          Miércoles 23 (Refeed)
-        </button>
-        <button
-          onClick={() => setSelectedDate(todayStr)}
-          className={`flex-1 py-1.5 px-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap text-center ${
-            selectedDate === todayStr
-              ? 'bg-orange-500 text-black shadow-sm'
-              : 'text-zinc-400 hover:text-white'
-          }`}
-        >
-          Hoy (Running)
-        </button>
+      {/* SELECTOR DINÁMICO DE FECHAS (HISTÓRICO Y RUTINAS) */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-[11px] text-zinc-400 px-1">
+          <span className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-zinc-300">
+            <Calendar className="w-3.5 h-3.5 text-orange-400" />
+            Calendario & Rutina
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-500 font-mono">
+              {selectedDate === todayStr ? 'Hoy' : selectedDate}
+            </span>
+            <label className="relative p-1 px-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-[10px] font-bold text-zinc-300 hover:text-white hover:bg-zinc-800 cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all">
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                title="Seleccionar otra fecha"
+              />
+              <Calendar className="w-3 h-3 text-orange-400" />
+              <span>Elegir fecha</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Tira deslizable de días */}
+        <div className="flex items-center gap-1.5 p-1.5 bg-zinc-950 border border-zinc-900 rounded-2xl overflow-x-auto scrollbar-thin">
+          {availableDates.map((dStr) => {
+            const isSelected = dStr === selectedDate;
+            const isToday = dStr === todayStr;
+            const routine = getTodayRoutine(dStr);
+            const dObj = new Date(dStr + 'T12:00:00');
+            const dayOfWeek = dObj.toLocaleDateString('es-ES', { weekday: 'short' });
+            const dayNum = dObj.getDate();
+            const hasMeals = meals.some((m) => m.date === dStr);
+            const hasWater = waterLogs.some((w) => w.date === dStr);
+
+            // Etiqueta breve según la rutina
+            let badgeText = 'Plan';
+            if (routine.category === 'Fuerza') {
+              badgeText = routine.dayName === 'Lunes' ? 'Torso' : routine.dayName === 'Martes' ? 'Pierna' : 'Full Body';
+            } else if (routine.category === 'Cardio') {
+              badgeText = routine.dayName === 'Jueves' ? '4k CaCo' : 'Tirada';
+            } else {
+              badgeText = routine.dayName === 'Miércoles' ? 'Refeed' : 'Descanso';
+            }
+
+            return (
+              <button
+                key={dStr}
+                onClick={() => setSelectedDate(dStr)}
+                className={`py-1.5 px-3 rounded-xl text-center transition-all whitespace-nowrap flex flex-col items-center min-w-[68px] relative ${
+                  isSelected
+                    ? 'bg-orange-500 text-black shadow-md font-black ring-1 ring-orange-400'
+                    : 'bg-zinc-900/60 border border-zinc-800/80 text-zinc-400 hover:text-white hover:border-zinc-700'
+                }`}
+              >
+                <div className="flex items-center gap-1 text-[11px] leading-tight">
+                  <span className="capitalize font-bold">{dayOfWeek}</span>
+                  <span className="font-mono text-xs">{dayNum}</span>
+                </div>
+                <span
+                  className={`text-[9px] mt-0.5 px-1 rounded-full font-semibold ${
+                    isSelected
+                      ? 'bg-black/20 text-black'
+                      : routine.category === 'Fuerza'
+                      ? 'text-orange-400'
+                      : routine.category === 'Cardio'
+                      ? 'text-blue-400'
+                      : 'text-emerald-400'
+                  }`}
+                >
+                  {isToday ? 'Hoy' : badgeText}
+                </span>
+
+                {(hasMeals || hasWater) && (
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${
+                      isSelected ? 'bg-black' : 'bg-emerald-400'
+                    }`}
+                    title="Tiene registros"
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* FICHA OFICIAL DEL DÍA (ESTRATEGIA NUTRICIONAL Y HORARIO) */}
+      <div className="p-3.5 rounded-3xl bg-zinc-950 border border-zinc-900 space-y-2.5 shadow-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span
+              className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
+                currentRoutine.category === 'Fuerza'
+                  ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                  : currentRoutine.category === 'Cardio'
+                  ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                  : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              }`}
+            >
+              {currentRoutine.category}
+            </span>
+            <span className="text-xs font-bold text-white">
+              {currentRoutine.dayName} • {currentRoutine.title}
+            </span>
+          </div>
+          <span className="text-[10px] font-bold text-orange-400 font-mono">
+            {activeTargetCalories} kcal
+          </span>
+        </div>
+
+        <p className="text-[11px] text-zinc-300 leading-snug">
+          {currentRoutine.nutritionStrategy.guidelines}
+        </p>
+
+        {/* Resumen de objetivos prescritos */}
+        <div className="grid grid-cols-4 gap-1.5 pt-1 text-[10px] text-zinc-400 font-mono">
+          <div className="bg-zinc-900/60 p-1.5 rounded-xl border border-zinc-800/80 text-center">
+            <span className="text-[9px] text-zinc-500 block">Kcal</span>
+            <span className="font-bold text-white">{activeTargetCalories}</span>
+          </div>
+          <div className="bg-zinc-900/60 p-1.5 rounded-xl border border-zinc-800/80 text-center">
+            <span className="text-[9px] text-zinc-500 block">Proteína</span>
+            <span className="font-bold text-rose-400">{currentRoutine.nutritionStrategy.proteinTarget.split(' ')[0]}</span>
+          </div>
+          <div className="bg-zinc-900/60 p-1.5 rounded-xl border border-zinc-800/80 text-center">
+            <span className="text-[9px] text-zinc-500 block">Carbos</span>
+            <span className="font-bold text-amber-400">{currentRoutine.nutritionStrategy.carbsTarget.split(' ')[0]}</span>
+          </div>
+          <div className="bg-zinc-900/60 p-1.5 rounded-xl border border-zinc-800/80 text-center">
+            <span className="text-[9px] text-zinc-500 block">Agua</span>
+            <span className="font-bold text-blue-400">{currentRoutine.nutritionStrategy.waterLiters}L</span>
+          </div>
+        </div>
+
+        {/* Menú estructurado recomendado de 4 tomas */}
+        {currentRoutine.nutritionStrategy.recommendedMeals?.length > 0 && (
+          <div className="pt-1 border-t border-zinc-900">
+            <button
+              onClick={() => setShowRecommendedMenu(!showRecommendedMenu)}
+              className="w-full flex items-center justify-between text-left text-[11px] text-orange-400 hover:text-orange-300 font-semibold py-1 transition-colors"
+            >
+              <span className="flex items-center gap-1.5">
+                <Utensils className="w-3.5 h-3.5" />
+                {showRecommendedMenu ? 'Ocultar menú sugerido' : 'Ver menú sugerido de 4 tomas'}
+              </span>
+              {showRecommendedMenu ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+
+            {showRecommendedMenu && (
+              <div className="space-y-2 pt-2">
+                {currentRoutine.nutritionStrategy.recommendedMeals.map((meal, idx) => (
+                  <div
+                    key={idx}
+                    className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800/70 text-xs space-y-1"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-orange-300 text-[11px] uppercase tracking-wider">
+                        {meal.slot}
+                      </span>
+                      <span className="text-[10px] text-zinc-400 font-mono">{meal.details}</span>
+                    </div>
+                    <p className="text-zinc-200 text-[11px] leading-relaxed">{meal.dish}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* PILL DE CREATINA Y BANNER TELEGRAM */}
@@ -284,13 +463,13 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
           <div>
             <span className="text-[11px] text-zinc-400">Calorías ({selectedDate})</span>
             <div className="text-2xl font-black text-white">
-              {activeTotals.calories} <span className="text-xs font-normal text-zinc-400">/ {targetCalories} kcal</span>
+              {activeTotals.calories} <span className="text-xs font-normal text-zinc-400">/ {activeTargetCalories} kcal</span>
             </div>
           </div>
           <div className="text-right">
             <span className="text-[11px] text-zinc-400">Restante</span>
             <div className="text-base font-bold text-orange-400">
-              {Math.max(0, targetCalories - activeTotals.calories)} kcal
+              {Math.max(0, activeTargetCalories - activeTotals.calories)} kcal
             </div>
           </div>
         </div>
@@ -354,19 +533,19 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
             <div>
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">Hidratación Diaria</h3>
               <p className="text-[10px] text-zinc-500">
-                {(activeTotals.water_ml / 1000).toFixed(2)}L de {(targetWater / 1000).toFixed(1)}L objetivo
+                {(activeTotals.water_ml / 1000).toFixed(2)}L de {(activeTargetWater / 1000).toFixed(1)}L objetivo
               </p>
             </div>
           </div>
           <span className="text-xs font-mono font-bold text-blue-400">
-            {Math.min(100, Math.round((activeTotals.water_ml / targetWater) * 100))}%
+            {Math.min(100, Math.round((activeTotals.water_ml / activeTargetWater) * 100))}%
           </span>
         </div>
 
         <div className="w-full bg-zinc-900 h-2.5 rounded-full overflow-hidden">
           <div
             className="bg-blue-500 h-full rounded-full transition-all duration-500"
-            style={{ width: `${Math.min(100, (activeTotals.water_ml / targetWater) * 100)}%` }}
+            style={{ width: `${Math.min(100, (activeTotals.water_ml / activeTargetWater) * 100)}%` }}
           />
         </div>
 

@@ -35,10 +35,45 @@ export async function GET() {
         if (!error && data && data.length > 0) {
           logs = data;
         } else {
-          logs = mockStore.weightLogs || [];
+          // Fallback a nutrition_logs con meal_type = 'PESO_CORPORAL'
+          const { data: fbData, error: fbErr } = await supabaseAdmin
+            .from('nutrition_logs')
+            .select('*')
+            .eq('meal_type', 'PESO_CORPORAL')
+            .order('date', { ascending: false });
+
+          if (!fbErr && fbData && fbData.length > 0) {
+            logs = fbData.map((fb) => ({
+              id: fb.id,
+              date: fb.date,
+              timestamp: fb.timestamp,
+              weight_kg: Number(fb.protein_g),
+              notes: fb.description,
+              created_at: fb.timestamp,
+            }));
+          } else {
+            // Cargar iniciales de mockStore y persistirlos de inmediato en Supabase
+            logs = mockStore.weightLogs || [];
+            if (logs.length > 0) {
+              const rowsToSeed = logs.map((l) => ({
+                id: l.id,
+                date: l.date,
+                timestamp: l.timestamp,
+                meal_type: 'PESO_CORPORAL',
+                description: l.notes || 'Antes de cenar, después de entrenar',
+                calories: 0,
+                protein_g: l.weight_kg,
+                carbs_g: 0,
+                fat_g: 0,
+              }));
+              try {
+                await supabaseAdmin.from('nutrition_logs').upsert(rowsToSeed, { onConflict: 'id' });
+              } catch (_) {}
+            }
+          }
         }
       } catch (err) {
-        console.warn('Fallback a mockStore para weight_logs:', err);
+        console.warn('Aviso en consulta de weight_logs:', err);
         logs = mockStore.weightLogs || [];
       }
     } else {
@@ -81,7 +116,7 @@ export async function GET() {
 }
 
 /**
- * POST: Registrar o actualizar pesaje
+ * POST: Registrar o actualizar pesaje con doble seguro de persistencia
  */
 export async function POST(request: NextRequest) {
   try {
@@ -108,7 +143,7 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
     };
 
-    // 1. Guardar en mockStore (reemplaza si ya existe para la misma fecha o añade)
+    // 1. Guardar en mockStore
     const existingIdx = mockStore.weightLogs.findIndex((w) => w.date === logDate);
     if (existingIdx >= 0) {
       mockStore.weightLogs[existingIdx] = newLog;
@@ -119,12 +154,32 @@ export async function POST(request: NextRequest) {
     // 2. Actualizar protocolo activo
     updateWeight(weightVal);
 
-    // 3. Persistir en Supabase si está disponible
+    // 3. Persistir en Supabase con doble seguro
     if (isSupabaseConfigured && supabaseAdmin) {
+      let savedInWeightLogs = false;
       try {
-        await supabaseAdmin.from('weight_logs').upsert([newLog], { onConflict: 'id' });
-      } catch (dbErr) {
-        console.warn('Aviso: no se pudo persistir en tabla weight_logs de Supabase:', dbErr);
+        const { error: wErr } = await supabaseAdmin.from('weight_logs').upsert([newLog], { onConflict: 'id' });
+        if (!wErr) savedInWeightLogs = true;
+      } catch (_) {}
+
+      // Si no existe la tabla weight_logs, persistir en nutrition_logs con meal_type = 'PESO_CORPORAL'
+      if (!savedInWeightLogs) {
+        try {
+          const fallbackRow = {
+            id: newLog.id,
+            date: newLog.date,
+            timestamp: newLog.timestamp,
+            meal_type: 'PESO_CORPORAL',
+            description: newLog.notes || 'Antes de cenar, después de entrenar',
+            calories: 0,
+            protein_g: newLog.weight_kg,
+            carbs_g: 0,
+            fat_g: 0,
+          };
+          await supabaseAdmin.from('nutrition_logs').upsert([fallbackRow], { onConflict: 'id' });
+        } catch (dbErr) {
+          console.warn('Aviso: no se pudo persistir pesaje en Supabase:', dbErr);
+        }
       }
     }
 
@@ -156,7 +211,12 @@ export async function DELETE(request: NextRequest) {
     }
 
     if (isSupabaseConfigured && supabaseAdmin) {
-      await supabaseAdmin.from('weight_logs').delete().eq('id', id);
+      try {
+        await supabaseAdmin.from('weight_logs').delete().eq('id', id);
+      } catch (_) {}
+      try {
+        await supabaseAdmin.from('nutrition_logs').delete().eq('id', id).eq('meal_type', 'PESO_CORPORAL');
+      } catch (_) {}
     }
     mockStore.weightLogs = mockStore.weightLogs.filter((w) => w.id !== id);
 

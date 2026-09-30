@@ -72,8 +72,18 @@ export async function POST(request: NextRequest) {
 
     if (isSupabaseConfigured && supabaseAdmin) {
       await supabaseAdmin.from('gym_workout_logs').insert([newLog]);
+      if (newLog.weight_kg > 0) {
+        await supabaseAdmin
+          .from('gym_exercises')
+          .update({ current_weight_kg: newLog.weight_kg })
+          .eq('id', newLog.exercise_id);
+      }
     }
     mockStore.gymLogs.push(newLog);
+    const mockEx = mockStore.gymExercises.find((e) => e.id === newLog.exercise_id);
+    if (mockEx && newLog.weight_kg > 0) {
+      mockEx.current_weight_kg = newLog.weight_kg;
+    }
 
     return NextResponse.json({ success: true, log: newLog });
   } catch (error: any) {

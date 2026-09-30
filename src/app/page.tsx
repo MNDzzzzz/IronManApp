@@ -74,8 +74,8 @@ export default function Home() {
       const resNutri = await fetch('/api/nutrition', { cache: 'no-store' });
       if (resNutri.ok) {
         const data = await resNutri.json();
-        setNutritionMeals(data.all_meals || data.meals || []);
-        setWaterLogs(data.all_water || data.water_logs || []);
+        setNutritionMeals(data.all_meals || data.allMeals || data.meals || []);
+        setWaterLogs(data.all_water || data.allWater || data.water_logs || data.waterLogs || []);
         if (data.totals) setNutritionTotals(data.totals);
       }
 

@@ -35,13 +35,13 @@ export async function GET(request: NextRequest) {
         .select('*')
         .order('timestamp', { ascending: false });
 
-      allMeals = dbAllMeals || [];
+      allMeals = (dbAllMeals || []).filter((m) => m.meal_type !== 'PESO_CORPORAL');
       allWater = dbAllWater || [];
       meals = allMeals.filter((m) => m.date === date);
       waterLogs = allWater.filter((w) => w.date === date);
     } else {
-      allMeals = mockStore.nutritionLogs;
-      allWater = mockStore.waterLogs;
+      allMeals = (mockStore.nutritionLogs || []).filter((m) => m.meal_type !== 'PESO_CORPORAL');
+      allWater = mockStore.waterLogs || [];
       meals = allMeals.filter((m) => m.date === date);
       waterLogs = allWater.filter((w) => w.date === date);
     }
