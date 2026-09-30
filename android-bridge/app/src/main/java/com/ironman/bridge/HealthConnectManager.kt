@@ -14,8 +14,6 @@ import java.time.temporal.ChronoUnit
  */
 class HealthConnectManager(private val context: Context) {
 
-    private val healthConnectClient by lazy { HealthConnectClient.getOrCreate(context) }
-
     val permissions = setOf(
         HealthPermission.getReadPermission(HeartRateRecord::class),
         HealthPermission.getReadPermission(SleepSessionRecord::class),
@@ -24,26 +22,55 @@ class HealthConnectManager(private val context: Context) {
         HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class)
     )
 
+    fun getSdkStatus(): Int = HealthConnectClient.getSdkStatus(context)
+
+    fun isAvailable(): Boolean = getSdkStatus() == HealthConnectClient.SDK_AVAILABLE
+
+    fun getClient(): HealthConnectClient {
+        val status = getSdkStatus()
+        if (status != HealthConnectClient.SDK_AVAILABLE) {
+            when (status) {
+                HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED ->
+                    throw IllegalStateException("Health Connect no está instalado o requiere actualizarse desde Google Play Store.")
+                HealthConnectClient.SDK_UNAVAILABLE ->
+                    throw IllegalStateException("Health Connect no es compatible con este dispositivo o versión de Android.")
+                else ->
+                    throw IllegalStateException("Health Connect no disponible en el sistema (estado $status).")
+            }
+        }
+        return HealthConnectClient.getOrCreate(context)
+    }
+
     suspend fun hasAllPermissions(): Boolean {
-        val granted = healthConnectClient.permissionController.getGrantedPermissions()
-        return granted.containsAll(permissions)
+        if (!isAvailable()) return false
+        return try {
+            val granted = getClient().permissionController.getGrantedPermissions()
+            granted.containsAll(permissions)
+        } catch (e: Exception) {
+            false
+        }
     }
 
     /**
-     * Lee las métricas de salud de las últimas 24 horas
+     * Lee las métricas de salud de las últimas 24 horas con manejo resiliente
      */
     suspend fun readLatestHealthData(): BridgeData {
+        val client = getClient()
         val now = Instant.now()
         val yesterday = now.minus(24, ChronoUnit.HOURS)
         val timeRange = TimeRangeFilter.between(yesterday, now)
 
         // 1. Ritmo Cardíaco (Muestras de pulso)
-        val hrRecords = healthConnectClient.readRecords(
-            ReadRecordsRequest(
-                recordType = HeartRateRecord::class,
-                timeRangeFilter = timeRange
-            )
-        ).records
+        val hrRecords = try {
+            client.readRecords(
+                ReadRecordsRequest(
+                    recordType = HeartRateRecord::class,
+                    timeRangeFilter = timeRange
+                )
+            ).records
+        } catch (e: Exception) {
+            emptyList()
+        }
 
         val hrSamples = mutableListOf<HrSample>()
         var restingBpm = 52
@@ -60,12 +87,16 @@ class HealthConnectManager(private val context: Context) {
         }
 
         // 2. Sesiones de Sueño
-        val sleepRecords = healthConnectClient.readRecords(
-            ReadRecordsRequest(
-                recordType = SleepSessionRecord::class,
-                timeRangeFilter = timeRange
-            )
-        ).records
+        val sleepRecords = try {
+            client.readRecords(
+                ReadRecordsRequest(
+                    recordType = SleepSessionRecord::class,
+                    timeRangeFilter = timeRange
+                )
+            ).records
+        } catch (e: Exception) {
+            emptyList()
+        }
 
         var sleepMinutes = 450
         for (sleep in sleepRecords) {
@@ -76,21 +107,29 @@ class HealthConnectManager(private val context: Context) {
         }
 
         // 3. Pasos del día
-        val stepsRecords = healthConnectClient.readRecords(
-            ReadRecordsRequest(
-                recordType = StepsRecord::class,
-                timeRangeFilter = timeRange
-            )
-        ).records
+        val stepsRecords = try {
+            client.readRecords(
+                ReadRecordsRequest(
+                    recordType = StepsRecord::class,
+                    timeRangeFilter = timeRange
+                )
+            ).records
+        } catch (e: Exception) {
+            emptyList()
+        }
         val totalSteps = stepsRecords.sumOf { it.count.toInt() }
 
         // 4. Oxígeno en Sangre (SpO2)
-        val spo2Records = healthConnectClient.readRecords(
-            ReadRecordsRequest(
-                recordType = OxygenSaturationRecord::class,
-                timeRangeFilter = timeRange
-            )
-        ).records
+        val spo2Records = try {
+            client.readRecords(
+                ReadRecordsRequest(
+                    recordType = OxygenSaturationRecord::class,
+                    timeRangeFilter = timeRange
+                )
+            ).records
+        } catch (e: Exception) {
+            emptyList()
+        }
         val avgSpo2 = if (spo2Records.isNotEmpty()) {
             spo2Records.map { it.percentage.value }.average()
         } else 97.2

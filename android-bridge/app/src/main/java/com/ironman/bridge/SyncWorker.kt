@@ -14,11 +14,11 @@ class SyncWorker(
 
     override suspend fun doWork(): Result {
         val prefs = context.getSharedPreferences("ironman_bridge_prefs", Context.MODE_PRIVATE)
-        val serverUrl = prefs.getString("server_url", "https://tu-app.vercel.app") ?: return Result.failure()
+        val serverUrl = prefs.getString("server_url", "https://iron-man-app.vercel.app") ?: return Result.failure()
         val apiToken = prefs.getString("api_token", "ironman_secret_fit3_token_2026") ?: return Result.failure()
 
         val manager = HealthConnectManager(context)
-        if (!manager.hasAllPermissions()) {
+        if (!manager.isAvailable() || !manager.hasAllPermissions()) {
             return Result.retry()
         }
 
