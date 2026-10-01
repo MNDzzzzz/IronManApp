@@ -30,6 +30,7 @@ interface TodayViewProps {
   onQuickAddWater: (amountMl: number) => void;
   onNavigateTab: (tab: any) => void;
   onSelectActivity: (activity: StravaActivity) => void;
+  onOpenReport?: () => void;
 }
 
 export const TodayView: React.FC<TodayViewProps> = ({
@@ -40,6 +41,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
   onQuickAddWater,
   onNavigateTab,
   onSelectActivity,
+  onOpenReport,
 }) => {
   const stepsGoal = 10000;
   const steps = health?.total_steps || 0;
@@ -60,6 +62,29 @@ export const TodayView: React.FC<TodayViewProps> = ({
 
   return (
     <div className="space-y-4 pb-24 px-4 pt-2">
+      {/* ACCESO RÁPIDO: INFORME Y RESUMEN SEMANAL */}
+      {onOpenReport && (
+        <button
+          onClick={onOpenReport}
+          className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-transparent border border-orange-500/30 flex items-center justify-between text-left hover:border-orange-500/50 active:scale-[0.99] transition-all group shadow-lg"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 group-hover:scale-105 transition-transform">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-white group-hover:text-orange-400 transition-colors">
+                Informe Semanal de Rendimiento
+              </p>
+              <p className="text-[11px] text-zinc-400">
+                100% datos reales, diagnóstico clínico y descarga PDF
+              </p>
+            </div>
+          </div>
+          <ArrowUpRight className="w-4 h-4 text-orange-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+        </button>
+      )}
+
       {/* 1. BALANCE ENERGÉTICO DIARIO */}
       <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 shadow-xl relative overflow-hidden">
         <div className="flex items-center justify-between mb-3">

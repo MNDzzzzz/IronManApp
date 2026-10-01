@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
-import { RefreshCw, Settings, ShieldCheck, Activity } from 'lucide-react';
+import { RefreshCw, Settings, ShieldCheck, Activity, FileText } from 'lucide-react';
 
 interface TopBarProps {
   onOpenSettings: () => void;
+  onOpenReport?: () => void;
   onRefresh: () => void;
   isRefreshing: boolean;
   lastSyncedText?: string;
@@ -12,6 +13,7 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({
   onOpenSettings,
+  onOpenReport,
   onRefresh,
   isRefreshing,
   lastSyncedText = 'Fit3: Al día',
@@ -55,6 +57,18 @@ export const TopBar: React.FC<TopBarProps> = ({
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-orange-500' : ''}`} />
           </button>
+
+          {/* Informe Semanal */}
+          {onOpenReport && (
+            <button
+              onClick={onOpenReport}
+              aria-label="Informe Semanal"
+              title="Informe y Resumen Semanal"
+              className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-orange-400 hover:text-orange-300 hover:border-orange-500/40 active:scale-95 transition-all"
+            >
+              <FileText className="w-4 h-4" />
+            </button>
+          )}
 
           {/* Ajustes */}
           <button

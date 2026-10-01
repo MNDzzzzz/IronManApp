@@ -49,6 +49,12 @@ import {
   extractItemsFromText,
   WeighedItemInput,
 } from '@/lib/mercadonaNutrition';
+import {
+  getWeekDateRange,
+  getWeeklyReportDataset,
+} from '@/lib/reports/weeklyDataAggregator';
+import { generateWeeklyClinicalAssessment } from '@/lib/reports/weeklyClinicalEngine';
+import { generateWeeklyReportPdf } from '@/lib/reports/weeklyPdfGenerator';
 
 // --------------------------------------------------------------------
 // 1. UTILIDAD: DESCARGA DE AUDIO DE TELEGRAM
@@ -357,6 +363,97 @@ async function sendTelegramMessage(chatId: number, messageText: string, botToken
     }
   } catch (e) {
     console.error('Error enviando mensaje de Telegram:', e);
+  }
+}
+
+/**
+ * Envía un documento o PDF a Telegram utilizando multipart/form-data
+ */
+async function sendTelegramDocument(
+  chatId: number,
+  fileBytes: Uint8Array,
+  filename: string,
+  caption: string,
+  botToken: string
+) {
+  try {
+    const formData = new FormData();
+    formData.append('chat_id', String(chatId));
+    formData.append('caption', caption);
+    formData.append('parse_mode', 'Markdown');
+    const blob = new Blob([Buffer.from(fileBytes)], { type: 'application/pdf' });
+    formData.append('document', blob, filename);
+
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      console.error('Error en sendTelegramDocument:', errBody);
+    }
+  } catch (err) {
+    console.error('Excepción enviando documento a Telegram:', err);
+  }
+}
+
+/**
+ * Genera el informe semanal y lo entrega a Álvaro por Telegram con texto y PDF adjunto
+ */
+async function handleSendWeeklyReport(chatId: number, botToken: string, weekOffset: number = 0) {
+  try {
+    const range = getWeekDateRange(weekOffset);
+    const dataset = await getWeeklyReportDataset(range.startDate, range.endDate);
+    const assessment = generateWeeklyClinicalAssessment(dataset);
+
+    const deltaStr = dataset.summary.weightDeltaKg !== null
+      ? `${dataset.summary.weightDeltaKg > 0 ? '+' : ''}${dataset.summary.weightDeltaKg} kg`
+      : 'Sin variación registrada';
+
+    const strengthsSummary = assessment.strengths.slice(0, 2).map((s) => `• *${s.title}*`).join('\n');
+    const improvementsSummary = assessment.improvements.slice(0, 2).map((i) => `• *${i.title}*`).join('\n');
+
+    const summaryMsg = `
+📊 *INFORME SEMANAL DE RENDIMIENTO & FISIOTERAPIA*
+🗓️ *Semana ${dataset.weekNumber}:* ${dataset.startDate} a ${dataset.endDate}
+🏃‍♂️ *Fase:* ${dataset.progressionPlan.phase} (${dataset.progressionPlan.phaseName})
+⏳ *Cuenta atrás 21k:* ${dataset.countdown.daysRemaining} días (${dataset.countdown.weeksRemaining} sem)
+
+⚖️ *Peso actual:* *${dataset.summary.latestWeightKg} kg* (${deltaStr})
+👟 *Pasos medios:* *${dataset.summary.avgDailySteps.toLocaleString()} /día* (Descanso: ${dataset.summary.restDaysAvgSteps.toLocaleString()})
+🏃‍♂️ *Cardio:* *${dataset.summary.totalCardioKm} km* (Ritmo: ${dataset.summary.avgCardioPaceStr || 'N/A'})
+🏋️‍♂️ *Fuerza:* *${(dataset.summary.totalGymVolumeKg / 1000).toFixed(1)} tn* (${dataset.summary.gymSessionsCount} sesiones)
+🥗 *Nutrición:* *~${dataset.summary.avgDailyCalories} kcal/día* | *${dataset.summary.avgDailyProteinG}g P*
+
+🟢 *Aciertos:*
+${strengthsSummary}
+
+🟡 *Puntos a Mejorar:*
+${improvementsSummary}
+
+🩺 *Rodillas & Tendones:*
+_${assessment.articularDiagnosis.headline}_
+
+📋 *Prescripción Próxima Semana (Semana ${assessment.nextWeekPrescription.targetWeekNumber}):*
+• *Jueves:* ${assessment.nextWeekPrescription.runningSessions.thursday.session}
+• *Domingo:* ${assessment.nextWeekPrescription.runningSessions.sunday.session}
+• *Gimnasio:* ${assessment.nextWeekPrescription.gymAdjustments.legShieldFocus}
+
+📄 _Adjuntando documento oficial en PDF con todas las gráficas y telemetrías..._
+    `.trim();
+
+    await sendTelegramMessage(chatId, summaryMsg, botToken);
+
+    // Generar binario del PDF oficial y enviar
+    const pdfBytes = await generateWeeklyReportPdf(dataset, assessment);
+    const filename = `IronMan_Informe_Semanal_Semana_${dataset.weekNumber}.pdf`;
+    const docCaption = `📄 *Informe Oficial Semana ${dataset.weekNumber}* (${dataset.startDate} a ${dataset.endDate})\n100% Datos Reales Auditados.`;
+
+    await sendTelegramDocument(chatId, pdfBytes, filename, docCaption, botToken);
+  } catch (err: any) {
+    console.error('Error generando informe para Telegram:', err);
+    await sendTelegramMessage(chatId, `⚠️ Hubo un error generando tu informe semanal: ${err.message}`, botToken);
   }
 }
 
@@ -1538,7 +1635,10 @@ Tengo acceso y control total a tu rutina semanal, preparación para la *Media Ma
 🌙 *Salud & Galaxy Fit3:*
 • Consulta sueño y biometría: \`/salud\`
 
-📊 *Reporte Integral 360°:* \`/reporte\` o \`/todo\`
+📄 *Informe Semanal en PDF:*
+• Generar informe oficial: \`/informe\` o \`/resumen_semanal\` (PDF con 100% datos reales)
+
+📊 *Reporte Integral Diario 360°:* \`/reporte\` o \`/todo\`
         `.trim();
         await sendTelegramMessage(chatId, helpMsg, botToken);
       }
@@ -2108,6 +2208,32 @@ _${s.note}_
         await sendTelegramMessage(chatId, perioMsg, botToken);
       }
       return NextResponse.json({ success: true, command: 'periodization' });
+    }
+
+    // 22. /informe, /resumen_semanal, /semana o /pdf (Informe Oficial y Documento PDF)
+    const lowerText = spokenText.toLowerCase();
+    if (
+      cleanCmd === '/informe' ||
+      cleanCmd === 'informe' ||
+      cleanCmd === '/resumen_semanal' ||
+      cleanCmd === 'resumen_semanal' ||
+      cleanCmd === '/resumen' ||
+      cleanCmd === 'resumen' ||
+      cleanCmd === '/semana' ||
+      cleanCmd === '/pdf' ||
+      lowerText.includes('informe semanal') ||
+      lowerText.includes('resumen semanal') ||
+      lowerText.includes('pdf de la semana') ||
+      lowerText.includes('resumen de la semana') ||
+      lowerText.includes('descargar informe') ||
+      lowerText.includes('generar informe')
+    ) {
+      if (botToken && message.chat?.id) {
+        // Si pide semana pasada o anterior
+        const offset = (lowerText.includes('semana pasada') || lowerText.includes('semana anterior')) ? -1 : 0;
+        await handleSendWeeklyReport(chatId, botToken, offset);
+      }
+      return NextResponse.json({ success: true, command: 'weekly_report_pdf' });
     }
 
     // ================================================================

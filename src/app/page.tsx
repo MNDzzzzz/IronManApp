@@ -9,6 +9,7 @@ import { GymView } from '@/components/gym/GymView';
 import { NutritionView } from '@/components/nutrition/NutritionView';
 import { HealthView } from '@/components/health/HealthView';
 import { SettingsModal } from '@/components/settings/SettingsModal';
+import { WeeklyReportView } from '@/components/reports/WeeklyReportView';
 import {
   DailyHealthMetric,
   StravaActivity,
@@ -23,6 +24,7 @@ export default function Home() {
   const [currentTab, setCurrentTab] = useState<TabType>('hoy');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<StravaActivity | null>(null);
 
   // Estados de datos
@@ -447,24 +449,30 @@ export default function Home() {
       {/* Barra Superior */}
       <TopBar
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenReport={() => setIsReportOpen((prev) => !prev)}
         onRefresh={loadAllData}
         isRefreshing={isRefreshing}
         lastSyncedText="Galaxy Fit3 Conectada"
       />
 
-      {/* Contenido Principal según Pestaña Activa */}
-      <main className="flex-1 max-w-md w-full mx-auto">
-        {currentTab === 'hoy' && (
-          <TodayView
-            health={health}
-            nutritionTotals={nutritionTotals}
-            latestActivity={activities[0] || null}
-            currentWeight={currentWeight}
-            onQuickAddWater={handleQuickAddWater}
-            onNavigateTab={(tab) => setCurrentTab(tab)}
-            onSelectActivity={(act) => setSelectedActivity(act)}
-          />
-        )}
+      {/* Contenido Principal: Si el informe semanal está activo, mostrar WeeklyReportView */}
+      <main className={`flex-1 w-full mx-auto ${isReportOpen ? 'max-w-4xl px-2' : 'max-w-md'}`}>
+        {isReportOpen ? (
+          <WeeklyReportView onClose={() => setIsReportOpen(false)} />
+        ) : (
+          <>
+            {currentTab === 'hoy' && (
+              <TodayView
+                health={health}
+                nutritionTotals={nutritionTotals}
+                latestActivity={activities[0] || null}
+                currentWeight={currentWeight}
+                onQuickAddWater={handleQuickAddWater}
+                onNavigateTab={(tab) => setCurrentTab(tab)}
+                onSelectActivity={(act) => setSelectedActivity(act)}
+                onOpenReport={() => setIsReportOpen(true)}
+              />
+            )}
 
         {currentTab === 'cardio' && (
           <CardioView
@@ -505,6 +513,8 @@ export default function Home() {
             onAddWeight={handleAddWeight}
             onDeleteWeight={handleDeleteWeight}
           />
+        )}
+          </>
         )}
       </main>
 
