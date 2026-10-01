@@ -44,6 +44,11 @@ import {
   STRUCTURED_MENU_2400,
   TARGET_HALF_MARATHON_DATE,
 } from '@/lib/weeklyRoutine';
+import {
+  calculateMealFromWeighedItems,
+  extractItemsFromText,
+  WeighedItemInput,
+} from '@/lib/mercadonaNutrition';
 
 // --------------------------------------------------------------------
 // 1. UTILIDAD: DESCARGA DE AUDIO DE TELEGRAM
@@ -555,6 +560,7 @@ interface UniversalAssistantResponse {
   nutrition?: {
     meal_type: 'Desayuno' | 'Almuerzo' | 'Cena' | 'Snack';
     description: string;
+    items?: Array<{ food: string; amount: number; unit?: string }>;
     calories: number;
     protein_g: number;
     carbs_g: number;
@@ -669,7 +675,12 @@ INSTRUCCIONES DE CLASIFICACIÓN Y ACCIÓN:
 
 5. Si Álvaro describe una comida o bebida ingerida:
    - Pon "action": "log_nutrition".
-   - Extrae calorías, macros (P/C/G), agua en ml y si tomó creatina.
+   - REGLA DE ORO DE BÁSCULA: Desglosa CADA ALIMENTO individual en el array "items" con:
+     * "food": nombre del alimento (ej: "pechuga de pollo", "arroz basmati", "aceite de oliva", "yogur proteico vainilla", "huevo", "claras", "atun al natural", "avena", "pan integral").
+     * "amount": cantidad numérica según el pesaje o unidades (ej: 200, 80, 10, 2, 1). Si no dice unidad, asume gramos ('g').
+     * "unit": 'g' | 'ml' | 'unidad' | 'lata' | 'tostada' | 'cucharada' | 'cacito'.
+   - Extrae agua en ml si la menciona ("water_ml") y si tomó creatina ("creatine_detected": true).
+   - El sistema recalculará cada ingrediente con las etiquetas exactas de Mercadona / Hacendado.
 
 6. Si Álvaro hace CUALQUIER PREGUNTA, CONSULTA CIENTÍFICA, TÉCNICA O CURIOSIDAD DEPORTIVA:
    - Aplica tanto a preguntas sobre sus métricas en la app como a dudas de fisiología del ejercicio, calzado y zapatillas de running (drop, amortiguación, placas), zonas de entrenamiento, VDOT, nutrición deportiva avanzada, suplementos, biomecánica o recuperación que estén FUERA de los datos de la app.
@@ -709,6 +720,11 @@ DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin mark
   "nutrition": {
     "meal_type": "Desayuno" | "Almuerzo" | "Cena" | "Snack",
     "description": "texto descriptivo",
+    "items": [
+      { "food": "pechuga de pollo", "amount": 200, "unit": "g" },
+      { "food": "arroz basmati", "amount": 80, "unit": "g" },
+      { "food": "aceite de oliva", "amount": 10, "unit": "g" }
+    ],
     "calories": 0,
     "protein_g": 0.0,
     "carbs_g": 0.0,
@@ -855,29 +871,41 @@ DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin mark
     else if (lowerHint.includes('cen') || hour >= 20) mealType = 'Cena';
     else if (lowerHint.includes('meriend') || lowerHint.includes('snack')) mealType = 'Snack';
 
+    const extractedItems = extractItemsFromText(textOrHint);
     let calories = 350;
     let protein = 25;
     let carbs = 35;
     let fat = 10;
     let waterMl = 0;
+    let coachTip = 'Registrado con análisis heurístico de respaldo.';
 
-    if (lowerHint.includes('pollo') || lowerHint.includes('ternera') || lowerHint.includes('atún') || lowerHint.includes('salmón')) {
-      protein += 25;
-      calories += 120;
+    if (extractedItems.length > 0) {
+      const calc = await calculateMealFromWeighedItems(extractedItems);
+      calories = calc.totalCalories;
+      protein = calc.totalProtein;
+      carbs = calc.totalCarbs;
+      fat = calc.totalFat;
+      coachTip = 'Calculado con precisión oficial de Mercadona mediante análisis de pesaje.';
+    } else {
+      if (lowerHint.includes('pollo') || lowerHint.includes('ternera') || lowerHint.includes('atún') || lowerHint.includes('salmón')) {
+        protein += 25;
+        calories += 120;
+      }
+      if (lowerHint.includes('arroz') || lowerHint.includes('pasta') || lowerHint.includes('patata') || lowerHint.includes('avena')) {
+        carbs += 30;
+        calories += 130;
+      }
+      if (lowerHint.includes('huevo')) {
+        protein += 14;
+        fat += 10;
+        calories += 150;
+      }
+      if (lowerHint.includes('aceite') || lowerHint.includes('aove') || lowerHint.includes('queso') || lowerHint.includes('nueces')) {
+        fat += 12;
+        calories += 110;
+      }
     }
-    if (lowerHint.includes('arroz') || lowerHint.includes('pasta') || lowerHint.includes('patata') || lowerHint.includes('avena')) {
-      carbs += 30;
-      calories += 130;
-    }
-    if (lowerHint.includes('huevo')) {
-      protein += 14;
-      fat += 10;
-      calories += 150;
-    }
-    if (lowerHint.includes('aceite') || lowerHint.includes('aove') || lowerHint.includes('queso') || lowerHint.includes('nueces')) {
-      fat += 12;
-      calories += 110;
-    }
+
     if (lowerHint.includes('agua') || lowerHint.includes('litro') || lowerHint.includes('vaso')) {
       if (lowerHint.includes('litro')) waterMl = 1000;
       else if (lowerHint.includes('2 vasos') || lowerHint.includes('dos vasos')) waterMl = 500;
@@ -890,6 +918,7 @@ DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin mark
       nutrition: {
         meal_type: mealType,
         description: textOrHint,
+        items: extractedItems,
         calories,
         protein_g: protein,
         carbs_g: carbs,
@@ -897,7 +926,7 @@ DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin mark
         water_ml: waterMl,
         creatine_detected: lowerHint.includes('creatina'),
       },
-      coach_tip: 'Registrado con análisis heurístico de respaldo.',
+      coach_tip: coachTip,
     };
   }
 
@@ -2284,12 +2313,39 @@ ${aiResult.coach_tip ? `💡 *Coach:* _${aiResult.coach_tip}_` : ''}
       });
     }
 
-    // CASO E: REGISTRO DE NUTRICIÓN E HIDRATACIÓN
+    // CASO E: REGISTRO DE NUTRICIÓN E HIDRATACIÓN (PRECISIÓN MERCADONA & BÁSCULA)
     if (aiResult.action === 'log_nutrition' && aiResult.nutrition) {
       const nutri = aiResult.nutrition;
 
       if (nutri.creatine_detected) {
         toggleCreatine(true);
+      }
+
+      // 1. Obtener items pesados estructurados o extraerlos del texto con el analizador de Mercadona
+      const itemsToCalculate: WeighedItemInput[] =
+        Array.isArray(nutri.items) && nutri.items.length > 0
+          ? nutri.items
+          : extractItemsFromText(nutri.description || spokenText);
+
+      let finalCalories = Number(nutri.calories) || 0;
+      let finalProtein = Number(nutri.protein_g) || 0;
+      let finalCarbs = Number(nutri.carbs_g) || 0;
+      let finalFat = Number(nutri.fat_g) || 0;
+      let breakdownText = '';
+
+      if (itemsToCalculate.length > 0) {
+        const calc = await calculateMealFromWeighedItems(itemsToCalculate);
+        finalCalories = calc.totalCalories;
+        finalProtein = calc.totalProtein;
+        finalCarbs = calc.totalCarbs;
+        finalFat = calc.totalFat;
+        breakdownText = `\n📦 *Desglose de Alimentos Pesados (Mercadona):*\n${calc.formattedBreakdown}\n`;
+      } else {
+        // Si no se desglosaron ingredientes específicos, asegurar cuadre estricto de macros
+        const mathKcal = Math.round(4 * finalProtein + 4 * finalCarbs + 9 * finalFat);
+        if (finalCalories === 0 || Math.abs(finalCalories - mathKcal) > 20) {
+          finalCalories = mathKcal > 0 ? mathKcal : finalCalories;
+        }
       }
 
       const newMeal: NutritionLog = {
@@ -2298,10 +2354,10 @@ ${aiResult.coach_tip ? `💡 *Coach:* _${aiResult.coach_tip}_` : ''}
         date: todayStr,
         meal_type: nutri.meal_type || 'Almuerzo',
         description: nutri.description || spokenText,
-        calories: Number(nutri.calories) || 0,
-        protein_g: Number(nutri.protein_g) || 0,
-        carbs_g: Number(nutri.carbs_g) || 0,
-        fat_g: Number(nutri.fat_g) || 0,
+        calories: finalCalories,
+        protein_g: finalProtein,
+        carbs_g: finalCarbs,
+        fat_g: finalFat,
         raw_audio_transcription: aiResult.transcription || spokenText,
       };
 
@@ -2329,16 +2385,18 @@ ${aiResult.coach_tip ? `💡 *Coach:* _${aiResult.coach_tip}_` : ''}
       const updatedTodayWater = mockStore.waterLogs.filter((w) => w.date === todayStr);
       const updatedTotalWater = updatedTodayWater.reduce((acc, w) => acc + w.amount_ml, 0);
       const t = activeProtocol.targets;
+      const remainingKcal = Math.max(0, t.calories - updatedTotalKcal);
 
       if (botToken && message.chat?.id) {
         const reply = `
-✅ *Comida Registrada con Éxito*
-${transcriptionHeader}🍽️ *${nutri.description}* (${nutri.meal_type})
-🔥 *${nutri.calories}* kcal | 🥩 *${nutri.protein_g}g* Prot | 🍚 *${nutri.carbs_g}g* Carb | 🥑 *${nutri.fat_g}g* Grasa
-${nutri.water_ml > 0 ? `💧 *Agua añadida:* +${nutri.water_ml} ml\n` : ''}${nutri.creatine_detected ? '⚡ *Creatina:* 5g marcada en la merienda ✅\n' : ''}
+✅ *Comida Registrada (Báscula y Etiquetas Mercadona 🎯)*
+${transcriptionHeader}🍽️ *${nutri.description || nutri.meal_type}* (${nutri.meal_type})
+${breakdownText}
+🔥 *Total Comida:* *${finalCalories}* kcal | 🥩 *${finalProtein}g* Prot | 🍚 *${finalCarbs}g* Carb | 🥑 *${finalFat}g* Grasa
+${nutri.water_ml > 0 ? `💧 *Agua añadida:* +${nutri.water_ml} ml\n` : ''}${nutri.creatine_detected ? '⚡ *Creatina:* 5g tomada en la merienda ✅\n' : ''}
 📊 *Acumulado de Hoy (${todayStr}):*
-• Calorías: *${updatedTotalKcal}* / ${t.calories} kcal
-• Proteína: *${updatedTotalProt.toFixed(0)}* / ${t.proteinMin}–${t.proteinMax} g (${(updatedTotalProt / activeProtocol.weightKg).toFixed(2)} g/kg)
+• Calorías: *${updatedTotalKcal}* / ${t.calories} kcal (${remainingKcal} kcal restantes)
+• Proteína: *${updatedTotalProt.toFixed(1)}* / ${t.proteinMin}–${t.proteinMax} g (${(updatedTotalProt / activeProtocol.weightKg).toFixed(2)} g/kg de peso)
 • Hidratación: *${(updatedTotalWater / 1000).toFixed(2)}* L
 ${aiResult.coach_tip ? `\n💡 *Coach:* _${aiResult.coach_tip}_` : ''}
         `.trim();
@@ -2349,6 +2407,7 @@ ${aiResult.coach_tip ? `\n💡 *Coach:* _${aiResult.coach_tip}_` : ''}
         success: true,
         action: 'log_nutrition',
         meal: newMeal,
+        calculated_breakdown: itemsToCalculate,
       });
     }
 
