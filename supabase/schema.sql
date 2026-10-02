@@ -156,7 +156,28 @@ CREATE TABLE IF NOT EXISTS nutrition_adaptations (
 
 CREATE INDEX IF NOT EXISTS idx_nutrition_adaptations_week ON nutrition_adaptations (week_number DESC);
 
--- 9. SEGURIDAD Y POLÍTICAS RLS (Row Level Security)
+-- 9. ALIMENTOS FRECUENTES Y DESPENSA PERSONAL (Báscula y precisión)
+CREATE TABLE IF NOT EXISTS user_frequent_foods (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    brand TEXT DEFAULT 'Hacendado',
+    category TEXT DEFAULT 'despensa_personal',
+    calories_100g NUMERIC(6,1) NOT NULL,
+    protein_100g NUMERIC(5,1) NOT NULL,
+    carbs_100g NUMERIC(5,1) NOT NULL,
+    fat_100g NUMERIC(5,1) NOT NULL,
+    fiber_100g NUMERIC(5,1),
+    default_serving_grams NUMERIC(5,1),
+    unit_name TEXT,
+    aliases JSONB,
+    times_used INTEGER DEFAULT 1,
+    last_used_at TIMESTAMPTZ DEFAULT now(),
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_frequent_foods_name ON user_frequent_foods (name);
+
+-- 10. SEGURIDAD Y POLÍTICAS RLS (Row Level Security)
 ALTER TABLE daily_health_metrics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE heart_rate_samples ENABLE ROW LEVEL SECURITY;
 ALTER TABLE strava_activities ENABLE ROW LEVEL SECURITY;
@@ -167,6 +188,7 @@ ALTER TABLE water_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE weight_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE routine_day_overrides ENABLE ROW LEVEL SECURITY;
 ALTER TABLE nutrition_adaptations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_frequent_foods ENABLE ROW LEVEL SECURITY;
 
 -- Permitir lectura y escritura completa con Service Role o clave maestra
 DO $$
@@ -200,5 +222,8 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'service_role_all_nutrition_adaptations') THEN
         CREATE POLICY service_role_all_nutrition_adaptations ON nutrition_adaptations FOR ALL USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'service_role_all_user_frequent_foods') THEN
+        CREATE POLICY service_role_all_user_frequent_foods ON user_frequent_foods FOR ALL USING (true);
     END IF;
 END $$;

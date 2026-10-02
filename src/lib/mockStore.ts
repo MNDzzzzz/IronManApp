@@ -12,6 +12,7 @@ import {
   StreamDataPoint,
   RoutineDayOverride,
   NutritionAdaptation,
+  UserFrequentFood,
 } from '@/types/database';
 import { mergeStravaWithFit3HeartRate } from './merging/temporalAligner';
 
@@ -754,6 +755,7 @@ declare global {
     weightLogs: WeightLog[];
     routineDayOverrides: RoutineDayOverride[];
     nutritionAdaptations: NutritionAdaptation[];
+    userFrequentFoods: UserFrequentFood[];
   } | undefined;
 }
 
@@ -769,6 +771,7 @@ if (!global.__ironman_store) {
     weightLogs: [...initialWeightLogs],
     routineDayOverrides: [],
     nutritionAdaptations: [],
+    userFrequentFoods: [],
   };
 }
 

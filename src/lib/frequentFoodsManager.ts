@@ -1,0 +1,458 @@
+// ====================================================================
+// GESTOR DE MEMORIA DE ALIMENTOS FRECUENTES Y BÁSCULA (ÁLVARO / MERCADONA)
+// Especialista: Nutrición Deportiva y Precisión de Pesaje
+// ====================================================================
+
+import { UserFrequentFood } from '@/types/database';
+import { isSupabaseConfigured, supabaseAdmin } from './supabase';
+import { mockStore } from './mockStore';
+
+// --------------------------------------------------------------------
+// 1. PRODUCTOS BÁSICOS PRECARGADOS (DESPENSA MERCADONA DE ÁLVARO)
+// --------------------------------------------------------------------
+export const DEFAULT_FREQUENT_FOODS: UserFrequentFood[] = [
+  {
+    id: 'fav-crema-cacahuete-100',
+    name: 'Crema de Cacahuete 100% Hacendado',
+    brand: 'Hacendado',
+    category: 'grasas_saludables',
+    calories_100g: 618,
+    protein_100g: 30.0,
+    carbs_100g: 7.0,
+    fat_100g: 50.0,
+    default_serving_grams: 15,
+    unit_name: 'cucharada',
+    aliases: [
+      'crema de cacahuete',
+      'crema cacahuete',
+      'mantequilla de cacahuete',
+      'mantequilla cacahuete',
+      'cacahuete',
+      'mi crema de cacahuete',
+      'peanut butter',
+    ],
+    times_used: 10,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-pechuga-pollo',
+    name: 'Pechuga de Pollo Limpia Hacendado',
+    brand: 'Hacendado',
+    category: 'carnes_aves',
+    calories_100g: 106,
+    protein_100g: 22.2,
+    carbs_100g: 0.0,
+    fat_100g: 1.2,
+    aliases: ['pollo', 'pechuga de pollo', 'filetes de pollo', 'pechuga pollo', 'pechuga'],
+    times_used: 15,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-pechuga-pavo',
+    name: 'Pechuga de Pavo Filetes Hacendado',
+    brand: 'Hacendado',
+    category: 'carnes_aves',
+    calories_100g: 105,
+    protein_100g: 24.0,
+    carbs_100g: 0.0,
+    fat_100g: 1.0,
+    aliases: ['pavo', 'pechuga de pavo', 'filetes de pavo', 'pechuga pavo'],
+    times_used: 12,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-pavo-lonchas-92',
+    name: 'Pechuga de Pavo 92% Lonchas Hacendado',
+    brand: 'Hacendado',
+    category: 'embutidos_magros',
+    calories_100g: 86,
+    protein_100g: 18.0,
+    carbs_100g: 1.0,
+    fat_100g: 1.0,
+    default_serving_grams: 25,
+    unit_name: 'loncha',
+    aliases: ['fiambre pavo', 'pavo lonchas', 'jamon pavo', 'pechuga de pavo 92%', 'lonchas pavo'],
+    times_used: 8,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-huevos-l',
+    name: 'Huevos Clase L Hacendado',
+    brand: 'Hacendado',
+    category: 'huevos',
+    calories_100g: 143,
+    protein_100g: 12.5,
+    carbs_100g: 0.7,
+    fat_100g: 10.0,
+    default_serving_grams: 65, // ~65g por huevo L entero
+    unit_name: 'huevo',
+    aliases: ['huevo', 'huevos', 'huevos revueltos', 'huevo a la plancha', 'huevos enteros'],
+    times_used: 20,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-claras-pasteurizadas',
+    name: 'Claras de Huevo Pasteurizadas Hacendado',
+    brand: 'Hacendado',
+    category: 'huevos',
+    calories_100g: 50,
+    protein_100g: 11.0,
+    carbs_100g: 0.5,
+    fat_100g: 0.2,
+    default_serving_grams: 35, // ~35g por clara
+    unit_name: 'clara',
+    aliases: ['claras', 'clara de huevo', 'claras de huevo', 'bote de claras'],
+    times_used: 14,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-copos-avena',
+    name: 'Copos de Avena Hacendado',
+    brand: 'Hacendado',
+    category: 'cereales',
+    calories_100g: 375,
+    protein_100g: 13.5,
+    carbs_100g: 58.7,
+    fat_100g: 7.0,
+    default_serving_grams: 50,
+    aliases: ['avena', 'copos de avena', 'harina de avena', 'porridge'],
+    times_used: 16,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-queso-batido-0',
+    name: 'Queso Fresco Batido 0% Hacendado',
+    brand: 'Hacendado',
+    category: 'lacteos_proteicos',
+    calories_100g: 46,
+    protein_100g: 8.5,
+    carbs_100g: 3.5,
+    fat_100g: 0.1,
+    default_serving_grams: 250,
+    unit_name: 'tarrina',
+    aliases: ['queso batido', 'queso fresco batido', 'queso 0%', 'queso fresco batido 0%'],
+    times_used: 15,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-proteina-whey',
+    name: 'Proteína Whey en Polvo',
+    brand: 'Suplemento Deportivo',
+    category: 'suplementos',
+    calories_100g: 380,
+    protein_100g: 78.0,
+    carbs_100g: 4.0,
+    fat_100g: 4.5,
+    default_serving_grams: 30, // 1 cacito habitual
+    unit_name: 'cacito',
+    aliases: ['whey', 'proteina whey', 'proteina en polvo', 'batido de proteinas', 'cazo de proteina', 'cacito de whey', 'proteina'],
+    times_used: 18,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-arroz-basmati',
+    name: 'Arroz Basmati Hacendado',
+    brand: 'Hacendado',
+    category: 'cereales',
+    calories_100g: 350,
+    protein_100g: 8.5,
+    carbs_100g: 77.0,
+    fat_100g: 1.0,
+    default_serving_grams: 80,
+    aliases: ['arroz basmati', 'arroz', 'arroz cocido', 'arroz blanco'],
+    times_used: 14,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-atun-natural',
+    name: 'Atún Claro al Natural Hacendado',
+    brand: 'Hacendado',
+    category: 'pescados',
+    calories_100g: 81,
+    protein_100g: 18.5,
+    carbs_100g: 0.0,
+    fat_100g: 0.8,
+    default_serving_grams: 52, // 1 lata escurrida
+    unit_name: 'lata',
+    aliases: ['atun', 'atun al natural', 'lata de atun', 'lata de atun al natural', 'atún'],
+    times_used: 10,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-aove',
+    name: 'Aceite de Oliva Virgen Extra Hacendado',
+    brand: 'Hacendado',
+    category: 'grasas_saludables',
+    calories_100g: 824,
+    protein_100g: 0.0,
+    carbs_100g: 0.0,
+    fat_100g: 91.6,
+    default_serving_grams: 10,
+    unit_name: 'cucharada',
+    aliases: ['aceite de oliva', 'aove', 'aceite', 'cucharada de aceite', 'aceite virgen extra'],
+    times_used: 25,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-pan-integral',
+    name: 'Pan 100% Integral Hacendado',
+    brand: 'Hacendado',
+    category: 'panes',
+    calories_100g: 230,
+    protein_100g: 9.0,
+    carbs_100g: 41.0,
+    fat_100g: 2.5,
+    default_serving_grams: 30, // 1 rebanada
+    unit_name: 'rebanada',
+    aliases: ['pan integral', 'pan de molde integral', 'pan 100% integral', 'tostada integral', 'tostadas'],
+    times_used: 12,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-platano',
+    name: 'Plátano de Canarias',
+    brand: 'Hacendado',
+    category: 'frutas',
+    calories_100g: 89,
+    protein_100g: 1.1,
+    carbs_100g: 22.8,
+    fat_100g: 0.3,
+    default_serving_grams: 100,
+    unit_name: 'platano',
+    aliases: ['platano', 'platanos', 'platano de canarias', 'banana'],
+    times_used: 16,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-nueces',
+    name: 'Nueces Peladas Hacendado',
+    brand: 'Hacendado',
+    category: 'grasas_saludables',
+    calories_100g: 654,
+    protein_100g: 15.2,
+    carbs_100g: 7.0,
+    fat_100g: 65.2,
+    default_serving_grams: 20,
+    aliases: ['nueces', 'nuez', 'nueces peladas'],
+    times_used: 9,
+    last_used_at: new Date().toISOString(),
+  },
+];
+
+// --------------------------------------------------------------------
+// 2. NORMALIZADOR DE TEXTO PARA BÚSQUEDAS
+// --------------------------------------------------------------------
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// --------------------------------------------------------------------
+// 3. RECUPERAR ALIMENTOS FRECUENTES (SUPABASE + MEMORIA)
+// --------------------------------------------------------------------
+export async function getUserFrequentFoods(): Promise<UserFrequentFood[]> {
+  if (isSupabaseConfigured && supabaseAdmin) {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('user_frequent_foods')
+        .select('*')
+        .order('times_used', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        // Actualizar la caché en memoria si la tienda existe
+        if (mockStore) {
+          (mockStore as any).userFrequentFoods = data;
+        }
+        return data;
+      }
+    } catch (e) {
+      console.warn('Aviso cargando user_frequent_foods desde Supabase:', e);
+    }
+  }
+
+  if (mockStore && (mockStore as any).userFrequentFoods && (mockStore as any).userFrequentFoods.length > 0) {
+    return (mockStore as any).userFrequentFoods;
+  }
+
+  // Fallback con la despensa habitual por defecto
+  return [...DEFAULT_FREQUENT_FOODS];
+}
+
+// --------------------------------------------------------------------
+// 4. BÚSQUEDA PRIORITARIA EN PRODUCTOS FRECUENTES DE ÁLVARO
+// --------------------------------------------------------------------
+export async function findUserFrequentFood(query: string): Promise<UserFrequentFood | null> {
+  const normQuery = normalizeText(query);
+  if (!normQuery) return null;
+
+  const catalog = await getUserFrequentFoods();
+
+  // 1. Coincidencia exacta de alias o nombre
+  for (const prod of catalog) {
+    if (normalizeText(prod.name) === normQuery) return prod;
+    for (const alias of prod.aliases) {
+      if (normalizeText(alias) === normQuery) return prod;
+    }
+  }
+
+  // 2. Coincidencia parcial (el query contiene un alias completo o viceversa)
+  let bestMatch: UserFrequentFood | null = null;
+  let highestScore = 0;
+
+  for (const prod of catalog) {
+    for (const alias of prod.aliases) {
+      const normAlias = normalizeText(alias);
+      if (normQuery.includes(normAlias) || normAlias.includes(normQuery)) {
+        const score = normAlias.length;
+        if (score > highestScore) {
+          highestScore = score;
+          bestMatch = prod;
+        }
+      }
+    }
+  }
+
+  return bestMatch;
+}
+
+// --------------------------------------------------------------------
+// 5. MEMORIZAR / GUARDAR UN NUEVO PRODUCTO O ACTUALIZAR EXISTENTE
+// --------------------------------------------------------------------
+export async function memorizeUserFood(foodData: {
+  name: string;
+  brand?: string;
+  calories_100g: number;
+  protein_100g: number;
+  carbs_100g: number;
+  fat_100g: number;
+  fiber_100g?: number;
+  default_serving_grams?: number;
+  unit_name?: string;
+  aliases?: string[];
+}): Promise<UserFrequentFood> {
+  const normName = normalizeText(foodData.name);
+  const aliasList = Array.from(
+    new Set([foodData.name.toLowerCase(), normName, ...(foodData.aliases || [])])
+  );
+
+  const existingCatalog = await getUserFrequentFoods();
+  const existing = existingCatalog.find(
+    (f) =>
+      normalizeText(f.name) === normName ||
+      f.aliases.some((a) => normalizeText(a) === normName)
+  );
+
+  const foodId = existing ? existing.id : `fav-${Date.now()}`;
+  const updatedFood: UserFrequentFood = {
+    id: foodId,
+    name: foodData.name,
+    brand: foodData.brand || 'Hacendado',
+    category: 'despensa_personal',
+    calories_100g: Math.round(foodData.calories_100g),
+    protein_100g: parseFloat(foodData.protein_100g.toFixed(1)),
+    carbs_100g: parseFloat(foodData.carbs_100g.toFixed(1)),
+    fat_100g: parseFloat(foodData.fat_100g.toFixed(1)),
+    fiber_100g: foodData.fiber_100g,
+    default_serving_grams: foodData.default_serving_grams || 100,
+    unit_name: foodData.unit_name || 'g',
+    aliases: aliasList,
+    times_used: (existing?.times_used || 0) + 1,
+    last_used_at: new Date().toISOString(),
+    created_at: existing?.created_at || new Date().toISOString(),
+  };
+
+  // Guardar en Supabase
+  if (isSupabaseConfigured && supabaseAdmin) {
+    try {
+      await supabaseAdmin.from('user_frequent_foods').upsert([updatedFood], { onConflict: 'id' });
+    } catch (e) {
+      console.warn('Aviso guardando user_frequent_foods en Supabase:', e);
+    }
+  }
+
+  // Guardar en memoria
+  if (mockStore) {
+    if (!(mockStore as any).userFrequentFoods) {
+      (mockStore as any).userFrequentFoods = [...DEFAULT_FREQUENT_FOODS];
+    }
+    const idx = (mockStore as any).userFrequentFoods.findIndex((f: UserFrequentFood) => f.id === foodId);
+    if (idx >= 0) {
+      (mockStore as any).userFrequentFoods[idx] = updatedFood;
+    } else {
+      (mockStore as any).userFrequentFoods.unshift(updatedFood);
+    }
+  }
+
+  return updatedFood;
+}
+
+// --------------------------------------------------------------------
+// 6. DETECTOR DE MACROS EXPLÍCITOS EN EL TEXTO DEL USUARIO
+// --------------------------------------------------------------------
+export interface ExplicitMacrosResult {
+  hasExplicitMacros: boolean;
+  calories?: number;
+  protein_g?: number;
+  carbs_g?: number;
+  fat_g?: number;
+}
+
+/**
+ * Detecta si el mensaje dictado por Álvaro contiene números explícitos
+ * para las calorías o macronutrientes (ej: "155 kcal, 7.5g proteina, 3g carb, 12g grasa").
+ * En este caso, ESTOS NÚMEROS DEBEN PREVALECER AL 100% Y NUNCA SOBRESCRIBIRSE.
+ */
+export function extractExplicitMacrosFromText(text: string): ExplicitMacrosResult {
+  if (!text) return { hasExplicitMacros: false };
+
+  const lower = text.toLowerCase();
+  let calories: number | undefined;
+  let protein_g: number | undefined;
+  let carbs_g: number | undefined;
+  let fat_g: number | undefined;
+  let matchesCount = 0;
+
+  // Calorías: "155 kcal", "155 calorías", "155 cal", "155 calorias"
+  const kcalMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:kcal|calorias|calorías|cal)\b/i);
+  if (kcalMatch) {
+    calories = Math.round(parseFloat(kcalMatch[1].replace(',', '.')));
+    matchesCount++;
+  }
+
+  // Proteína: "7.5g proteina", "7.5 g de proteína", "7.5g prot"
+  const protMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:g|gr|gramos)?\s*(?:de\s+)?(?:prot|proteina|proteinas|proteína|proteínas)\b/i);
+  if (protMatch) {
+    protein_g = parseFloat(parseFloat(protMatch[1].replace(',', '.')).toFixed(1));
+    matchesCount++;
+  }
+
+  // Carbohidratos / Hidratos: "3g hidratos", "3g carbs", "3g hc"
+  const carbMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:g|gr|gramos)?\s*(?:de\s+)?(?:carb|carbs|carbohidrato|carbohidratos|hidrato|hidratos|ch)\b/i);
+  if (carbMatch) {
+    carbs_g = parseFloat(parseFloat(carbMatch[1].replace(',', '.')).toFixed(1));
+    matchesCount++;
+  }
+
+  // Grasas: "12g grasa", "12g grasas", "12g fat"
+  const fatMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:g|gr|gramos)?\s*(?:de\s+)?(?:grasa|grasas|fat)\b/i);
+  if (fatMatch) {
+    fat_g = parseFloat(parseFloat(fatMatch[1].replace(',', '.')).toFixed(1));
+    matchesCount++;
+  }
+
+  // Si se detectaron al menos 2 macros o calorías + 1 macro, son macros explícitos intencionados por el atleta
+  const hasExplicitMacros = matchesCount >= 2 || (calories !== undefined && (protein_g !== undefined || carbs_g !== undefined || fat_g !== undefined));
+
+  return {
+    hasExplicitMacros,
+    calories,
+    protein_g,
+    carbs_g,
+    fat_g,
+  };
+}

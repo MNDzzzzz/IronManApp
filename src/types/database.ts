@@ -201,3 +201,25 @@ export interface NutritionAdaptation {
   applied_at?: string;
 }
 
+// --------------------------------------------------------------------
+// 10. PRODUCTOS FRECUENTES Y MEMORIA DE ALIMENTOS (MERCADONA / PERSONAL)
+// --------------------------------------------------------------------
+export interface UserFrequentFood {
+  id: string;
+  name: string;
+  brand: string;
+  category: string;
+  calories_100g: number;
+  protein_100g: number;
+  carbs_100g: number;
+  fat_100g: number;
+  fiber_100g?: number;
+  default_serving_grams?: number;
+  unit_name?: string;
+  aliases: string[];
+  times_used?: number;
+  last_used_at?: string;
+  created_at?: string;
+}
+
+

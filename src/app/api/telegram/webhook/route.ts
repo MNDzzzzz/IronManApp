@@ -50,6 +50,13 @@ import {
   WeighedItemInput,
 } from '@/lib/mercadonaNutrition';
 import {
+  getUserFrequentFoods,
+  findUserFrequentFood,
+  memorizeUserFood,
+  extractExplicitMacrosFromText,
+} from '@/lib/frequentFoodsManager';
+import { UserFrequentFood } from '@/types/database';
+import {
   getWeekDateRange,
   getWeeklyReportDataset,
   aggregateWeeklyTelemetry,
@@ -662,7 +669,8 @@ interface UniversalAssistantResponse {
     | 'schedule_reassign'
     | 'gym_exercise_modification'
     | 'adapt_diet'
-    | 'apply_diet';
+    | 'apply_diet'
+    | 'memorize_food';
   transcription?: string;
   // Para sumar o restar valores de la app
   adjust?: {
@@ -693,6 +701,18 @@ interface UniversalAssistantResponse {
     fat_g: number;
     water_ml: number;
     creatine_detected: boolean;
+    user_explicit_macros?: boolean; // True si el usuario dictó macros/calorías exactas
+  };
+  // Para memorizar un alimento frecuente en la despensa
+  memorize_food?: {
+    name: string;
+    brand?: string;
+    calories_100g: number;
+    protein_100g: number;
+    carbs_100g: number;
+    fat_100g: number;
+    default_serving_grams?: number;
+    aliases?: string[];
   };
   // Para entrenamiento de fuerza
   workout?: {
@@ -836,12 +856,32 @@ INSTRUCCIONES DE CLASIFICACIÓN Y ACCIÓN:
 
 5. Si Álvaro describe una comida o bebida ingerida:
    - Pon "action": "log_nutrition".
-   - REGLA DE ORO DE BÁSCULA: Desglosa CADA ALIMENTO individual en el array "items" con:
-     * "food": nombre del alimento (ej: "pechuga de pollo", "arroz basmati", "aceite de oliva", "yogur proteico vainilla", "huevo", "claras", "atun al natural", "avena", "pan integral").
-     * "amount": cantidad numérica según el pesaje o unidades (ej: 200, 80, 10, 2, 1). Si no dice unidad, asume gramos ('g').
-     * "unit": 'g' | 'ml' | 'unidad' | 'lata' | 'tostada' | 'cucharada' | 'cacito'.
-   - Extrae agua en ml si la menciona ("water_ml") y si tomó creatina ("creatine_detected": true).
-   - El sistema recalculará cada ingrediente con las etiquetas exactas de Mercadona / Hacendado.
+   - REGLA SAGRADA DE BÁSCULA Y CANTIDADES PRECISAS:
+     * Álvaro PESA cada comida en báscula digital. Si Álvaro dice "he puesto 25 gramos de crema de cacahuete", "puse 25g de avena" o "120g de pavo":
+       ESTÁ TOTALMENTE PROHIBIDO inventar una "ración media", 100g, 15g o 30g.
+       El valor en "items" DEBE SER EXACTAMENTE: "amount": 25, "unit": "g".
+     * Desglosa CADA ALIMENTO individual en el array "items" con:
+       - "food": nombre del alimento (ej: "crema de cacahuete", "pechuga de pavo", "arroz basmati", "avena", "claras", "pan integral").
+       - "amount": cantidad exacta según el pesaje (ej: 25, 120, 2, 70). Si no dice unidad, asume gramos ('g').
+       - "unit": 'g' | 'ml' | 'unidad' | 'lata' | 'tostada' | 'cucharada' | 'cacito'.
+     * SI ÁLVARO INDICA MACROS O CALORÍAS EXPLÍCITAS (ej: "25g de crema que son 155 kcal, 7.5g proteina, 3g carb, 12.5g grasa", o "350 kcal y 30g de proteína"):
+       - Copia EXACTAMENTE esos números en "calories", "protein_g", "carbs_g", "fat_g".
+       - Pon "user_explicit_macros": true.
+       - Esos números dictados por Álvaro prevalecerán al 100% y NUNCA se sobreescribirán con estimaciones genéricas.
+     * Extrae agua en ml si la menciona ("water_ml") y si tomó creatina ("creatine_detected": true).
+
+5.b. Si Álvaro pide RECORDAR, MEMORIZAR O GUARDAR UN ALIMENTO DE SU DESPENSA (ej: "Acuérdate de la crema de cacahuete de Hacendado que tiene 618 kcal, 30g proteina, 7g carbs y 50g grasa por 100g", "Recuerda este producto...", "Apunta mi pan de molde con 230 kcal..."):
+   - Pon "action": "memorize_food".
+   - Rellena "memorize_food": {
+       "name": "Nombre exacto del producto",
+       "brand": "Hacendado / otra",
+       "calories_100g": 618,
+       "protein_100g": 30.0,
+       "carbs_100g": 7.0,
+       "fat_100g": 50.0,
+       "default_serving_grams": 15,
+       "aliases": ["crema de cacahuete", "mantequilla de cacahuete"]
+     }
 
 6. Si Álvaro hace CUALQUIER PREGUNTA, CONSULTA CIENTÍFICA, TÉCNICA O CURIOSIDAD DEPORTIVA:
    - Aplica tanto a preguntas sobre sus métricas en la app como a dudas de fisiología del ejercicio, calzado y zapatillas de running (drop, amortiguación, placas), zonas de entrenamiento, VDOT, nutrición deportiva avanzada, suplementos, biomecánica o recuperación que estén FUERA de los datos de la app.
@@ -900,7 +940,7 @@ Mensaje escrito (si aplica): "${textOrHint}"
 
 DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin markdown ni texto alrededor):
 {
-  "action": "log_workout" | "log_cardio" | "log_nutrition" | "query" | "protocol_update" | "adjust_value" | "set_value" | "log_weight" | "schedule_swap" | "schedule_reassign" | "gym_exercise_modification" | "adapt_diet" | "apply_diet",
+  "action": "log_workout" | "log_cardio" | "log_nutrition" | "query" | "protocol_update" | "adjust_value" | "set_value" | "log_weight" | "schedule_swap" | "schedule_reassign" | "gym_exercise_modification" | "adapt_diet" | "apply_diet" | "memorize_food",
   "transcription": "transcripción literal",
   "schedule_swap": {
     "date1": "2026-10-01",
@@ -927,6 +967,16 @@ DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin mark
     "auto_apply": false
   },
   "apply_diet": {},
+  "memorize_food": {
+    "name": "Crema de Cacahuete 100%",
+    "brand": "Hacendado",
+    "calories_100g": 618,
+    "protein_100g": 30.0,
+    "carbs_100g": 7.0,
+    "fat_100g": 50.0,
+    "default_serving_grams": 15,
+    "aliases": ["crema de cacahuete", "mantequilla de cacahuete"]
+  },
   "adjust": {
     "metric": "calories" | "water_ml" | "protein_g" | "carbs_g" | "fat_g",
     "delta": -200,
@@ -945,14 +995,14 @@ DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin mark
     "meal_type": "Desayuno" | "Almuerzo" | "Cena" | "Snack",
     "description": "texto descriptivo",
     "items": [
-      { "food": "pechuga de pollo", "amount": 200, "unit": "g" },
-      { "food": "arroz basmati", "amount": 80, "unit": "g" },
-      { "food": "aceite de oliva", "amount": 10, "unit": "g" }
+      { "food": "crema de cacahuete", "amount": 25, "unit": "g" },
+      { "food": "pechuga de pollo", "amount": 200, "unit": "g" }
     ],
-    "calories": 0,
-    "protein_g": 0.0,
-    "carbs_g": 0.0,
-    "fat_g": 0.0,
+    "calories": 155,
+    "protein_g": 7.5,
+    "carbs_g": 1.8,
+    "fat_g": 12.5,
+    "user_explicit_macros": false,
     "water_ml": 0,
     "creatine_detected": false
   },
@@ -2529,6 +2579,63 @@ _${s.note}_
       return NextResponse.json({ success: true, command: 'exercises_list' });
     }
 
+    // 28. /mis_alimentos (Despensa y alimentos frecuentes de Álvaro con macros por 100g)
+    if (mainCommand === '/mis_alimentos' || mainCommand === '/alimentos' || cleanCmd === 'mis alimentos' || cleanCmd === 'alimentos frecuentes') {
+      const foods = await getUserFrequentFoods();
+      let msg = `🍎 *Despensa Personal de Alimentos de Álvaro (Mercadona / Hacendado)* 🎯\n\n`;
+      msg += `_Estos productos se reconocen al instante y se calculan según los gramos exactos que peses en báscula:_\n\n`;
+
+      foods.slice(0, 16).forEach((f) => {
+        const servingText = f.default_serving_grams ? ` • 1 ${f.unit_name || 'ración'} = ${f.default_serving_grams}g` : '';
+        msg += `• *${f.name}* (${f.brand}):\n`;
+        msg += `  └ *${f.calories_100g} kcal* | *${f.protein_100g}g* Prot | *${f.carbs_100g}g* HC | *${f.fat_100g}g* G / 100g${servingText}\n`;
+      });
+
+      msg += `\n💡 _Para memorizar un alimento nuevo o actualizar uno existente, dímelo por voz o escribe:_\n`;
+      msg += `_"Recuerda este alimento: Crema de Cacahuete Captain Peanut, 620 kcal, 28g proteina, 12g hidratos, 48g grasa"_\n\n`;
+      msg += `⚖️ _Cuando me digas tus comidas (ej: "25g de crema de cacahuete"), usaré siempre tus gramos exactos, nunca una media inventada._`;
+
+      if (botToken && message.chat?.id) {
+        await sendTelegramMessage(chatId, msg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'frequent_foods_list', foodsCount: foods.length });
+    }
+
+    // 29. /recordar_alimento (Comando explícito para memorizar un alimento)
+    if (mainCommand === '/recordar_alimento' || mainCommand === '/guardar_alimento') {
+      const paramStr = (parts || []).slice(1).join(' ');
+      const argParts = paramStr.split(/[;,|]|\s+(?:con|de|por)\s+/i).map((p: string) => p.trim());
+      const name = argParts[0] || 'Alimento personalizado';
+      const macros = extractExplicitMacrosFromText(paramStr);
+      if (macros.calories !== undefined) {
+        const saved = await memorizeUserFood({
+          name,
+          calories_100g: macros.calories,
+          protein_100g: macros.protein_g || 0,
+          carbs_100g: macros.carbs_g || 0,
+          fat_100g: macros.fat_g || 0,
+        });
+        if (botToken && message.chat?.id) {
+          const msg = `✅ *Alimento Memorizado en tu Despensa:* *${saved.name}*\n\n` +
+            `• Calorías por 100g: *${saved.calories_100g} kcal*\n` +
+            `• Proteína: *${saved.protein_100g} g*\n` +
+            `• Carbohidratos: *${saved.carbs_100g} g*\n` +
+            `• Grasas: *${saved.fat_100g} g*\n\n` +
+            `_A partir de ahora, cuando dictes cualquier pesaje en gramos de este alimento, se calculará al milímetro con estos macros._`;
+          await sendTelegramMessage(chatId, msg, botToken);
+        }
+        return NextResponse.json({ success: true, command: 'memorize_food', food: saved });
+      } else {
+        if (botToken && message.chat?.id) {
+          const msg = `ℹ️ *Formato para memorizar un alimento:*\n\n` +
+            `\`/recordar_alimento Crema de Cacahuete; 618 kcal, 30g proteina, 7g carbs, 50g grasa\`\n\n` +
+            `O simplemente dímelo en lenguaje natural: _"Acuérdate de la crema de cacahuete con 618 kcal y 30g de proteína"_`;
+          await sendTelegramMessage(chatId, msg, botToken);
+        }
+        return NextResponse.json({ success: false, command: 'memorize_food_usage' });
+      }
+    }
+
     // ================================================================
     // PROCESADO INTELIGENTE MULTIMODAL CON GEMINI FLASH
     // (Entrenamiento Fuerza, Cardio, Nutrición o Consultas)
@@ -2746,19 +2853,51 @@ ${aiResult.coach_tip ? `💡 *Coach:* _${aiResult.coach_tip}_` : ''}
           ? nutri.items
           : extractItemsFromText(nutri.description || spokenText);
 
+      // 2. Comprobar si el mensaje contiene macros explícitos dictados por Álvaro
+      const explicitMacros = extractExplicitMacrosFromText(spokenText || nutri.description || '');
+      const userHasExactMacros = nutri.user_explicit_macros || explicitMacros.hasExplicitMacros;
+
       let finalCalories = Number(nutri.calories) || 0;
       let finalProtein = Number(nutri.protein_g) || 0;
       let finalCarbs = Number(nutri.carbs_g) || 0;
       let finalFat = Number(nutri.fat_g) || 0;
       let breakdownText = '';
 
-      if (itemsToCalculate.length > 0) {
+      if (userHasExactMacros) {
+        // PRIORIDAD 1: Si Álvaro dictó números explícitos de macros, RESPETARLOS AL 100%
+        if (explicitMacros.calories !== undefined) finalCalories = explicitMacros.calories;
+        if (explicitMacros.protein_g !== undefined) finalProtein = explicitMacros.protein_g;
+        if (explicitMacros.carbs_g !== undefined) finalCarbs = explicitMacros.carbs_g;
+        if (explicitMacros.fat_g !== undefined) finalFat = explicitMacros.fat_g;
+
+        // Si faltaba alguna caloría, fórmula metabólica estricta: 4*P + 4*C + 9*G
+        if (finalCalories === 0 && (finalProtein > 0 || finalCarbs > 0 || finalFat > 0)) {
+          finalCalories = Math.round(4 * finalProtein + 4 * finalCarbs + 9 * finalFat);
+        }
+
+        breakdownText = `\n🎯 *Macros Dictados por Álvaro (Exactitud 100% Báscula):*\n• Calorías: *${finalCalories}* kcal\n• Proteína: *${finalProtein}g*\n• Carbohidratos: *${finalCarbs}g*\n• Grasas: *${finalFat}g*\n`;
+
+        // Si además especificó un alimento concreto y sus gramos (ej: "25g de crema de cacahuete"),
+        // memorizarlo/actualizarlo en su despensa frecuente con sus valores por 100g para el futuro
+        if (itemsToCalculate.length === 1 && itemsToCalculate[0].amount > 0 && itemsToCalculate[0].unit === 'g') {
+          const it = itemsToCalculate[0];
+          const factor100 = 100 / it.amount;
+          memorizeUserFood({
+            name: it.food,
+            calories_100g: Math.round(finalCalories * factor100),
+            protein_100g: parseFloat((finalProtein * factor100).toFixed(1)),
+            carbs_100g: parseFloat((finalCarbs * factor100).toFixed(1)),
+            fat_100g: parseFloat((finalFat * factor100).toFixed(1)),
+          }).catch(err => console.warn('Aviso memorizando alimento frecuente:', err));
+        }
+      } else if (itemsToCalculate.length > 0) {
+        // PRIORIDAD 2: Si no dio macros explícitos pero sí alimentos con pesaje en gramos o unidades
         const calc = await calculateMealFromWeighedItems(itemsToCalculate);
         finalCalories = calc.totalCalories;
         finalProtein = calc.totalProtein;
         finalCarbs = calc.totalCarbs;
         finalFat = calc.totalFat;
-        breakdownText = `\n📦 *Desglose de Alimentos Pesados (Mercadona):*\n${calc.formattedBreakdown}\n`;
+        breakdownText = `\n📦 *Desglose de Alimentos Pesados (Mercadona & Despensa):*\n${calc.formattedBreakdown}\n`;
       } else {
         // Si no se desglosaron ingredientes específicos, asegurar cuadre estricto de macros
         const mathKcal = Math.round(4 * finalProtein + 4 * finalCarbs + 9 * finalFat);
@@ -3072,7 +3211,43 @@ _Todas tus métricas, barras de progreso y cálculos de comidas ya están sincro
       });
     }
 
-    // CASO K: CUALQUIER OTRA ACCIÓN O CONSULTA CONVERSACIONAL NO CAPTURADA
+    // CASO K: MEMORIZAR ALIMENTO FRECUENTE EN LA DESPENSA PERSONAL DE ÁLVARO
+    if (aiResult.action === 'memorize_food' && aiResult.memorize_food) {
+      const mf = aiResult.memorize_food;
+      const saved = await memorizeUserFood({
+        name: mf.name,
+        brand: mf.brand || 'Hacendado',
+        calories_100g: Number(mf.calories_100g) || 0,
+        protein_100g: Number(mf.protein_100g) || 0,
+        carbs_100g: Number(mf.carbs_100g) || 0,
+        fat_100g: Number(mf.fat_100g) || 0,
+        default_serving_grams: mf.default_serving_grams,
+        aliases: mf.aliases,
+      });
+
+      if (botToken && message.chat?.id) {
+        const reply = `
+✅ *Alimento Memorizado en tu Despensa Personal* 🍎
+${transcriptionHeader}🏷️ *Producto:* *${saved.name}* (${saved.brand})
+📊 *Etiqueta por 100g:*
+• 🔥 Calorías: *${saved.calories_100g} kcal*
+• 🥩 Proteína: *${saved.protein_100g} g*
+• 🍚 Carbohidratos: *${saved.carbs_100g} g*
+• 🥑 Grasas: *${saved.fat_100g} g*
+${saved.default_serving_grams ? `• ⚖️ Ración habitual: *${saved.default_serving_grams} g*\n` : ''}
+💡 _A partir de ahora, cuando me digas cualquier pesaje de "${saved.name}" (ej: "25g de ${saved.name}"), aplicaré directamente estos macros exactos sin inventar ninguna media._
+        `.trim();
+        await sendTelegramMessage(chatId, reply, botToken);
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'memorize_food',
+        food: saved,
+      });
+    }
+
+    // CASO L: CUALQUIER OTRA ACCIÓN O CONSULTA CONVERSACIONAL NO CAPTURADA
     if (botToken && message.chat?.id) {
       const reply = `
 🤖 *IronMan Coach:*

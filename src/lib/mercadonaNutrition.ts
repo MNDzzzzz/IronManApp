@@ -5,6 +5,8 @@
 // Open Food Facts API (España) y cálculo matemático estricto por pesaje.
 // ====================================================================
 
+import { findUserFrequentFood } from './frequentFoodsManager';
+
 export interface MercadonaProduct {
   id: string;
   name: string;
@@ -968,19 +970,41 @@ export async function searchOpenFoodFacts(
 export async function resolveSingleFoodItem(
   itemInput: WeighedItemInput
 ): Promise<CalculatedItemResult> {
-  let matchedProduct = findMercadonaProduct(itemInput.food);
+  // 1. Prioridad absoluta: Comprobar la despensa / memoria de alimentos frecuentes de Álvaro
+  const frequentMatch = await findUserFrequentFood(itemInput.food);
+  let matchedProduct: MercadonaProduct | null = null;
   let source: 'mercadona_catalog' | 'open_food_facts' | 'heuristica' = 'mercadona_catalog';
 
-  if (!matchedProduct) {
-    // Si no está en el catálogo de Mercadona, intentar consulta a Open Food Facts
-    const offProduct = await searchOpenFoodFacts(itemInput.food);
-    if (offProduct) {
-      matchedProduct = offProduct;
-      source = 'open_food_facts';
+  if (frequentMatch) {
+    matchedProduct = {
+      id: frequentMatch.id,
+      name: frequentMatch.name,
+      brand: frequentMatch.brand,
+      category: 'grasas_aceites_frutos',
+      calories_100g: frequentMatch.calories_100g,
+      protein_100g: frequentMatch.protein_100g,
+      carbs_100g: frequentMatch.carbs_100g,
+      fat_100g: frequentMatch.fat_100g,
+      fiber_100g: frequentMatch.fiber_100g,
+      defaultServingGrams: frequentMatch.default_serving_grams,
+      unitName: frequentMatch.unit_name,
+      aliases: frequentMatch.aliases,
+    };
+    source = 'mercadona_catalog';
+  } else {
+    // 2. Catálogo maestro Mercadona / Hacendado
+    matchedProduct = findMercadonaProduct(itemInput.food);
+    if (!matchedProduct) {
+      // 3. Consulta externa a Open Food Facts
+      const offProduct = await searchOpenFoodFacts(itemInput.food);
+      if (offProduct) {
+        matchedProduct = offProduct;
+        source = 'open_food_facts';
+      }
     }
   }
 
-  // Si no se encuentra en ninguna base de datos, fallback con valores promedio seguros
+  // 4. Fallback si no se encuentra
   if (!matchedProduct) {
     source = 'heuristica';
     matchedProduct = {
@@ -996,30 +1020,24 @@ export async function resolveSingleFoodItem(
     };
   }
 
-  // Determinar los gramos reales según si indicó gramos, mililitros o unidades
-  let effectiveGrams = Number(itemInput.amount) || 100;
+  // Determinar los gramos reales con precisión matemática ESTRICTA
+  let effectiveGrams = Number(itemInput.amount);
+  if (isNaN(effectiveGrams) || effectiveGrams <= 0) {
+    effectiveGrams = 100;
+  }
   const unit = (itemInput.unit || 'g').toLowerCase().trim();
 
-  if (
-    unit === 'unidad' ||
-    unit === 'ud' ||
-    unit === 'uds' ||
-    unit === 'huevo' ||
-    unit === 'huevos' ||
-    unit === 'lata' ||
-    unit === 'latas' ||
-    unit === 'rebanada' ||
-    unit === 'rebanadas' ||
-    unit === 'tostada' ||
-    unit === 'tostadas' ||
-    unit === 'vasito' ||
-    unit === 'vasitos' ||
-    unit === 'tarrina' ||
-    unit === 'cucharada' ||
-    unit === 'cucharadas' ||
-    unit === 'cazo' ||
-    unit === 'cacito'
-  ) {
+  // Solo si la unidad es un elemento contable (ej: 2 huevos, 1 lata, 1 rebanada, 1 plátano)
+  // multiplicamos por el peso de la ración. Si son gramos ('g', 'gr') o mililitros ('ml'),
+  // effectiveGrams son EXACTAMENTE los gramos dictados por el atleta.
+  const isUnitBased = [
+    'unidad', 'unidades', 'ud', 'uds', 'huevo', 'huevos', 'lata', 'latas',
+    'rebanada', 'rebanadas', 'tostada', 'tostadas', 'vasito', 'vasitos',
+    'tarrina', 'tarrinas', 'cucharada', 'cucharadas', 'cazo', 'cazos',
+    'cacito', 'cacitos', 'dosis', 'platano', 'platanos', 'manzana', 'manzanas'
+  ].includes(unit);
+
+  if (isUnitBased) {
     const servingGrams = matchedProduct.defaultServingGrams || 100;
     effectiveGrams = effectiveGrams * servingGrams;
   }
@@ -1103,58 +1121,93 @@ export async function calculateMealFromWeighedItems(
 
 /**
  * Extrae ingredientes y cantidades en gramos de un texto en lenguaje natural
- * (ej: "200g pechuga de pollo, 80g de arroz basmati y 10g de aove").
+ * (ej: "he puesto 25 gramos de crema de cacahuete", "200g pechuga de pollo y 80g arroz").
+ * Respeta rigurosamente los gramos dictados y nunca inventa cantidades por defecto.
  */
 export function extractItemsFromText(text: string): WeighedItemInput[] {
   if (!text || !text.trim()) return [];
 
   const items: WeighedItemInput[] = [];
+
+  // 1. Limpiar menciones de macros (ej: "155 kcal", "7.5g proteina", etc.) para que no interfieran
+  // pero conservando los alimentos y sus pesajes
+  const cleanedText = text
+    .replace(/\b\d+(?:[.,]\d+)?\s*(?:kcal|calorias|calorías|cal)\b/gi, '')
+    .replace(/\b\d+(?:[.,]\d+)?\s*(?:gramos|gr|g)?\s*(?:de\s+)?(?:prot|proteina|proteinas|proteína|proteínas|carb|carbs|hidrato|hidratos|ch|grasa|grasas|fat)\b/gi, '');
+
   // Dividir por comas, conjunciones (" y ", " e ", " con ", " + ") o saltos de línea
-  const segments = text
+  const segments = cleanedText
     .split(/[,;\n\+]|\s+(?:y|e|con)\s+/i)
     .map((s) => s.trim())
-    .filter((s) => s.length > 2);
+    .filter((s) => s.length > 1);
 
-  for (const seg of segments) {
-    // 1. Patrón: "200g pechuga de pollo" / "200 gr de arroz" / "150 ml de leche"
-    const gramMatch = seg.match(/^(\d+(?:[.,]\d+)?)\s*(?:g|gr|gramos|ml)\s*(?:de\s+)?(.+)$/i);
-    if (gramMatch) {
-      const amount = parseFloat(gramMatch[1].replace(',', '.'));
-      const food = gramMatch[2].trim();
+  for (const rawSeg of segments) {
+    // Quitar verbos y fórmulas conversacionales
+    const seg = rawSeg
+      .replace(/^(?:he\s+(?:puesto|tomado|comido|bebido|cenado|merendado|añadido)|puse|tomé|tome|comí|comi|añadí|anadi|añadi|le\s+eché|le\s+eche|eché|eche|le\s+puse|llevaba|lleva|metí|meti|para\s+(?:desayunar|comer|cenar|merendar)|de\s+desayuno|de\s+comida|de\s+cena|de\s+merienda)\s+/i, '')
+      .trim();
+
+    if (!seg) continue;
+
+    // 1. Patrón Gramos / Mililitros al inicio o con "de": "25g de crema de cacahuete" / "25 gramos mantequilla de cacahuete"
+    const gramFrontMatch = seg.match(/^(\d+(?:[.,]\d+)?)\s*(?:gramos|gr|g|ml)\b\s*(?:de\s+)?(.+)$/i);
+    if (gramFrontMatch) {
+      const amount = parseFloat(gramFrontMatch[1].replace(',', '.'));
+      const food = gramFrontMatch[2].trim().replace(/^[;:,.\-\s]+|[;:,.\-\s]+$/g, '');
       if (food.length > 1) {
         items.push({ food, amount, unit: 'g' });
         continue;
       }
     }
 
-    // 2. Patrón: "2 huevos" / "1 lata de atun" / "3 claras" / "2 tostadas"
-    const unitMatch = seg.match(/^(\d+)\s*(huevos?|claras?|latas?|rebanadas?|tostadas?|vasitos?|cucharadas?|cacitos?|cazos?)\s*(?:de\s+)?(.*)$/i);
+    // 2. Patrón Gramos / Mililitros al final: "crema de cacahuete 25 gramos" / "pechuga de pollo 200g"
+    const gramEndMatch = seg.match(/^(.+?)\s+(\d+(?:[.,]\d+)?)\s*(?:gramos|gr|g|ml)\b$/i);
+    if (gramEndMatch) {
+      const food = gramEndMatch[1].trim().replace(/^[;:,.\-\s]+|[;:,.\-\s]+$/g, '');
+      const amount = parseFloat(gramEndMatch[2].replace(',', '.'));
+      if (food.length > 1) {
+        items.push({ food, amount, unit: 'g' });
+        continue;
+      }
+    }
+
+    // 3. Patrón Gramos en cualquier parte del segmento: "... 25 gramos de crema de cacahuete ..."
+    const gramAnywhereMatch = seg.match(/(\d+(?:[.,]\d+)?)\s*(?:gramos|gr|g|ml)\b\s*(?:de\s+)?([a-záéíóúñ\s0-9%]+)/i);
+    if (gramAnywhereMatch) {
+      const amount = parseFloat(gramAnywhereMatch[1].replace(',', '.'));
+      const food = gramAnywhereMatch[2].trim().replace(/^[;:,.\-\s]+|[;:,.\-\s]+$/g, '');
+      if (food.length > 1) {
+        items.push({ food, amount, unit: 'g' });
+        continue;
+      }
+    }
+
+    // 4. Patrón Unidades / Envases contables: "2 huevos", "1 lata de atun", "3 claras", "2 tostadas", "1 cacito de whey"
+    const unitMatch = seg.match(/^(\d+)\s*(huevos?|claras?|latas?|rebanadas?|tostadas?|vasitos?|cucharadas?|cacitos?|cazos?|tarrinas?)\s*(?:de\s+)?(.*)$/i);
     if (unitMatch) {
       const amount = parseInt(unitMatch[1], 10);
       const unit = unitMatch[2].toLowerCase();
-      const rest = unitMatch[3]?.trim();
+      const rest = unitMatch[3]?.trim().replace(/^[;:,.\-\s]+|[;:,.\-\s]+$/g, '');
       const food = rest && rest.length > 1 ? `${unit} de ${rest}` : unit;
       items.push({ food, amount, unit });
       continue;
     }
 
-    // 3. Patrón número solo seguido del alimento (ej: "200 pollo", "80 arroz")
+    // 5. Patrón Número solo seguido del alimento (ej: "200 pollo", "80 arroz", "2 platanos")
     const numOnlyMatch = seg.match(/^(\d+(?:[.,]\d+)?)\s+(?:de\s+)?([a-záéíóúñ\s]+)$/i);
     if (numOnlyMatch) {
       const amount = parseFloat(numOnlyMatch[1].replace(',', '.'));
       const food = numOnlyMatch[2].trim();
-      // Si el número es mayor o igual a 20, casi seguro son gramos (ej: 200 pollo, 80 arroz)
       if (amount >= 20 && food.length > 2) {
         items.push({ food, amount, unit: 'g' });
         continue;
-      } else if (amount < 15 && food.length > 2) {
-        // Si el número es pequeño (ej: 2 platanos, 1 manzana, 3 huevos)
+      } else if (amount < 20 && food.length > 2) {
         items.push({ food, amount, unit: 'unidad' });
         continue;
       }
     }
 
-    // 4. Patrón artículos ("un platano", "una manzana", "un yogur de proteinas")
+    // 6. Patrón Artículos ("un platano", "una manzana", "un café")
     const articleMatch = seg.match(/^(?:un|una|1)\s+([a-záéíóúñ\s]+)$/i);
     if (articleMatch) {
       const food = articleMatch[1].trim();
@@ -1162,10 +1215,18 @@ export function extractItemsFromText(text: string): WeighedItemInput[] {
       continue;
     }
 
-    // 5. Si no tiene cantidad pero es un alimento reconocible (ej: "platano", "cafe solo")
+    // 7. Si no tiene cantidad explícita pero es un alimento reconocible en Mercadona o Despensa
     const matched = findMercadonaProduct(seg);
     if (matched) {
-      items.push({ food: seg, amount: 1, unit: 'unidad' });
+      // Comprobar si hay algún número aislado en el segmento que se nos haya escapado
+      const anyNum = seg.match(/\b(\d+(?:[.,]\d+)?)\b/);
+      if (anyNum) {
+        const numVal = parseFloat(anyNum[1].replace(',', '.'));
+        const unit = numVal >= 15 ? 'g' : 'unidad';
+        items.push({ food: seg, amount: numVal, unit });
+      } else {
+        items.push({ food: seg, amount: 1, unit: 'unidad' });
+      }
     }
   }
 
