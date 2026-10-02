@@ -5,7 +5,11 @@
 // Open Food Facts API (España) y cálculo matemático estricto por pesaje.
 // ====================================================================
 
-import { findUserFrequentFood } from './frequentFoodsManager';
+import {
+  findUserFrequentFood,
+  cleanFoodSearchQuery,
+  normalizeText,
+} from './frequentFoodsManager';
 
 export interface MercadonaProduct {
   id: string;
@@ -124,6 +128,31 @@ export const MERCADONA_CATALOG: MercadonaProduct[] = [
     aliases: ['ternera', 'carne picada ternera', 'filete ternera', 'ternera magra', 'añojo'],
   },
   {
+    id: 'lomo_fresco',
+    name: 'Cinta de Lomo Fresca de Cerdo Hacendado',
+    brand: 'Hacendado',
+    category: 'carnes_aves',
+    calories_100g: 125,
+    protein_100g: 22.0,
+    carbs_100g: 0.0,
+    fat_100g: 4.0,
+    defaultServingGrams: 150,
+    unitName: 'filete',
+    aliases: [
+      'lomo',
+      'cinta de lomo',
+      'lomo fresco',
+      'lomo de cerdo',
+      'filetes de lomo',
+      'filete de lomo',
+      'cinta de lomo fresca',
+      'lomo a la plancha',
+      'cinta de lomo de cerdo',
+      'filetes de cinta de lomo',
+      'lomo cerdo',
+    ],
+  },
+  {
     id: 'lomo_embuchado',
     name: 'Lomo Embuchado Duroc Hacendado',
     brand: 'Hacendado',
@@ -132,7 +161,16 @@ export const MERCADONA_CATALOG: MercadonaProduct[] = [
     protein_100g: 38.0,
     carbs_100g: 0.8,
     fat_100g: 4.8,
-    aliases: ['lomo embuchado', 'cinta de lomo embuchada'],
+    defaultServingGrams: 30,
+    unitName: 'racion',
+    aliases: [
+      'lomo embuchado',
+      'cinta de lomo embuchada',
+      'lomo curado',
+      'lomo duroc',
+      'lomo embuchado duroc',
+      'embutido de lomo',
+    ],
   },
   {
     id: 'jamon_serrano_taquitos',
@@ -539,7 +577,17 @@ export const MERCADONA_CATALOG: MercadonaProduct[] = [
     fat_100g: 0.1,
     defaultServingGrams: 200,
     unitName: 'patata',
-    aliases: ['patata', 'patatas', 'patata cocida', 'patatas cocidas', 'patata asada'],
+    aliases: [
+      'patata',
+      'patatas',
+      'patata hervida',
+      'patatas hervidas',
+      'patata cocida',
+      'patatas cocidas',
+      'patata asada',
+      'patatas asadas',
+      'patata al vapor',
+    ],
   },
   {
     id: 'boniato',
@@ -626,9 +674,20 @@ export const MERCADONA_CATALOG: MercadonaProduct[] = [
     protein_100g: 0.0,
     carbs_100g: 0.0,
     fat_100g: 100.0,
-    defaultServingGrams: 10, // 1 cucharada sopera rasa = ~10g
+    defaultServingGrams: 10,
     unitName: 'cucharada',
-    aliases: ['aove', 'aceite de oliva', 'aceite oliva', 'aceite', 'cucharada de aceite', 'cucharada aceite'],
+    aliases: [
+      'aove',
+      'aceite de oliva',
+      'aceite de oliva virgen extra',
+      'aceite virgen extra',
+      'aceite oliva',
+      'aceite',
+      'cucharada de aceite',
+      'cucharada aceite',
+      'aceite de oliva virgen',
+      'aove hacendado',
+    ],
   },
   {
     id: 'aguacate_fresco',
@@ -835,61 +894,191 @@ export const MERCADONA_CATALOG: MercadonaProduct[] = [
     unitName: 'taza',
     aliases: ['cafe', 'cafe solo', 'espresso'],
   },
+  {
+    id: 'ketchup_zero',
+    name: 'Ketchup Zero Sin Azúcares Añadidos Hacendado',
+    brand: 'Hacendado',
+    category: 'suplementos_otros',
+    calories_100g: 41,
+    protein_100g: 1.2,
+    carbs_100g: 7.2,
+    fat_100g: 0.2,
+    defaultServingGrams: 15,
+    unitName: 'cucharada',
+    aliases: [
+      'ketchup',
+      'ketchup cero',
+      'ketchup zero',
+      'ketchup 0',
+      'ketchup sin azucar',
+      'ketchup sin azucares anadidos',
+      'ketchup hacendado',
+      'ketchup mercadona',
+      'ketchup zero hacendado',
+      'ketchup cero hacendado',
+      'salsa ketchup',
+    ],
+  },
+  {
+    id: 'mayonesa_ligera',
+    name: 'Mayonesa Ligera Hacendado',
+    brand: 'Hacendado',
+    category: 'grasas_aceites_frutos',
+    calories_100g: 280,
+    protein_100g: 0.8,
+    carbs_100g: 4.5,
+    fat_100g: 28.5,
+    defaultServingGrams: 15,
+    unitName: 'cucharada',
+    aliases: [
+      'mayonesa ligera',
+      'mayonesa light',
+      'mayonesa hacendado',
+      'mayonesa mercadona',
+      'mahonesa ligera',
+      'mahonesa light',
+      'mayonesa ligera hacendado',
+      'mayonesa light hacendado',
+      'mahonesa ligera hacendado',
+    ],
+  },
+  {
+    id: 'mayonesa_tradicional',
+    name: 'Mayonesa Tradicional Hacendado',
+    brand: 'Hacendado',
+    category: 'grasas_aceites_frutos',
+    calories_100g: 680,
+    protein_100g: 0.8,
+    carbs_100g: 1.5,
+    fat_100g: 75.0,
+    defaultServingGrams: 15,
+    unitName: 'cucharada',
+    aliases: ['mayonesa', 'mahonesa', 'mayonesa normal', 'mayonesa tradicional'],
+  },
+  {
+    id: 'mostaza_dijon',
+    name: 'Mostaza Clásica / Dijon Hacendado',
+    brand: 'Hacendado',
+    category: 'suplementos_otros',
+    calories_100g: 90,
+    protein_100g: 5.0,
+    carbs_100g: 4.0,
+    fat_100g: 5.5,
+    defaultServingGrams: 15,
+    unitName: 'cucharada',
+    aliases: ['mostaza', 'mostaza dijon', 'mostaza hacendado'],
+  },
+  {
+    id: 'tomate_frito_cero',
+    name: 'Tomate Frito 0% Azúcares Añadidos Hacendado',
+    brand: 'Hacendado',
+    category: 'suplementos_otros',
+    calories_100g: 42,
+    protein_100g: 1.3,
+    carbs_100g: 6.2,
+    fat_100g: 1.2,
+    defaultServingGrams: 50,
+    aliases: ['tomate frito 0%', 'tomate frito cero', 'tomate frito sin azucar', 'tomate frito hacendado'],
+  },
 ];
 
 // --------------------------------------------------------------------
 // 2. FUNCIÓN DE BÚSQUEDA NORMALIZADA EN CATÁLOGO MERCADONA
 // --------------------------------------------------------------------
-function normalizeText(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Quitar tildes
-    .replace(/[^a-z0-9\s]/g, ' ') // Quitar caracteres especiales
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 /**
  * Busca un alimento en la base de datos de Mercadona/Hacendado mediante
- * coincidencia exacta de alias o coincidencia difusa de palabras clave.
+ * coincidencia exacta de alias o coincidencia difusa protegida de palabras clave.
  */
 export function findMercadonaProduct(query: string): MercadonaProduct | null {
   const normQuery = normalizeText(query);
   if (!normQuery) return null;
+  const cleanedQuery = cleanFoodSearchQuery(query);
 
-  // 1. Coincidencia exacta de alias
+  // 1. Coincidencia exacta de alias o nombre (query original o limpio)
   for (const prod of MERCADONA_CATALOG) {
+    const normName = normalizeText(prod.name);
+    if (normName === normQuery || (cleanedQuery && normName === cleanedQuery)) {
+      return prod;
+    }
     for (const alias of prod.aliases) {
-      if (normalizeText(alias) === normQuery) {
+      const normAlias = normalizeText(alias);
+      if (normAlias === normQuery || (cleanedQuery && normAlias === cleanedQuery)) {
         return prod;
       }
     }
   }
 
-  // 2. Coincidencia si el query CONTIENE un alias relevante o viceversa
+  // 2. Coincidencia difusa inteligente con límites de palabra y penalización de palabras no deseadas
   let bestMatch: MercadonaProduct | null = null;
   let highestScore = 0;
 
-  const queryTokens = normQuery.split(' ').filter((t) => t.length > 2);
+  const targetQueries = Array.from(new Set([normQuery, cleanedQuery].filter(Boolean)));
+  const queryTokens = Array.from(
+    new Set(
+      normQuery
+        .split(' ')
+        .concat(cleanedQuery ? cleanedQuery.split(' ') : [])
+        .filter((t) => t.length > 2)
+    )
+  );
+
+  const anchorWords = ['atun', 'salmon', 'merluza', 'bacalao', 'pollo', 'pavo', 'ternera', 'cerdo'];
 
   for (const prod of MERCADONA_CATALOG) {
     for (const alias of prod.aliases) {
       const normAlias = normalizeText(alias);
-      if (normQuery.includes(normAlias) || normAlias.includes(normQuery)) {
-        const score = normAlias.length;
+      const aliasTokens = normAlias.split(' ').filter((t) => t.length > 2);
+
+      // A. Contención de frase completa con fronteras de palabra (\b)
+      for (const tq of targetQueries) {
+        if (tq.length >= 3 && normAlias.length >= 3) {
+          const aliasRegex = new RegExp(`\\b${normAlias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+          if (aliasRegex.test(tq)) {
+            let score = 160 + normAlias.length * 2;
+            for (const aw of anchorWords) {
+              if (normAlias.includes(aw) && !tq.includes(aw)) {
+                score -= 100;
+              }
+            }
+            if (score > highestScore) {
+              highestScore = score;
+              bestMatch = prod;
+            }
+          }
+
+          const queryRegex = new RegExp(`\\b${tq.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+          if (queryRegex.test(normAlias)) {
+            let score = 110 + tq.length;
+            for (const aw of anchorWords) {
+              if (normAlias.includes(aw) && !tq.includes(aw)) {
+                score -= 100;
+              }
+            }
+            if (score > highestScore) {
+              highestScore = score;
+              bestMatch = prod;
+            }
+          }
+        }
+      }
+
+      // B. Coincidencia por tokens compartidos
+      const commonTokens = queryTokens.filter((t) => aliasTokens.includes(t));
+      if (commonTokens.length >= 2) {
+        let score = commonTokens.length * 25;
+        if (aliasTokens.every((t) => queryTokens.includes(t))) {
+          score += 50;
+        }
+        for (const aw of anchorWords) {
+          if (aliasTokens.includes(aw) && !queryTokens.includes(aw)) {
+            score -= 100;
+          }
+        }
         if (score > highestScore) {
           highestScore = score;
           bestMatch = prod;
         }
-      }
-
-      // 3. Coincidencia por tokens (palabras clave compartidas)
-      const aliasTokens = normAlias.split(' ').filter((t) => t.length > 2);
-      const commonTokens = queryTokens.filter((t) => aliasTokens.includes(t));
-      if (commonTokens.length >= 2 && commonTokens.length * 10 > highestScore) {
-        highestScore = commonTokens.length * 10;
-        bestMatch = prod;
       }
     }
   }
@@ -901,8 +1090,8 @@ export function findMercadonaProduct(query: string): MercadonaProduct | null {
 // 3. CONSULTA EXTERNA A OPEN FOOD FACTS API (ESPAÑA)
 // --------------------------------------------------------------------
 /**
- * Consulta la API pública de Open Food Facts (v2 mirror es.openfoodfacts.net)
- * con timeout rápido (3.5 segundos) para productos específicos o marcas externas.
+ * Consulta la API pública de Open Food Facts (CGI search endpoint España)
+ * con timeout rápido (3.5 segundos) y validación semántica estricta del resultado.
  */
 export async function searchOpenFoodFacts(
   query: string
@@ -911,13 +1100,14 @@ export async function searchOpenFoodFacts(
   const timeoutId = setTimeout(() => controller.abort(), 3500);
 
   try {
-    const encoded = encodeURIComponent(query);
-    const url = `https://es.openfoodfacts.net/api/v2/search?search_terms=${encoded}&page_size=2`;
+    const cleanQuery = cleanFoodSearchQuery(query) || query;
+    const encoded = encodeURIComponent(cleanQuery);
+    const url = `https://es.openfoodfacts.org/cgi/search.pl?search_terms=${encoded}&search_simple=1&action=process&json=1&page_size=5`;
 
     const res = await fetch(url, {
       method: 'GET',
       headers: {
-        'User-Agent': 'IronManApp-Fitness/1.0 (info@ironmanapp.org)',
+        'User-Agent': 'IronManApp/1.0 (soporte@ironmanapp.org)',
         Accept: 'application/json',
       },
       signal: controller.signal,
@@ -929,7 +1119,26 @@ export async function searchOpenFoodFacts(
     const data = await res.json();
     if (!data.products || data.products.length === 0) return null;
 
-    const p = data.products[0];
+    // Validación semántica estricta:
+    // El producto retornado DEBE coincidir con al menos un token clave (>2 caracteres) de la búsqueda.
+    const queryTokens = cleanQuery.split(' ').filter((t) => t.length > 2);
+    let matchedProduct: any = null;
+
+    for (const p of data.products) {
+      const prodName = normalizeText(p.product_name_es || p.product_name || '');
+      const isRelevant = queryTokens.some((tok) => prodName.includes(tok));
+      if (isRelevant) {
+        matchedProduct = p;
+        break;
+      }
+    }
+
+    if (!matchedProduct) {
+      // Si la API devuelve un producto ajeno (ej: Copos de avena para ketchup), lo descartamos por completo
+      return null;
+    }
+
+    const p = matchedProduct;
     const n = p.nutriments || {};
 
     const kcal =
@@ -945,14 +1154,14 @@ export async function searchOpenFoodFacts(
 
     return {
       id: `off-${p.code || Date.now()}`,
-      name: p.product_name_es || p.product_name || query,
+      name: p.product_name_es || p.product_name || cleanQuery,
       brand: p.brands || 'Comercial',
       category: 'suplementos_otros',
       calories_100g: Math.round(kcal),
       protein_100g: parseFloat(protein.toFixed(1)),
       carbs_100g: parseFloat(carbs.toFixed(1)),
       fat_100g: parseFloat(fat.toFixed(1)),
-      aliases: [query],
+      aliases: [cleanQuery, query],
     };
   } catch {
     clearTimeout(timeoutId);
@@ -970,8 +1179,14 @@ export async function searchOpenFoodFacts(
 export async function resolveSingleFoodItem(
   itemInput: WeighedItemInput
 ): Promise<CalculatedItemResult> {
+  const cleanName = cleanFoodSearchQuery(itemInput.food) || itemInput.food;
+
   // 1. Prioridad absoluta: Comprobar la despensa / memoria de alimentos frecuentes de Álvaro
-  const frequentMatch = await findUserFrequentFood(itemInput.food);
+  let frequentMatch = await findUserFrequentFood(itemInput.food);
+  if (!frequentMatch && cleanName !== itemInput.food) {
+    frequentMatch = await findUserFrequentFood(cleanName);
+  }
+
   let matchedProduct: MercadonaProduct | null = null;
   let source: 'mercadona_catalog' | 'open_food_facts' | 'heuristica' = 'mercadona_catalog';
 
@@ -993,10 +1208,10 @@ export async function resolveSingleFoodItem(
     source = 'mercadona_catalog';
   } else {
     // 2. Catálogo maestro Mercadona / Hacendado
-    matchedProduct = findMercadonaProduct(itemInput.food);
+    matchedProduct = findMercadonaProduct(itemInput.food) || findMercadonaProduct(cleanName);
     if (!matchedProduct) {
-      // 3. Consulta externa a Open Food Facts
-      const offProduct = await searchOpenFoodFacts(itemInput.food);
+      // 3. Consulta externa a Open Food Facts con validación
+      const offProduct = await searchOpenFoodFacts(itemInput.food) || await searchOpenFoodFacts(cleanName);
       if (offProduct) {
         matchedProduct = offProduct;
         source = 'open_food_facts';
@@ -1004,19 +1219,54 @@ export async function resolveSingleFoodItem(
     }
   }
 
-  // 4. Fallback si no se encuentra
+  // 4. Fallback si no se encuentra: NUNCA cambiar a otro alimento (ej. avena),
+  // mantener el alimento exacto dictado por Álvaro con macros heurísticos coherentes
   if (!matchedProduct) {
     source = 'heuristica';
+    const lowerName = cleanName.toLowerCase();
+    let estKcal = 120;
+    let estProt = 8.0;
+    let estCarbs = 10.0;
+    let estFat = 4.0;
+
+    if (lowerName.includes('ketchup') || lowerName.includes('mostaza') || lowerName.includes('salsa tomate')) {
+      estKcal = 40;
+      estProt = 1.0;
+      estCarbs = 8.0;
+      estFat = 0.2;
+    } else if (lowerName.includes('mayonesa') || lowerName.includes('alioli') || lowerName.includes('mahonesa')) {
+      estKcal = 280;
+      estProt = 0.8;
+      estCarbs = 4.5;
+      estFat = 28.5;
+    } else if (
+      lowerName.includes('lomo') ||
+      lowerName.includes('ternera') ||
+      lowerName.includes('pollo') ||
+      lowerName.includes('carne') ||
+      lowerName.includes('pavo')
+    ) {
+      estKcal = 130;
+      estProt = 22.0;
+      estCarbs = 0.0;
+      estFat = 4.0;
+    } else if (lowerName.includes('patata') || lowerName.includes('arroz') || lowerName.includes('pasta')) {
+      estKcal = 85;
+      estProt = 2.0;
+      estCarbs = 18.0;
+      estFat = 0.2;
+    }
+
     matchedProduct = {
       id: 'gen-' + Date.now(),
-      name: itemInput.food,
-      brand: 'Genérico',
+      name: cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
+      brand: 'Despensa / Tienda',
       category: 'suplementos_otros',
-      calories_100g: 150,
-      protein_100g: 10.0,
-      carbs_100g: 15.0,
-      fat_100g: 5.0,
-      aliases: [itemInput.food],
+      calories_100g: estKcal,
+      protein_100g: estProt,
+      carbs_100g: estCarbs,
+      fat_100g: estFat,
+      aliases: [cleanName, itemInput.food],
     };
   }
 

@@ -189,8 +189,141 @@ export const DEFAULT_FREQUENT_FOODS: UserFrequentFood[] = [
     fat_100g: 91.6,
     default_serving_grams: 10,
     unit_name: 'cucharada',
-    aliases: ['aceite de oliva', 'aove', 'aceite', 'cucharada de aceite', 'aceite virgen extra'],
+    aliases: [
+      'aceite de oliva',
+      'aceite de oliva virgen extra',
+      'aceite virgen extra',
+      'aove',
+      'aceite',
+      'cucharada de aceite',
+      'aceite oliva',
+      'aceite de oliva virgen',
+    ],
     times_used: 25,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-lomo-fresco',
+    name: 'Cinta de Lomo Fresca de Cerdo Hacendado',
+    brand: 'Hacendado',
+    category: 'carnes_aves',
+    calories_100g: 125,
+    protein_100g: 22.0,
+    carbs_100g: 0.0,
+    fat_100g: 4.0,
+    default_serving_grams: 150,
+    unit_name: 'filete',
+    aliases: [
+      'lomo',
+      'cinta de lomo',
+      'lomo fresco',
+      'lomo de cerdo',
+      'filetes de lomo',
+      'filete de lomo',
+      'cinta de lomo fresca',
+      'lomo a la plancha',
+      'cinta de lomo de cerdo',
+      'filetes de cinta de lomo',
+      'lomo cerdo',
+    ],
+    times_used: 15,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-lomo-embuchado',
+    name: 'Lomo Embuchado Duroc Hacendado',
+    brand: 'Hacendado',
+    category: 'embutidos_magros',
+    calories_100g: 198,
+    protein_100g: 38.0,
+    carbs_100g: 0.8,
+    fat_100g: 4.8,
+    default_serving_grams: 30,
+    unit_name: 'racion',
+    aliases: [
+      'lomo embuchado',
+      'cinta de lomo embuchada',
+      'lomo curado',
+      'lomo duroc',
+      'lomo embuchado duroc',
+      'embutido de lomo',
+    ],
+    times_used: 10,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-patata-cocida',
+    name: 'Patata Fresca / Cocida / Asada Hacendado',
+    brand: 'Hacendado',
+    category: 'tuberculos',
+    calories_100g: 77,
+    protein_100g: 2.0,
+    carbs_100g: 17.5,
+    fat_100g: 0.1,
+    default_serving_grams: 200,
+    unit_name: 'patata',
+    aliases: [
+      'patata',
+      'patatas',
+      'patata hervida',
+      'patatas hervidas',
+      'patata cocida',
+      'patatas cocidas',
+      'patata asada',
+      'patatas asadas',
+      'patata al vapor',
+    ],
+    times_used: 16,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-ketchup-zero',
+    name: 'Ketchup Zero Sin Azúcares Hacendado',
+    brand: 'Hacendado',
+    category: 'salsas',
+    calories_100g: 41,
+    protein_100g: 1.2,
+    carbs_100g: 7.2,
+    fat_100g: 0.2,
+    default_serving_grams: 15,
+    unit_name: 'cucharada',
+    aliases: [
+      'ketchup',
+      'ketchup cero',
+      'ketchup zero',
+      'ketchup 0',
+      'ketchup sin azucar',
+      'ketchup hacendado',
+      'ketchup mercadona',
+      'ketchup zero hacendado',
+      'ketchup cero hacendado',
+      'salsa ketchup',
+    ],
+    times_used: 14,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-mayonesa-ligera',
+    name: 'Mayonesa Ligera Hacendado',
+    brand: 'Hacendado',
+    category: 'salsas',
+    calories_100g: 280,
+    protein_100g: 0.8,
+    carbs_100g: 4.5,
+    fat_100g: 28.5,
+    default_serving_grams: 15,
+    unit_name: 'cucharada',
+    aliases: [
+      'mayonesa ligera',
+      'mayonesa light',
+      'mayonesa hacendado',
+      'mayonesa mercadona',
+      'mahonesa ligera',
+      'mahonesa light',
+      'mayonesa ligera hacendado',
+      'mayonesa light hacendado',
+    ],
+    times_used: 12,
     last_used_at: new Date().toISOString(),
   },
   {
@@ -240,9 +373,9 @@ export const DEFAULT_FREQUENT_FOODS: UserFrequentFood[] = [
 ];
 
 // --------------------------------------------------------------------
-// 2. NORMALIZADOR DE TEXTO PARA BÚSQUEDAS
+// 2. NORMALIZADOR Y LIMPIADOR DE TEXTO PARA BÚSQUEDAS
 // --------------------------------------------------------------------
-function normalizeText(text: string): string {
+export function normalizeText(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD')
@@ -250,6 +383,25 @@ function normalizeText(text: string): string {
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/**
+ * Limpia coletillas habituales de lenguaje conversacional y procedencia de tienda
+ * (ej: "del mercadona", "comprada también en el mercadona", "hacendado") para
+ * aislar el nombre puro del alimento.
+ */
+export function cleanFoodSearchQuery(text: string): string {
+  let cleaned = normalizeText(text);
+  cleaned = cleaned
+    .replace(/\b(?:comprad[oa]s?\s+(?:tambien\s+)?(?:en\s+el\s+|en\s+)?mercadona)\b/gi, '')
+    .replace(/\b(?:del?\s+mercadona|en\s+el\s+mercadona|en\s+mercadona)\b/gi, '')
+    .replace(/\b(?:de\s+hacendado|hacendado)\b/gi, '')
+    .replace(/\b(?:del\s+super|en\s+el\s+super)\b/gi, '')
+    .replace(/\b(?:marca\s+blanca)\b/gi, '')
+    .replace(/^\d+(?:[.,]\d+)?\s*(?:g|gr|gramos|ml)\s*(?:de\s+)?/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned;
 }
 
 // --------------------------------------------------------------------
@@ -289,26 +441,90 @@ export async function getUserFrequentFoods(): Promise<UserFrequentFood[]> {
 export async function findUserFrequentFood(query: string): Promise<UserFrequentFood | null> {
   const normQuery = normalizeText(query);
   if (!normQuery) return null;
+  const cleanedQuery = cleanFoodSearchQuery(query);
 
   const catalog = await getUserFrequentFoods();
 
-  // 1. Coincidencia exacta de alias o nombre
+  // 1. Coincidencia exacta de alias o nombre (original o limpio)
   for (const prod of catalog) {
-    if (normalizeText(prod.name) === normQuery) return prod;
+    const normName = normalizeText(prod.name);
+    if (normName === normQuery || (cleanedQuery && normName === cleanedQuery)) {
+      return prod;
+    }
     for (const alias of prod.aliases) {
-      if (normalizeText(alias) === normQuery) return prod;
+      const normAlias = normalizeText(alias);
+      if (normAlias === normQuery || (cleanedQuery && normAlias === cleanedQuery)) {
+        return prod;
+      }
     }
   }
 
-  // 2. Coincidencia parcial (el query contiene un alias completo o viceversa)
+  // 2. Coincidencia difusa inteligente con fronteras de palabras y protección contra falsos positivos
   let bestMatch: UserFrequentFood | null = null;
   let highestScore = 0;
+
+  const targetQueries = Array.from(new Set([normQuery, cleanedQuery].filter(Boolean)));
+  const queryTokens = Array.from(
+    new Set(
+      normQuery
+        .split(' ')
+        .concat(cleanedQuery ? cleanedQuery.split(' ') : [])
+        .filter((t) => t.length > 2)
+    )
+  );
+
+  const anchorWords = ['atun', 'salmon', 'merluza', 'bacalao', 'pollo', 'pavo', 'ternera', 'cerdo'];
 
   for (const prod of catalog) {
     for (const alias of prod.aliases) {
       const normAlias = normalizeText(alias);
-      if (normQuery.includes(normAlias) || normAlias.includes(normQuery)) {
-        const score = normAlias.length;
+      const aliasTokens = normAlias.split(' ').filter((t) => t.length > 2);
+
+      // A. Contención de frase completa con límites de palabra (\b)
+      for (const tq of targetQueries) {
+        if (tq.length >= 3 && normAlias.length >= 3) {
+          const aliasRegex = new RegExp(`\\b${normAlias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+          if (aliasRegex.test(tq)) {
+            let score = 150 + normAlias.length * 2;
+            for (const aw of anchorWords) {
+              if (normAlias.includes(aw) && !tq.includes(aw)) {
+                score -= 100;
+              }
+            }
+            if (score > highestScore) {
+              highestScore = score;
+              bestMatch = prod;
+            }
+          }
+
+          const queryRegex = new RegExp(`\\b${tq.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+          if (queryRegex.test(normAlias)) {
+            let score = 100 + tq.length;
+            for (const aw of anchorWords) {
+              if (normAlias.includes(aw) && !tq.includes(aw)) {
+                score -= 100;
+              }
+            }
+            if (score > highestScore) {
+              highestScore = score;
+              bestMatch = prod;
+            }
+          }
+        }
+      }
+
+      // B. Coincidencia por tokens compartidos
+      const commonTokens = queryTokens.filter((t) => aliasTokens.includes(t));
+      if (commonTokens.length >= 2) {
+        let score = commonTokens.length * 25;
+        if (aliasTokens.every((t) => queryTokens.includes(t))) {
+          score += 50;
+        }
+        for (const aw of anchorWords) {
+          if (aliasTokens.includes(aw) && !queryTokens.includes(aw)) {
+            score -= 100;
+          }
+        }
         if (score > highestScore) {
           highestScore = score;
           bestMatch = prod;
