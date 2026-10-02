@@ -755,10 +755,10 @@ export async function generateWeeklyReportPdf(
   const prescHeight = 110;
   drawCard(page3, MARGIN, currentY, CONTENT_WIDTH, prescHeight, C_CARD_BG, C_BLUE);
 
-  page3.drawText(`FASE: ${nextPresc.phaseName.toUpperCase()}   |   META NUTRICIONAL: ${nextPresc.calorieTarget} kcal (${nextPresc.proteinTargetG}g Proteina, ${nextPresc.waterTargetL}L Agua)`, {
+  page3.drawText(`FASE: ${nextPresc.phaseName.toUpperCase()}   |   DIETA ADAPTADA: ${nextPresc.calorieTarget} kcal (${nextPresc.proteinTargetG}g P, ${nextPresc.carbsTargetG || 230}g HC, ${nextPresc.fatTargetG || 75}g G, ${nextPresc.waterTargetL}L H2O)`, {
     x: MARGIN + 10,
     y: currentY - 14,
-    size: 8,
+    size: 7.5,
     font: fontBold,
     color: C_TEXT_WHITE,
   });

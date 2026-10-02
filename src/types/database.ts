@@ -156,3 +156,48 @@ export interface StravaWebhookEvent {
   subscription_id: number;
   updates?: Record<string, unknown>;
 }
+
+// --------------------------------------------------------------------
+// 8. MODULARIDAD Y CALENDARIO FLEXIBLE (Sobreescrituras de rutinas)
+// --------------------------------------------------------------------
+export type RoutineKey =
+  | 'strength_torso'
+  | 'strength_pierna'
+  | 'strength_fullbody'
+  | 'running_base'
+  | 'running_long'
+  | 'rest'
+  | 'custom';
+
+export interface RoutineDayOverride {
+  id: string;
+  date: string; // YYYY-MM-DD
+  routine_key: RoutineKey;
+  title: string;
+  category: 'Fuerza' | 'Cardio' | 'Descanso';
+  day_type: 'strength' | 'running' | 'rest_refeed';
+  description?: string;
+  target_steps_min?: number;
+  target_steps_max?: number;
+  custom_exercises?: string[]; // Ejercicios específicos pautados
+  notes?: string; // Ej: "Movido por lluvia", "Intercambiado con ayer"
+  created_at?: string;
+}
+
+// --------------------------------------------------------------------
+// 9. ADAPTACIONES NUTRICIONALES DINÁMICAS (IA & Semanal)
+// --------------------------------------------------------------------
+export interface NutritionAdaptation {
+  id: string;
+  week_number: number;
+  start_date: string; // YYYY-MM-DD
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  water_ml: number;
+  reason: string;
+  applied: boolean;
+  applied_at?: string;
+}
+

@@ -52,9 +52,24 @@ import {
 import {
   getWeekDateRange,
   getWeeklyReportDataset,
+  aggregateWeeklyTelemetry,
 } from '@/lib/reports/weeklyDataAggregator';
 import { generateWeeklyClinicalAssessment } from '@/lib/reports/weeklyClinicalEngine';
 import { generateWeeklyReportPdf } from '@/lib/reports/weeklyPdfGenerator';
+import {
+  getEffectiveRoutineForDate,
+  swapScheduleDays,
+  setDayRoutineOverride,
+  resetDayRoutineOverride,
+  getWeekSchedule,
+  CANONICAL_ROUTINES,
+} from '@/lib/scheduleManager';
+import {
+  calculateWeeklyDietAdaptation,
+  applyDietAdaptation,
+  getLatestNutritionAdaptation,
+} from '@/lib/reports/nutritionAdapter';
+import { RoutineKey } from '@/types/database';
 
 // --------------------------------------------------------------------
 // 1. UTILIDAD: DESCARGA DE AUDIO DE TELEGRAM
@@ -490,7 +505,8 @@ async function getAppSnapshot(todayStr: string) {
     }
   }
 
-  const routineToday = getTodayRoutine(todayStr);
+  const effectiveRoutineData = await getEffectiveRoutineForDate(todayStr);
+  const routineToday = effectiveRoutineData.routine;
   const halfMarathon = getHalfMarathonCountdown(todayStr);
   const currentWeekNumber = getCurrentWeekNumber(todayStr);
   const runningWeekPlan = getRunningProgressionForWeek(currentWeekNumber);
@@ -633,7 +649,20 @@ async function getAppSnapshot(todayStr: string) {
 // 4. MOTOR MULTIMODAL CON GEMINI FLASH (PARSER Y ENRUTADOR UNIVERSAL)
 // --------------------------------------------------------------------
 interface UniversalAssistantResponse {
-  action: 'log_workout' | 'log_cardio' | 'log_nutrition' | 'query' | 'protocol_update' | 'adjust_value' | 'set_value' | 'log_weight';
+  action:
+    | 'log_workout'
+    | 'log_cardio'
+    | 'log_nutrition'
+    | 'query'
+    | 'protocol_update'
+    | 'adjust_value'
+    | 'set_value'
+    | 'log_weight'
+    | 'schedule_swap'
+    | 'schedule_reassign'
+    | 'gym_exercise_modification'
+    | 'adapt_diet'
+    | 'apply_diet';
   transcription?: string;
   // Para sumar o restar valores de la app
   adjust?: {
@@ -692,6 +721,41 @@ interface UniversalAssistantResponse {
     new_weight_kg?: number;
     new_day_type?: DayType;
     creatine_taken?: boolean;
+  };
+  // Para intercambiar dos días del calendario
+  schedule_swap?: {
+    date1: string; // YYYY-MM-DD o 'ayer' / 'hoy' / 'mañana'
+    date2: string; // YYYY-MM-DD
+    notes?: string;
+  };
+  // Para reasignar la sesión de un día concreto
+  schedule_reassign?: {
+    date: string; // YYYY-MM-DD
+    routine_key: RoutineKey;
+    title?: string;
+    description?: string;
+    custom_exercises?: string[];
+    reason?: string;
+  };
+  // Para modificar ejercicios de gimnasio
+  gym_exercise_modification?: {
+    action: 'add' | 'edit' | 'delete';
+    day: string; // 'Día 1: Torso' | 'Día 2: Pierna' | 'Día 3: Full Body'
+    exercise_name: string;
+    target_sets?: number;
+    target_reps?: string;
+    weight_kg?: number;
+    category?: string;
+    notes?: string;
+  };
+  // Para adaptar la dieta semanalmente con base en telemetría
+  adapt_diet?: {
+    week_offset?: number;
+    auto_apply?: boolean;
+  };
+  // Para aplicar la dieta adaptada
+  apply_diet?: {
+    week_number?: number;
   };
   // Respuesta conversacional directa / feedback del coach
   reply_text?: string;
@@ -791,6 +855,44 @@ INSTRUCCIONES DE CLASIFICACIÓN Y ACCIÓN:
 7. Si Álvaro pide actualizar tipo de día o reglas (ej: "hoy descanso", "tómate la creatina"):
    - Pon "action": "protocol_update".
 
+10. Si Álvaro comunica un CAMBIO O INTERCAMBIO DE DÍAS DE ENTRENAMIENTO (ej: "Ayer no pude correr y fui al gimnasio, así que hoy voy a correr en vez del gym", "Intercambia el entreno de ayer con el de hoy", "Pasa la tirada larga del domingo al sábado y el sábado descanso", "Intercambia el jueves con el viernes", "Ayer hice pierna, hoy me toca el descanso de ayer"):
+   - Pon "action": "schedule_swap".
+   - Rellena "schedule_swap": {
+       "date1": "YYYY-MM-DD", (si dice 'ayer', calcula el día anterior a ${snapshot.today}; si dice 'hoy', usa ${snapshot.today}; si dice un día de la semana, calcula la fecha de esa semana)
+       "date2": "YYYY-MM-DD",
+       "notes": "Motivo del intercambio (ej: Imprevisto meteorológico, dolor articular o disponibilidad)"
+     }
+
+11. Si Álvaro pide REASIGNAR O CAMBIAR LA SESIÓN DE HOY O DE UN DÍA CONCRETO (ej: "Hoy no puedo correr, ponme torso", "Hoy me duele la rodilla, prefiero hacer descanso total", "Hoy en vez de descanso voy a hacer pierna blindada"):
+   - Pon "action": "schedule_reassign".
+   - Rellena "schedule_reassign": {
+       "date": "YYYY-MM-DD", (normalmente ${snapshot.today})
+       "routine_key": "strength_torso" | "strength_pierna" | "strength_fullbody" | "running_base" | "running_long" | "rest" | "custom",
+       "title": "Nombre de la sesión adaptada",
+       "reason": "Explicación"
+     }
+
+12. Si Álvaro pide AÑADIR, MODIFICAR O QUITAR UN EJERCICIO DE UN DÍA DE GIMNASIO (ej: "En el entreno de full body añade peso muerto rumano 3 series de 10 reps a 60 kg", "Cambia el press militar de torso por elevaciones laterales", "Quita los wall-sits del martes"):
+   - Pon "action": "gym_exercise_modification".
+   - Rellena "gym_exercise_modification": {
+       "action": "add" | "edit" | "delete",
+       "day": "Día 1: Torso" | "Día 2: Pierna" | "Día 3: Full Body",
+       "exercise_name": "Nombre exacto del ejercicio",
+       "target_sets": 3,
+       "target_reps": "8-10 reps",
+       "weight_kg": 60,
+       "category": "Pecho" | "Espalda" | "Pierna" | "Hombro" | "Brazo" | "Core" | "Fuerza",
+       "notes": "Detalles técnicos o motivo"
+     }
+
+13. Si Álvaro pide ANALIZAR O ADAPTAR LA DIETA PARA LA SEMANA SIGUIENTE según sus pasos reales (Fit3), volumen de carrera o molestias (ej: "Adapta la dieta para la semana que viene", "Qué tengo que comer la próxima semana según mis pasos", "Haz la adaptación semanal de macros"):
+   - Pon "action": "adapt_diet".
+   - Rellena "adapt_diet": { "week_offset": 0, "auto_apply": false }
+
+14. Si Álvaro pide APLICAR LA NUEVA DIETA ADAPTADA a la aplicación (ej: "Aplica la nueva dieta recomendada", "Actualiza los macros en la app con la adaptación semanal"):
+   - Pon "action": "apply_diet".
+   - Rellena "apply_diet": {}
+
 8. Si se adjunta un audio, escúchalo con máxima atención y transcribe todo en "transcription".
 9. Añade siempre un consejo de entrenador o fisioterapeuta de alto nivel en "coach_tip".
 
@@ -798,8 +900,33 @@ Mensaje escrito (si aplica): "${textOrHint}"
 
 DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin markdown ni texto alrededor):
 {
-  "action": "log_workout" | "log_cardio" | "log_nutrition" | "query" | "protocol_update" | "adjust_value" | "set_value" | "log_weight",
+  "action": "log_workout" | "log_cardio" | "log_nutrition" | "query" | "protocol_update" | "adjust_value" | "set_value" | "log_weight" | "schedule_swap" | "schedule_reassign" | "gym_exercise_modification" | "adapt_diet" | "apply_diet",
   "transcription": "transcripción literal",
+  "schedule_swap": {
+    "date1": "2026-10-01",
+    "date2": "2026-10-02",
+    "notes": "Intercambio por imprevisto"
+  },
+  "schedule_reassign": {
+    "date": "2026-10-02",
+    "routine_key": "strength_torso",
+    "title": "Fuerza Torso",
+    "reason": "Lluvia exterior"
+  },
+  "gym_exercise_modification": {
+    "action": "add",
+    "day": "Día 3: Full Body",
+    "exercise_name": "Peso Muerto Rumano",
+    "target_sets": 3,
+    "target_reps": "8-10 reps",
+    "weight_kg": 60,
+    "category": "Pierna"
+  },
+  "adapt_diet": {
+    "week_offset": 0,
+    "auto_apply": false
+  },
+  "apply_diet": {},
   "adjust": {
     "metric": "calories" | "water_ml" | "protein_g" | "carbs_g" | "fat_g",
     "delta": -200,
@@ -1456,6 +1583,54 @@ async function handleSetValue(
   };
 }
 
+/**
+ * Normaliza y resuelve fechas relativas (ayer, hoy, mañana, o días de la semana)
+ * a formato canónico YYYY-MM-DD
+ */
+function parseRelativeDate(dateInput: string, refDateStr: string): string {
+  if (!dateInput) return refDateStr;
+  const clean = dateInput.trim().toLowerCase();
+  const ref = new Date(refDateStr + 'T12:00:00Z');
+
+  if (clean === 'hoy' || clean === 'today') return refDateStr;
+  if (clean === 'ayer' || clean === 'yesterday') {
+    const d = new Date(ref);
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().split('T')[0];
+  }
+  if (clean === 'mañana' || clean === 'manana' || clean === 'tomorrow') {
+    const d = new Date(ref);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().split('T')[0];
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+    return clean;
+  }
+
+  const daysMap: Record<string, number> = {
+    lunes: 1,
+    martes: 2,
+    miercoles: 3,
+    miércoles: 3,
+    jueves: 4,
+    viernes: 5,
+    sabado: 6,
+    sábado: 6,
+    domingo: 7,
+  };
+
+  if (daysMap[clean]) {
+    const targetIsoDay = daysMap[clean];
+    const currDay = ref.getUTCDay() === 0 ? 7 : ref.getUTCDay();
+    const diff = targetIsoDay - currDay;
+    const d = new Date(ref);
+    d.setUTCDate(d.getUTCDate() + diff);
+    return d.toISOString().split('T')[0];
+  }
+
+  return refDateStr;
+}
+
 // --------------------------------------------------------------------
 // 9. ENDPOINT PRINCIPAL: ROUTE POST
 // --------------------------------------------------------------------
@@ -1637,6 +1812,13 @@ Tengo acceso y control total a tu rutina semanal, preparación para la *Media Ma
 
 📄 *Informe Semanal en PDF:*
 • Generar informe oficial: \`/informe\` o \`/resumen_semanal\` (PDF con 100% datos reales)
+
+🔄 *Modularidad & Adaptaciones del Plan:*
+• Intercambiar días de entreno: \`/intercambiar ayer hoy\` o \`/swap\`
+• Reasignar la sesión de hoy: \`/hoy_hago torso\` (o pierna / fullbody / carrera / descanso)
+• Catálogo modular de ejercicios: \`/ejercicios\` (añadir/cambiar con voz o texto)
+• Adaptación semanal de macros: \`/adaptar_dieta\` (analiza pasos Fit3, carreras y peso)
+• Aplicar nueva dieta a la app: \`/aplicar_dieta\`
 
 📊 *Reporte Integral Diario 360°:* \`/reporte\` o \`/todo\`
         `.trim();
@@ -2236,6 +2418,117 @@ _${s.note}_
       return NextResponse.json({ success: true, command: 'weekly_report_pdf' });
     }
 
+    // 23. /intercambiar o /swap (Intercambio rápido de dos días de entrenamiento)
+    if (mainCommand === '/intercambiar' || mainCommand === '/swap' || mainCommand === 'intercambiar') {
+      const d1Raw = parts[1] || 'ayer';
+      const d2Raw = parts[2] || 'hoy';
+      const d1 = parseRelativeDate(d1Raw, todayStr);
+      const d2 = parseRelativeDate(d2Raw, todayStr);
+      const resSwap = await swapScheduleDays(d1, d2, 'Intercambio solicitado vía comando Telegram');
+      if (botToken && message.chat?.id) {
+        const msg = `🔄 *Intercambio de Rutina Ejecutado*\n\n• *Día 1:* ${d1}\n• *Día 2:* ${d2}\n\n${resSwap.message}\n\n_La aplicación y el calendario ya están sincronizados._`;
+        await sendTelegramMessage(chatId, msg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'swap', d1, d2 });
+    }
+
+    // 24. /hoy_hago o /cambiar_sesion (Reasignar la sesión de hoy sobre la marcha)
+    if (mainCommand === '/hoy_hago' || mainCommand === '/cambiar_sesion' || mainCommand === '/sesion' || mainCommand === 'hoy_hago') {
+      const routineArg = parts.slice(1).join(' ').toLowerCase();
+      let key: RoutineKey = 'custom';
+      if (routineArg.includes('torso')) key = 'strength_torso';
+      else if (routineArg.includes('pierna')) key = 'strength_pierna';
+      else if (routineArg.includes('full') || routineArg.includes('funcional')) key = 'strength_fullbody';
+      else if (routineArg.includes('carrera') || routineArg.includes('correr') || routineArg.includes('rodaje')) key = 'running_base';
+      else if (routineArg.includes('larga') || routineArg.includes('tirada')) key = 'running_long';
+      else if (routineArg.includes('descanso') || routineArg.includes('relax') || routineArg.includes('reposo')) key = 'rest';
+
+      const canonical = CANONICAL_ROUTINES[key] || CANONICAL_ROUTINES.custom;
+      await setDayRoutineOverride({
+        date: todayStr,
+        routineKey: key,
+        notes: `Reasignado a ${canonical.title} vía Telegram`,
+      });
+      if (botToken && message.chat?.id) {
+        const msg = `⚡ *Sesión de Hoy Adaptada con Éxito*\n\n📅 *Fecha:* ${todayStr}\n🏋️‍♂️ *Nueva Sesión:* *${canonical.title}* (${canonical.category})\n📝 *Descripción:* _${canonical.description}_\n👟 *Objetivo de Pasos:* ${canonical.targetSteps.min.toLocaleString()} – ${canonical.targetSteps.max.toLocaleString()} pasos\n\n🎯 _La aplicación ya refleja esta sesión en tu pantalla de inicio._`;
+        await sendTelegramMessage(chatId, msg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'set_routine', key });
+    }
+
+    // 25. /adaptar_dieta (Calcular la adaptación de nutrición con datos 100% reales)
+    if (mainCommand === '/adaptar_dieta' || mainCommand === '/dieta_semanal' || cleanCmd === 'adaptar dieta') {
+      const dataset = await aggregateWeeklyTelemetry(0);
+      const plan = calculateWeeklyDietAdaptation(dataset);
+      if (botToken && message.chat?.id) {
+        const a = plan.adaptation;
+        const msg = `🥗 *Prescripción Nutricional Adaptada para la Próxima Semana (Semana ${a.week_number})*\n\n` +
+          `📊 *Evaluación NEAT y Gasto Real:*\n` +
+          `• Pasos medios Galaxy Fit3: *${dataset.summary.avgDailySteps.toLocaleString()} pasos/día* (${plan.neatCategory})\n` +
+          `• Km de carrera completados: *${dataset.summary.totalCardioKm} km*\n` +
+          `• Evolución de peso: *${dataset.summary.weightDeltaKg !== null ? (dataset.summary.weightDeltaKg <= 0 ? `${dataset.summary.weightDeltaKg} kg 📉` : `+${dataset.summary.weightDeltaKg} kg 📈`) : 'Estable'}*\n\n` +
+          `🎯 *Objetivo Nutricional Calculado:*\n` +
+          `• 🔥 *Calorías:* *${a.calories} kcal/día*\n` +
+          `• 🥩 *Proteína:* *${a.protein_g} g* (2.0 g/kg)\n` +
+          `• 🍚 *Carbohidratos:* *${a.carbs_g} g*\n` +
+          `• 🥑 *Grasas:* *${a.fat_g} g*\n` +
+          `• 💧 *Agua:* *${(a.water_ml / 1000).toFixed(1)} L/día*\n\n` +
+          `🩺 *Justificación Biomecánica:*\n_${a.reason}_\n\n` +
+          `💡 *Consejos Tácticos:*\n` + plan.recommendations.map(r => `• ${r}`).join('\n') + `\n\n` +
+          `👉 _Para aplicar estos valores inmediatamente a la app, responde con \`/aplicar_dieta\` o dímelo por voz._`;
+        await sendTelegramMessage(chatId, msg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'adapt_diet', plan });
+    }
+
+    // 26. /aplicar_dieta (Aplicar la dieta adaptada al protocolo activo)
+    if (mainCommand === '/aplicar_dieta' || cleanCmd === 'aplicar dieta') {
+      const dataset = await aggregateWeeklyTelemetry(0);
+      const plan = calculateWeeklyDietAdaptation(dataset);
+      const resApply = await applyDietAdaptation(plan.adaptation);
+      if (botToken && message.chat?.id) {
+        const msg = `⚡ *¡Nueva Dieta Aplicada con Éxito a IronManApp!* ✅\n\n` +
+          `• *Semana:* ${plan.adaptation.week_number}\n` +
+          `• *Calorías objetivo:* *${activeProtocol.targets.calories} kcal*\n` +
+          `• *Proteína:* *${activeProtocol.targets.proteinMin} – ${activeProtocol.targets.proteinMax} g*\n` +
+          `• *Carbohidratos:* *${activeProtocol.targets.carbsMin} – ${activeProtocol.targets.carbsMax} g*\n` +
+          `• *Grasas:* *${activeProtocol.targets.fatMin} – ${activeProtocol.targets.fatMax} g*\n` +
+          `• *Agua:* *${(activeProtocol.targets.waterMl / 1000).toFixed(1)} L*\n\n` +
+          `_Todas tus barras de progreso y cálculo de comidas ya están calibradas con estos nuevos objetivos._`;
+        await sendTelegramMessage(chatId, msg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'apply_diet', appliedProtocol: resApply.appliedProtocol });
+    }
+
+    // 27. /ejercicios (Catálogo modular de ejercicios de gimnasio)
+    if (mainCommand === '/ejercicios' || mainCommand === '/gimnasio_ejercicios') {
+      let exercises = mockStore.gymExercises;
+      if (isSupabaseConfigured && supabaseAdmin) {
+        const { data } = await supabaseAdmin.from('gym_exercises').select('*').order('id', { ascending: true });
+        if (data && data.length > 0) exercises = data;
+      }
+      const days = ['Día 1: Torso', 'Día 2: Pierna', 'Día 3: Full Body'];
+      let msg = `🏋️‍♂️ *Catálogo Modular de Ejercicios por Día*\n\n`;
+      for (const d of days) {
+        const dayExs = exercises.filter(e => Boolean(e.day && e.day.toLowerCase().includes(d.toLowerCase())));
+        msg += `📌 *${d}:*\n`;
+        if (dayExs.length === 0) {
+          msg += `  └ _Sin ejercicios registrados_\n`;
+        } else {
+          dayExs.forEach(e => {
+            const weightText = (e.current_weight_kg && e.current_weight_kg > 0) ? `${e.current_weight_kg}kg` : 'Peso corporal';
+            msg += `  • *${e.name}*: ${e.target_sets || 3}x${e.target_reps || '10-12'} (${weightText})\n`;
+          });
+        }
+        msg += `\n`;
+      }
+      msg += `💡 _Para añadir o cambiar un ejercicio, dímelo por voz o escribe:_ \n_"En full body añade Peso Muerto Rumano 3 series de 10 reps a 60kg"_`;
+      if (botToken && message.chat?.id) {
+        await sendTelegramMessage(chatId, msg, botToken);
+      }
+      return NextResponse.json({ success: true, command: 'exercises_list' });
+    }
+
     // ================================================================
     // PROCESADO INTELIGENTE MULTIMODAL CON GEMINI FLASH
     // (Entrenamiento Fuerza, Cardio, Nutrición o Consultas)
@@ -2537,7 +2830,249 @@ ${aiResult.coach_tip ? `\n💡 *Coach:* _${aiResult.coach_tip}_` : ''}
       });
     }
 
-    // CASO F: CUALQUIER OTRA ACCIÓN O CONSULTA CONVERSACIONAL NO CAPTURADA
+    // CASO F: INTERCAMBIO MODULAR DE DÍAS DE ENTRENAMIENTO (SCHEDULE SWAP)
+    if (aiResult.action === 'schedule_swap' && aiResult.schedule_swap) {
+      const d1 = parseRelativeDate(aiResult.schedule_swap.date1, todayStr);
+      const d2 = parseRelativeDate(aiResult.schedule_swap.date2, todayStr);
+      const notes = aiResult.schedule_swap.notes || 'Intercambio procesado por Asistente de IA';
+
+      const resSwap = await swapScheduleDays(d1, d2, notes);
+
+      if (botToken && message.chat?.id) {
+        const reply = `
+🔄 *Intercambio de Rutina Sincronizado en la App*
+${transcriptionHeader}📅 *Día 1:* ${d1}
+📅 *Día 2:* ${d2}
+📝 *Motivo:* _${notes}_
+
+${resSwap.message}
+
+💡 *Coach:* _Los días de descanso y las metas de pasos ya se han reajustado automáticamente para cuidar tus articulaciones._
+        `.trim();
+        await sendTelegramMessage(chatId, reply, botToken);
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'schedule_swap',
+        d1,
+        d2,
+        result: resSwap,
+      });
+    }
+
+    // CASO G: REASIGNACIÓN DE LA SESIÓN DE UN DÍA (SCHEDULE REASSIGN)
+    if (aiResult.action === 'schedule_reassign' && aiResult.schedule_reassign) {
+      const targetDate = parseRelativeDate(aiResult.schedule_reassign.date, todayStr);
+      const rKey = aiResult.schedule_reassign.routine_key;
+      const canonical = CANONICAL_ROUTINES[rKey] || CANONICAL_ROUTINES.custom;
+      const reason = aiResult.schedule_reassign.reason || 'Reasignación solicitada por el atleta';
+
+      const resOverride = await setDayRoutineOverride({
+        date: targetDate,
+        routineKey: rKey,
+        title: aiResult.schedule_reassign.title || canonical.title,
+        description: aiResult.schedule_reassign.description || canonical.description,
+        customExercises: aiResult.schedule_reassign.custom_exercises,
+        notes: reason,
+      });
+
+      if (botToken && message.chat?.id) {
+        const minSteps = resOverride.override.target_steps_min ? resOverride.override.target_steps_min.toLocaleString() : '8,000';
+        const maxSteps = resOverride.override.target_steps_max ? resOverride.override.target_steps_max.toLocaleString() : '10,000';
+        const exercisesList = resOverride.override.custom_exercises && resOverride.override.custom_exercises.length > 0
+          ? `📋 *Ejercicios:*\n${resOverride.override.custom_exercises.map((e) => `• ${e}`).join('\n')}\n`
+          : '';
+
+        const reply = `
+⚡ *Sesión Adaptada en la Aplicación*
+${transcriptionHeader}📅 *Fecha:* ${targetDate}
+🏋️‍♂️ *Nueva Sesión:* *${resOverride.override.title}* (${resOverride.override.category})
+📝 *Descripción:* _${resOverride.override.description || 'Sesión personalizada'}_
+👟 *Objetivo de Pasos:* ${minSteps} – ${maxSteps} pasos
+${exercisesList}
+${aiResult.coach_tip ? `💡 *Coach:* _${aiResult.coach_tip}_` : ''}
+        `.trim();
+        await sendTelegramMessage(chatId, reply, botToken);
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'schedule_reassign',
+        override: resOverride.override,
+      });
+    }
+
+    // CASO H: MODIFICACIÓN MODULAR DE EJERCICIOS DE GIMNASIO
+    if (aiResult.action === 'gym_exercise_modification' && aiResult.gym_exercise_modification) {
+      const mod = aiResult.gym_exercise_modification;
+      let dayTarget: 'Día 1: Torso' | 'Día 2: Pierna' | 'Día 3: Full Body' = 'Día 3: Full Body';
+      if (mod.day) {
+        const lower = mod.day.toLowerCase();
+        if (lower.includes('torso') || lower.includes('1')) {
+          dayTarget = 'Día 1: Torso';
+        } else if (lower.includes('pierna') || lower.includes('2')) {
+          dayTarget = 'Día 2: Pierna';
+        } else {
+          dayTarget = 'Día 3: Full Body';
+        }
+      }
+      let outcomeMsg = '';
+
+      if (mod.action === 'add') {
+        const newEx: GymExercise = {
+          id: `ex-${Date.now()}`,
+          name: mod.exercise_name,
+          category: (mod.category as any) || 'Pierna',
+          is_stretch: false,
+          day: dayTarget,
+          target_sets: Number(mod.target_sets) || 3,
+          target_reps: mod.target_reps || '8-10 reps',
+          current_weight_kg: Number(mod.weight_kg) || 0,
+          rest_time: '2 min',
+          notes: mod.notes || 'Añadido por personalización del atleta',
+        };
+
+        if (isSupabaseConfigured && supabaseAdmin) {
+          await supabaseAdmin.from('gym_exercises').insert([newEx]);
+        }
+        mockStore.gymExercises.push(newEx);
+        outcomeMsg = `Añadido *${newEx.name}* a *${dayTarget}* (${newEx.target_sets} series x ${newEx.target_reps}, ${newEx.current_weight_kg && newEx.current_weight_kg > 0 ? `${newEx.current_weight_kg} kg` : 'peso libre'}).`;
+      } else if (mod.action === 'delete') {
+        const idx = mockStore.gymExercises.findIndex(
+          (e) =>
+            e.name.toLowerCase().includes(mod.exercise_name.toLowerCase()) &&
+            Boolean(e.day && e.day.toLowerCase().includes(dayTarget.toLowerCase()))
+        );
+        if (idx >= 0) {
+          const removed = mockStore.gymExercises[idx];
+          if (isSupabaseConfigured && supabaseAdmin) {
+            await supabaseAdmin.from('gym_exercises').delete().eq('id', removed.id);
+          }
+          mockStore.gymExercises.splice(idx, 1);
+          outcomeMsg = `Eliminado *${removed.name}* de *${dayTarget}*.`;
+        } else {
+          outcomeMsg = `No se encontró el ejercicio "${mod.exercise_name}" en ${dayTarget}.`;
+        }
+      } else if (mod.action === 'edit') {
+        const targetEx = mockStore.gymExercises.find(
+          (e) =>
+            e.name.toLowerCase().includes(mod.exercise_name.toLowerCase()) &&
+            Boolean(e.day && e.day.toLowerCase().includes(dayTarget.toLowerCase()))
+        );
+        if (targetEx) {
+          if (mod.target_sets) targetEx.target_sets = Number(mod.target_sets);
+          if (mod.target_reps) targetEx.target_reps = mod.target_reps;
+          if (mod.weight_kg !== undefined) targetEx.current_weight_kg = Number(mod.weight_kg);
+          if (mod.notes) targetEx.notes = mod.notes;
+
+          if (isSupabaseConfigured && supabaseAdmin) {
+            await supabaseAdmin
+              .from('gym_exercises')
+              .update({
+                target_sets: targetEx.target_sets,
+                target_reps: targetEx.target_reps,
+                current_weight_kg: targetEx.current_weight_kg,
+                notes: targetEx.notes,
+              })
+              .eq('id', targetEx.id);
+          }
+          outcomeMsg = `Actualizado *${targetEx.name}* en *${dayTarget}* a ${targetEx.target_sets} series x ${targetEx.target_reps} (${targetEx.current_weight_kg && targetEx.current_weight_kg > 0 ? `${targetEx.current_weight_kg} kg` : 'peso libre'}).`;
+        } else {
+          outcomeMsg = `No se encontró el ejercicio "${mod.exercise_name}" para modificar.`;
+        }
+      }
+
+      if (botToken && message.chat?.id) {
+        const reply = `
+🏋️‍♂️ *Rutina de Gimnasio Modificada*
+${transcriptionHeader}✅ ${outcomeMsg}
+
+${aiResult.coach_tip ? `💡 *Coach:* _${aiResult.coach_tip}_` : ''}
+        `.trim();
+        await sendTelegramMessage(chatId, reply, botToken);
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'gym_exercise_modification',
+        outcome: outcomeMsg,
+      });
+    }
+
+    // CASO I: ADAPTACIÓN SEMANAL DE DIETA BASADA EN TELEMETRÍA REAL
+    if (aiResult.action === 'adapt_diet') {
+      const offset = Number(aiResult.adapt_diet?.week_offset) || 0;
+      const dataset = await aggregateWeeklyTelemetry(offset);
+      const plan = calculateWeeklyDietAdaptation(dataset);
+      const a = plan.adaptation;
+
+      if (aiResult.adapt_diet?.auto_apply) {
+        await applyDietAdaptation(a);
+      }
+
+      if (botToken && message.chat?.id) {
+        const reply = `
+🥗 *Adaptación de Dieta para la Próxima Semana (Semana ${a.week_number})*
+${transcriptionHeader}📊 *Evaluación NEAT y Gasto Real (Fit3):*
+• Pasos medios diarios: *${dataset.summary.avgDailySteps.toLocaleString()} pasos/día* (${plan.neatCategory})
+• Km de carrera completados: *${dataset.summary.totalCardioKm} km*
+• Evolución del peso: *${dataset.summary.weightDeltaKg !== null ? `${dataset.summary.weightDeltaKg} kg` : 'Estable'}*
+
+🎯 *Objetivo Nutricional Calculado:*
+• 🔥 *Calorías:* *${a.calories} kcal/día*
+• 🥩 *Proteína:* *${a.protein_g} g* (2.0 g/kg)
+• 🍚 *Carbohidratos:* *${a.carbs_g} g*
+• 🥑 *Grasas:* *${a.fat_g} g*
+• 💧 *Hidratación:* *${(a.water_ml / 1000).toFixed(1)} L/día*
+
+🩺 *Justificación Clínica:*
+_${a.reason}_
+
+💡 *Consejos:*
+${plan.recommendations.map((r) => `• ${r}`).join('\n')}
+
+${aiResult.adapt_diet?.auto_apply ? '⚡ *¡Esta nueva dieta ha sido aplicada directamente a tu app!* ✅' : '👉 _Para aplicarla a tu app ahora mismo, di "Aplica la nueva dieta" o usa /aplicar_dieta._'}
+        `.trim();
+        await sendTelegramMessage(chatId, reply, botToken);
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'adapt_diet',
+        plan,
+      });
+    }
+
+    // CASO J: APLICAR DIETA ADAPTADA A LA APP
+    if (aiResult.action === 'apply_diet') {
+      const dataset = await aggregateWeeklyTelemetry(0);
+      const plan = calculateWeeklyDietAdaptation(dataset);
+      const resApply = await applyDietAdaptation(plan.adaptation);
+
+      if (botToken && message.chat?.id) {
+        const reply = `
+⚡ *¡Nueva Dieta Aplicada con Éxito a IronManApp!* ✅
+${transcriptionHeader}• *Semana:* ${plan.adaptation.week_number}
+• *Calorías objetivo:* *${activeProtocol.targets.calories} kcal*
+• *Proteína:* *${activeProtocol.targets.proteinMin} – ${activeProtocol.targets.proteinMax} g*
+• *Carbohidratos:* *${activeProtocol.targets.carbsMin} – ${activeProtocol.targets.carbsMax} g*
+• *Grasas:* *${activeProtocol.targets.fatMin} – ${activeProtocol.targets.fatMax} g*
+• *Agua:* *${(activeProtocol.targets.waterMl / 1000).toFixed(1)} L*
+
+_Todas tus métricas, barras de progreso y cálculos de comidas ya están sincronizados con estos nuevos objetivos._
+        `.trim();
+        await sendTelegramMessage(chatId, reply, botToken);
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'apply_diet',
+        appliedProtocol: resApply.appliedProtocol,
+      });
+    }
+
+    // CASO K: CUALQUIER OTRA ACCIÓN O CONSULTA CONVERSACIONAL NO CAPTURADA
     if (botToken && message.chat?.id) {
       const reply = `
 🤖 *IronMan Coach:*

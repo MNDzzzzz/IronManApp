@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Flame,
   Moon,
@@ -13,8 +13,11 @@ import {
   TrendingDown,
   Sparkles,
   Scale,
+  Dumbbell,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { DailyHealthMetric, NutritionLog, StravaActivity } from '@/types/database';
+import { ScheduleManagerModal } from '@/components/schedule/ScheduleManagerModal';
 
 interface TodayViewProps {
   health: DailyHealthMetric | null;
@@ -60,8 +63,66 @@ export const TodayView: React.FC<TodayViewProps> = ({
     : '--';
   const sleepScore = health?.sleep_score ? `${health.sleep_score}/100` : '--';
 
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [effectiveRoutine, setEffectiveRoutine] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/schedule')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.schedule) {
+          const todaySched = data.schedule.find((s: any) => s.date === data.referenceDate);
+          if (todaySched) setEffectiveRoutine(todaySched);
+        }
+      })
+      .catch((err) => console.warn('Aviso cargando rutina de hoy:', err));
+  }, []);
+
   return (
     <div className="space-y-4 pb-24 px-4 pt-2">
+      {/* 0. SESIÓN DEL DÍA & MOTOR MODULAR */}
+      {effectiveRoutine && (
+        <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 shadow-xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400">
+                <Dumbbell className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xs uppercase font-bold tracking-wider text-zinc-400">
+                    Sesión de Hoy ({effectiveRoutine.dayName})
+                  </h2>
+                  {effectiveRoutine.isOverridden && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/40 font-bold">
+                      Adaptada ⚡
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm font-bold text-white mt-0.5">
+                  {effectiveRoutine.routine.title}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsScheduleModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white transition-all flex items-center gap-1.5 active:scale-95 shadow-md"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5 text-orange-400" />
+              <span>Cambiar / Mover</span>
+            </button>
+          </div>
+
+          <p className="text-xs text-zinc-400">
+            {effectiveRoutine.routine.description}
+          </p>
+
+          <div className="flex items-center justify-between pt-2 border-t border-zinc-900 text-xs text-zinc-500">
+            <span>👟 Meta pasos: <strong className="text-zinc-300 font-mono">{effectiveRoutine.routine.targetSteps.min.toLocaleString()} – {effectiveRoutine.routine.targetSteps.max.toLocaleString()}</strong></span>
+            <span className="capitalize">{effectiveRoutine.routine.category}</span>
+          </div>
+        </div>
+      )}
       {/* ACCESO RÁPIDO: INFORME Y RESUMEN SEMANAL */}
       {onOpenReport && (
         <button
@@ -345,6 +406,22 @@ export const TodayView: React.FC<TodayViewProps> = ({
         </div>
         <span className="text-xs text-blue-400 font-semibold">Ver Dieta &rarr;</span>
       </div>
+
+      {/* Modal Modular de Calendario */}
+      <ScheduleManagerModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        onScheduleUpdated={() => {
+          fetch('/api/schedule')
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.success && data.schedule) {
+                const todaySched = data.schedule.find((s: any) => s.date === data.referenceDate);
+                if (todaySched) setEffectiveRoutine(todaySched);
+              }
+            });
+        }}
+      />
     </div>
   );
 };

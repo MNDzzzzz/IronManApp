@@ -12,6 +12,7 @@ import {
   KNEE_CLINICAL_PROTOCOLS,
   WEEKLY_ROUTINE,
 } from '@/lib/weeklyRoutine';
+import { calculateWeeklyDietAdaptation, ProposedDietPlan } from './nutritionAdapter';
 
 export interface ClinicalPoint {
   title: string;
@@ -33,7 +34,10 @@ export interface NextWeekPrescription {
   targetWeightRecommendation: string;
   calorieTarget: number;
   proteinTargetG: number;
+  carbsTargetG: number;
+  fatTargetG: number;
   waterTargetL: number;
+  dietReason: string;
   runningSessions: {
     thursday: {
       session: string;
@@ -64,6 +68,7 @@ export interface WeeklyClinicalAssessment {
   improvements: ClinicalPoint[];
   articularDiagnosis: ArticularDiagnosis;
   nextWeekPrescription: NextWeekPrescription;
+  dietPlan: ProposedDietPlan;
   metricsAudit: {
     nutritionTrackingScore: string; // ej: "6 de 7 días (86%)"
     fit3TelemetryScore: string;
@@ -385,21 +390,25 @@ export function generateWeeklyClinicalAssessment(
   }
 
   // --------------------------------------------------------------------
-  // 7. PRESCRIPCIÓN DE LA SEMANA N+1 (PLANIFICACIÓN DE CARRERA & GYM)
+  // 7. PRESCRIPCIÓN DE LA SEMANA N+1 (PLANIFICACIÓN DE CARRERA & GYM & DIETA)
   // --------------------------------------------------------------------
   const nextWeekNum = Math.min(weekNumber + 1, 22);
   const nextProgression = getRunningProgressionForWeek(nextWeekNum);
+  const dietPlan = calculateWeeklyDietAdaptation(dataset);
 
   const nextWeekPrescription: NextWeekPrescription = {
     targetWeekNumber: nextWeekNum,
     phaseName: nextProgression.phaseName,
     targetWeightRecommendation:
       summary.endWeightKg && summary.endWeightKg < 100.5
-        ? `Consolidar los ${(summary.endWeightKg - 0.6).toFixed(1)} kg con déficit limpio de 2.400 kcal.`
-        : 'Romper la barrera de los 100 kg hacia 99,5 kg manteniendo déficit controlado.',
-    calorieTarget: 2400,
-    proteinTargetG: 202,
-    waterTargetL: 3.8,
+        ? `Consolidar los ${(summary.endWeightKg - 0.6).toFixed(1)} kg con déficit limpio de ${dietPlan.adaptation.calories} kcal.`
+        : `Romper la barrera de los 100 kg hacia 99,5 kg manteniendo déficit controlado (${dietPlan.adaptation.calories} kcal).`,
+    calorieTarget: dietPlan.adaptation.calories,
+    proteinTargetG: dietPlan.adaptation.protein_g,
+    carbsTargetG: dietPlan.adaptation.carbs_g,
+    fatTargetG: dietPlan.adaptation.fat_g,
+    waterTargetL: Number((dietPlan.adaptation.water_ml / 1000).toFixed(1)),
+    dietReason: dietPlan.adaptation.reason,
     runningSessions: {
       thursday: {
         session: nextProgression.thursdaySession,
@@ -449,6 +458,7 @@ export function generateWeeklyClinicalAssessment(
       recommendedProtocols,
     },
     nextWeekPrescription,
+    dietPlan,
     metricsAudit: {
       nutritionTrackingScore,
       fit3TelemetryScore,

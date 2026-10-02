@@ -121,7 +121,42 @@ CREATE TABLE IF NOT EXISTS weight_logs (
 
 CREATE INDEX IF NOT EXISTS idx_weight_date ON weight_logs (date DESC);
 
--- 7. SEGURIDAD Y POLÍTICAS RLS (Row Level Security)
+-- 7. CALENDARIO MODULAR Y REASIGNACIONES DE ENTRENAMIENTO (Overrides)
+CREATE TABLE IF NOT EXISTS routine_day_overrides (
+    id TEXT PRIMARY KEY,
+    date DATE UNIQUE NOT NULL,
+    routine_key TEXT NOT NULL,
+    title TEXT NOT NULL,
+    category TEXT NOT NULL, -- 'Fuerza', 'Cardio', 'Descanso'
+    day_type TEXT NOT NULL, -- 'strength', 'running', 'rest_refeed'
+    description TEXT,
+    target_steps_min INTEGER,
+    target_steps_max INTEGER,
+    custom_exercises JSONB,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_routine_overrides_date ON routine_day_overrides (date DESC);
+
+-- 8. ADAPTACIONES NUTRICIONALES SEMANALES POR IA
+CREATE TABLE IF NOT EXISTS nutrition_adaptations (
+    id TEXT PRIMARY KEY,
+    week_number INTEGER NOT NULL,
+    start_date DATE NOT NULL,
+    calories INTEGER NOT NULL,
+    protein_g NUMERIC(5,1) NOT NULL,
+    carbs_g NUMERIC(5,1) NOT NULL,
+    fat_g NUMERIC(5,1) NOT NULL,
+    water_ml INTEGER NOT NULL,
+    reason TEXT NOT NULL,
+    applied BOOLEAN DEFAULT true,
+    applied_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_nutrition_adaptations_week ON nutrition_adaptations (week_number DESC);
+
+-- 9. SEGURIDAD Y POLÍTICAS RLS (Row Level Security)
 ALTER TABLE daily_health_metrics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE heart_rate_samples ENABLE ROW LEVEL SECURITY;
 ALTER TABLE strava_activities ENABLE ROW LEVEL SECURITY;
@@ -130,6 +165,8 @@ ALTER TABLE gym_workout_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE nutrition_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE water_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE weight_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE routine_day_overrides ENABLE ROW LEVEL SECURITY;
+ALTER TABLE nutrition_adaptations ENABLE ROW LEVEL SECURITY;
 
 -- Permitir lectura y escritura completa con Service Role o clave maestra
 DO $$
@@ -157,5 +194,11 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'service_role_all_weight') THEN
         CREATE POLICY service_role_all_weight ON weight_logs FOR ALL USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'service_role_all_routine_overrides') THEN
+        CREATE POLICY service_role_all_routine_overrides ON routine_day_overrides FOR ALL USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'service_role_all_nutrition_adaptations') THEN
+        CREATE POLICY service_role_all_nutrition_adaptations ON nutrition_adaptations FOR ALL USING (true);
     END IF;
 END $$;

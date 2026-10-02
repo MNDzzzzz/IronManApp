@@ -49,10 +49,13 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
   const [isDownloadingPdf, setIsDownloadingPdf] = useState<boolean>(false);
   const [dataset, setDataset] = useState<WeeklyReportDataset | null>(null);
   const [assessment, setAssessment] = useState<WeeklyClinicalAssessment | null>(null);
+  const [isApplyingDiet, setIsApplyingDiet] = useState<boolean>(false);
+  const [dietAppliedMessage, setDietAppliedMessage] = useState<string | null>(null);
 
   // Cargar datos de la semana seleccionada
   const fetchReport = useCallback(async (offset: number) => {
     setIsLoading(true);
+    setDietAppliedMessage(null);
     try {
       const res = await fetch(`/api/reports/weekly?weekOffset=${offset}`, { cache: 'no-store' });
       if (res.ok) {
@@ -94,6 +97,31 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
       alert('Hubo un problema descargando el PDF. Inténtalo de nuevo.');
     } finally {
       setIsDownloadingPdf(false);
+    }
+  };
+
+  // Manejar aplicación de la dieta adaptada directamente al protocolo de la app
+  const handleApplyDiet = async () => {
+    if (!assessment) return;
+    setIsApplyingDiet(true);
+    setDietAppliedMessage(null);
+    try {
+      const res = await fetch('/api/protocol/adaptation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'apply',
+          adaptation: assessment.dietPlan?.adaptation,
+          weekOffset,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Error aplicando dieta');
+      setDietAppliedMessage(data.message || '¡Dieta adaptada aplicada con éxito a la aplicación!');
+    } catch (err: any) {
+      alert(`Error aplicando la dieta: ${err.message}`);
+    } finally {
+      setIsApplyingDiet(false);
     }
   };
 
@@ -422,6 +450,82 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
               </div>
             </div>
           </div>
+
+          {/* Tarjeta de Adaptación Dinámica de Dieta y Macros */}
+          {assessment.dietPlan && (
+            <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border border-emerald-500/30 rounded-2xl p-5 space-y-4 shadow-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <Utensils className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-emerald-400">
+                      Adaptación Dinámica Semanal (100% Datos Reales)
+                    </span>
+                    <h3 className="text-sm font-bold text-white">
+                      Prescripción de Dieta para la Semana {assessment.nextWeekPrescription.targetWeekNumber}
+                    </h3>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleApplyDiet}
+                  disabled={isApplyingDiet}
+                  className="py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all self-start sm:self-auto"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {isApplyingDiet ? 'Aplicando...' : '⚡ Aplicar Esta Dieta a la App'}
+                </button>
+              </div>
+
+              {dietAppliedMessage && (
+                <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-800 text-xs text-emerald-300 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{dietAppliedMessage}</span>
+                </div>
+              )}
+
+              {/* Grid de Macros Adaptados */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
+                <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800">
+                  <span className="text-[10px] text-zinc-500 block">Calorías</span>
+                  <p className="text-base font-black text-white">{assessment.dietPlan.adaptation.calories} <span className="text-[10px] text-zinc-500 font-normal">kcal</span></p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800">
+                  <span className="text-[10px] text-zinc-500 block">Proteína</span>
+                  <p className="text-base font-black text-emerald-400">{assessment.dietPlan.adaptation.protein_g}g <span className="text-[10px] text-zinc-500 font-normal">2.0g/kg</span></p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800">
+                  <span className="text-[10px] text-zinc-500 block">Carbohidratos</span>
+                  <p className="text-base font-black text-amber-400">{assessment.dietPlan.adaptation.carbs_g}g <span className="text-[10px] text-zinc-500 font-normal">Glucógeno</span></p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800">
+                  <span className="text-[10px] text-zinc-500 block">Grasas</span>
+                  <p className="text-base font-black text-blue-400">{assessment.dietPlan.adaptation.fat_g}g <span className="text-[10px] text-zinc-500 font-normal">Hormonal</span></p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 col-span-2 sm:col-span-1">
+                  <span className="text-[10px] text-zinc-500 block">Hidratación</span>
+                  <p className="text-base font-black text-cyan-400">{(assessment.dietPlan.adaptation.water_ml / 1000).toFixed(1)}L <span className="text-[10px] text-zinc-500 font-normal">Agua</span></p>
+                </div>
+              </div>
+
+              {/* Justificación y Tips */}
+              <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 text-xs space-y-2">
+                <p className="text-zinc-300 leading-relaxed">
+                  <strong className="text-emerald-400">Razón Biomecánica:</strong> {assessment.dietPlan.adaptation.reason}
+                </p>
+                <div className="pt-2 border-t border-zinc-800 text-[11px] text-zinc-400 space-y-1">
+                  {assessment.dietPlan.recommendations.map((rec, i) => (
+                    <p key={i} className="flex items-start gap-1.5">
+                      <span className="text-emerald-400">•</span>
+                      <span>{rec}</span>
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Tabla de Telemetría Detallada Día a Día */}
           <div className="bg-zinc-950/80 border border-zinc-800 rounded-2xl p-5 overflow-x-auto">

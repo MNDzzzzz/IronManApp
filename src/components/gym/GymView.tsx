@@ -13,9 +13,14 @@ import {
   Clock,
   ChevronRight,
   Trash2,
+  ArrowLeftRight,
+  Settings,
+  Sliders,
 } from 'lucide-react';
 import { GymExercise, GymWorkoutLog } from '@/types/database';
 import { getSpainDate } from '@/lib/weeklyRoutine';
+import { ScheduleManagerModal } from '@/components/schedule/ScheduleManagerModal';
+import { ExerciseManagerModal } from '@/components/gym/ExerciseManagerModal';
 
 interface GymViewProps {
   exercises: GymExercise[];
@@ -38,6 +43,10 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
 
   const [selectedDay, setSelectedDay] = useState<'Día 1: Torso' | 'Día 2: Pierna' | 'Día 3: Full Body' | 'Todos'>(initialDayFilter);
   
+  // Modales modulares de reorganización de calendario y ejercicios
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isExerciseModalOpen, setIsExerciseModalOpen] = useState(false);
+
   // Pestaña principal: 'routine' o 'history'
   const [activeTab, setActiveTab] = useState<'routine' | 'history'>('routine');
 
@@ -238,6 +247,26 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
               {day}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* BARRA DE MODULARIDAD Y ADAPTACIÓN */}
+      {activeTab === 'routine' && (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsScheduleModalOpen(true)}
+            className="flex-1 py-2 px-3 rounded-2xl bg-zinc-950 hover:bg-zinc-900 border border-zinc-900 hover:border-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white transition-all flex items-center justify-center gap-1.5 active:scale-98 shadow-sm"
+          >
+            <ArrowLeftRight className="w-3.5 h-3.5 text-orange-400" />
+            <span>Reorganizar Días</span>
+          </button>
+          <button
+            onClick={() => setIsExerciseModalOpen(true)}
+            className="flex-1 py-2 px-3 rounded-2xl bg-zinc-950 hover:bg-zinc-900 border border-zinc-900 hover:border-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white transition-all flex items-center justify-center gap-1.5 active:scale-98 shadow-sm"
+          >
+            <Sliders className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Personalizar Ejercicios</span>
+          </button>
         </div>
       )}
 
@@ -657,6 +686,24 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
           )}
         </div>
       )}
+
+      {/* Modal Modular de Reorganización de Días */}
+      <ScheduleManagerModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        onScheduleUpdated={() => window.location.reload()}
+      />
+
+      {/* Modal Modular de Personalización de Ejercicios */}
+      <ExerciseManagerModal
+        isOpen={isExerciseModalOpen}
+        onClose={() => setIsExerciseModalOpen(false)}
+        day={selectedDay === 'Todos' ? 'Día 3: Full Body' : selectedDay}
+        exercises={exercises}
+        onExerciseAdded={() => window.location.reload()}
+        onExerciseUpdated={() => window.location.reload()}
+        onExerciseDeleted={() => window.location.reload()}
+      />
     </div>
   );
 };

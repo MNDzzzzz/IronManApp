@@ -27,6 +27,7 @@ import {
   HalfMarathonCountdown,
   RunningWeekPlan,
 } from '@/lib/weeklyRoutine';
+import { getEffectiveRoutineForDate } from '@/lib/scheduleManager';
 
 export interface DayHealthTelemetry {
   hasData: boolean;
@@ -91,7 +92,9 @@ export interface WeeklyDayTelemetry {
   date: string; // YYYY-MM-DD
   dayName: 'Lunes' | 'Martes' | 'Miércoles' | 'Jueves' | 'Viernes' | 'Sábado' | 'Domingo';
   dayIndex: number;
-  isRestDay: boolean; // Miércoles y Sábado
+  isRestDay: boolean; // Miércoles y Sábado (o según intercambios)
+  isOverridden?: boolean;
+  overrideNotes?: string;
   routineScheduled: DayRoutine;
   health: DayHealthTelemetry;
   cardio: DayCardioTelemetry;
@@ -326,9 +329,15 @@ export async function getWeeklyReportDataset(
     return kneeProtectorKeywords.some((kw) => lower.includes(kw));
   };
 
-  // 3. Procesar día a día
+  // 3. Procesar día a día (consultando rutinas efectivas con soporte de intercambios y adaptaciones)
+  const effectiveRoutines = await Promise.all(
+    weekDays.map((w) => getEffectiveRoutineForDate(w.date))
+  );
+
   const daysTelemetry: WeeklyDayTelemetry[] = weekDays.map((wDay, idx) => {
-    const routine = getTodayRoutine(wDay.date);
+    const eff = effectiveRoutines[idx];
+    const routine = eff.routine;
+    const isDayRest = routine.dayType === 'rest_refeed' || routine.category === 'Descanso';
 
     // --- Salud (Fit3) ---
     const metric = dbMetrics.find((m) => m.date === wDay.date);
@@ -466,7 +475,9 @@ export async function getWeeklyReportDataset(
       date: wDay.date,
       dayName: wDay.dayName,
       dayIndex: idx + 1,
-      isRestDay: wDay.isRestDay,
+      isRestDay: isDayRest,
+      isOverridden: eff.isOverridden,
+      overrideNotes: eff.overrideNotes,
       routineScheduled: routine,
       health: healthTelemetry,
       cardio: cardioTelemetry,
@@ -624,4 +635,15 @@ export async function getWeeklyReportDataset(
       latestWeightKg,
     },
   };
+}
+
+/**
+ * Agrega y consolida la telemetría semanal a partir de un desplazamiento de semana (0 = actual, -1 = anterior)
+ */
+export async function aggregateWeeklyTelemetry(
+  weekOffset: number = 0,
+  referenceDate?: Date
+): Promise<WeeklyReportDataset> {
+  const { startDate, endDate } = getWeekDateRange(weekOffset, referenceDate);
+  return getWeeklyReportDataset(startDate, endDate);
 }
