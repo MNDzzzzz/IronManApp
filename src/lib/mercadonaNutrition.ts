@@ -70,25 +70,71 @@ export const MERCADONA_CATALOG: MercadonaProduct[] = [
   // --- CARNES Y AVES ---
   {
     id: 'pechuga_pollo_fresca',
-    name: 'Pechuga de Pollo Limpia Hacendado',
+    name: 'Pechuga de Pollo Limpia Hacendado (Cruda)',
     brand: 'Hacendado',
     category: 'carnes_aves',
     calories_100g: 106,
     protein_100g: 22.2,
     carbs_100g: 0.0,
     fat_100g: 1.2,
-    aliases: ['pollo', 'pechuga de pollo', 'filetes de pollo', 'pechuga pollo', 'pechuga'],
+    aliases: ['pollo crudo', 'pechuga de pollo cruda', 'pechuga cruda', 'filetes de pollo crudos'],
+  },
+  {
+    id: 'pechuga_pollo_cocinada',
+    name: 'Pechuga de Pollo Cocinada / Plancha Hacendado',
+    brand: 'Hacendado',
+    category: 'carnes_aves',
+    calories_100g: 145,
+    protein_100g: 31.0,
+    carbs_100g: 0.0,
+    fat_100g: 1.8,
+    aliases: [
+      'pollo',
+      'pechuga de pollo',
+      'pechuga',
+      'filetes de pollo',
+      'pechuga pollo',
+      'pollo cocinado',
+      'pechuga de pollo cocinada',
+      'pechuga cocinada',
+      'pollo a la plancha',
+      'pechuga a la plancha',
+      'pechuga de pollo a la plancha',
+      'pollo hecho',
+      'pechuga hecha',
+    ],
   },
   {
     id: 'pechuga_pavo_fresca',
-    name: 'Pechuga de Pavo Filetes Hacendado',
+    name: 'Pechuga de Pavo Filetes Hacendado (Cruda)',
     brand: 'Hacendado',
     category: 'carnes_aves',
     calories_100g: 105,
     protein_100g: 24.0,
     carbs_100g: 0.0,
     fat_100g: 1.0,
-    aliases: ['pavo', 'pechuga de pavo', 'filetes de pavo', 'pechuga pavo'],
+    aliases: ['pavo crudo', 'pechuga de pavo cruda', 'pechuga pavo cruda'],
+  },
+  {
+    id: 'pechuga_pavo_cocinada',
+    name: 'Pechuga de Pavo Cocinada / Plancha Hacendado',
+    brand: 'Hacendado',
+    category: 'carnes_aves',
+    calories_100g: 140,
+    protein_100g: 32.0,
+    carbs_100g: 0.0,
+    fat_100g: 1.5,
+    aliases: [
+      'pavo',
+      'pechuga de pavo',
+      'filetes de pavo',
+      'pechuga pavo',
+      'pavo cocinado',
+      'pechuga de pavo cocinada',
+      'pavo a la plancha',
+      'pechuga de pavo a la plancha',
+      'pavo hecho',
+    ],
   },
   {
     id: 'pavo_lonchas_92',
@@ -125,11 +171,22 @@ export const MERCADONA_CATALOG: MercadonaProduct[] = [
     protein_100g: 21.0,
     carbs_100g: 0.0,
     fat_100g: 5.0,
-    aliases: ['ternera', 'carne picada ternera', 'filete ternera', 'ternera magra', 'añojo'],
+    aliases: ['ternera', 'carne picada ternera', 'filete ternera', 'ternera magra', 'añojo', 'ternera cruda'],
+  },
+  {
+    id: 'ternera_cocinada',
+    name: 'Filete de Ternera Cocinado / Plancha Hacendado',
+    brand: 'Hacendado',
+    category: 'carnes_aves',
+    calories_100g: 175,
+    protein_100g: 28.0,
+    carbs_100g: 0.0,
+    fat_100g: 7.0,
+    aliases: ['ternera cocinada', 'ternera a la plancha', 'filete de ternera a la plancha', 'filete ternera cocinado'],
   },
   {
     id: 'lomo_fresco',
-    name: 'Cinta de Lomo Fresca de Cerdo Hacendado',
+    name: 'Cinta de Lomo Fresca de Cerdo (Crudo) Hacendado',
     brand: 'Hacendado',
     category: 'carnes_aves',
     calories_100g: 125,
@@ -139,16 +196,45 @@ export const MERCADONA_CATALOG: MercadonaProduct[] = [
     defaultServingGrams: 150,
     unitName: 'filete',
     aliases: [
+      'lomo crudo',
+      'cinta de lomo cruda',
+      'lomo fresco',
+      'lomo de cerdo crudo',
+      'filetes de lomo crudos',
+      'lomo en crudo',
+      'cinta de lomo fresca',
+      'cinta de lomo en crudo',
+    ],
+  },
+  {
+    id: 'lomo_cocinado',
+    name: 'Cinta de Lomo de Cerdo Cocinada / Plancha Hacendado',
+    brand: 'Hacendado',
+    category: 'carnes_aves',
+    calories_100g: 167,
+    protein_100g: 29.3,
+    carbs_100g: 0.0,
+    fat_100g: 5.3,
+    defaultServingGrams: 120,
+    unitName: 'filete',
+    aliases: [
+      'lomo cocinado',
+      'lomo a la plancha',
+      'cinta de lomo cocinada',
+      'lomo hecho',
+      'lomo pesado cocinado',
+      'cinta de lomo a la plancha',
+      'lomo plancha',
+      'lomo de cerdo cocinado',
+      'lomo frito',
+      'filetes de lomo cocinados',
+      'lomo de cerdo a la plancha',
+      'cinta de lomo hecha',
+      'lomo de cerdo',
       'lomo',
       'cinta de lomo',
-      'lomo fresco',
-      'lomo de cerdo',
       'filetes de lomo',
       'filete de lomo',
-      'cinta de lomo fresca',
-      'lomo a la plancha',
-      'cinta de lomo de cerdo',
-      'filetes de cinta de lomo',
       'lomo cerdo',
     ],
   },
@@ -1030,6 +1116,16 @@ export function findMercadonaProduct(query: string): MercadonaProduct | null {
       const normAlias = normalizeText(alias);
       const aliasTokens = normAlias.split(' ').filter((t) => t.length > 2);
 
+      // Detección de estado de cocción en query y alias
+      const queryIsCooked = targetQueries.some((q) =>
+        /\b(?:cocinad[oa]s?|plancha|hech[oa]s?|frit[oa]s?|asado|asada)\b/i.test(q)
+      );
+      const queryIsRaw = targetQueries.some((q) =>
+        /\b(?:crud[oa]s?|fresc[oa]s?|en\s+crudo)\b/i.test(q)
+      );
+      const aliasIsCooked = /\b(?:cocinad[oa]s?|plancha|hech[oa]s?|frit[oa]s?|asado|asada)\b/i.test(normAlias);
+      const aliasIsRaw = /\b(?:crud[oa]s?|fresc[oa]s?|en\s+crudo)\b/i.test(normAlias);
+
       // A. Contención de frase completa con fronteras de palabra (\b)
       for (const tq of targetQueries) {
         if (tq.length >= 3 && normAlias.length >= 3) {
@@ -1041,6 +1137,11 @@ export function findMercadonaProduct(query: string): MercadonaProduct | null {
                 score -= 100;
               }
             }
+            if (queryIsCooked && aliasIsCooked) score += 80;
+            if (queryIsCooked && aliasIsRaw) score -= 120;
+            if (queryIsRaw && aliasIsRaw) score += 80;
+            if (queryIsRaw && aliasIsCooked) score -= 120;
+
             if (score > highestScore) {
               highestScore = score;
               bestMatch = prod;
@@ -1055,6 +1156,11 @@ export function findMercadonaProduct(query: string): MercadonaProduct | null {
                 score -= 100;
               }
             }
+            if (queryIsCooked && aliasIsCooked) score += 80;
+            if (queryIsCooked && aliasIsRaw) score -= 120;
+            if (queryIsRaw && aliasIsRaw) score += 80;
+            if (queryIsRaw && aliasIsCooked) score -= 120;
+
             if (score > highestScore) {
               highestScore = score;
               bestMatch = prod;
@@ -1075,6 +1181,11 @@ export function findMercadonaProduct(query: string): MercadonaProduct | null {
             score -= 100;
           }
         }
+        if (queryIsCooked && aliasIsCooked) score += 80;
+        if (queryIsCooked && aliasIsRaw) score -= 120;
+        if (queryIsRaw && aliasIsRaw) score += 80;
+        if (queryIsRaw && aliasIsCooked) score -= 120;
+
         if (score > highestScore) {
           highestScore = score;
           bestMatch = prod;

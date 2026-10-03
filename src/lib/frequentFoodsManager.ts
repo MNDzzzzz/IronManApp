@@ -43,8 +43,34 @@ export const DEFAULT_FREQUENT_FOODS: UserFrequentFood[] = [
     protein_100g: 22.2,
     carbs_100g: 0.0,
     fat_100g: 1.2,
-    aliases: ['pollo', 'pechuga de pollo', 'filetes de pollo', 'pechuga pollo', 'pechuga'],
+    aliases: ['pollo crudo', 'pechuga de pollo cruda', 'pechuga cruda'],
     times_used: 15,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-pechuga-pollo-cocinada',
+    name: 'Pechuga de Pollo Cocinada / Plancha Hacendado',
+    brand: 'Hacendado',
+    category: 'carnes_aves',
+    calories_100g: 145,
+    protein_100g: 31.0,
+    carbs_100g: 0.0,
+    fat_100g: 1.8,
+    aliases: [
+      'pollo',
+      'pechuga de pollo',
+      'pechuga',
+      'filetes de pollo',
+      'pechuga pollo',
+      'pollo cocinado',
+      'pechuga de pollo cocinada',
+      'pechuga cocinada',
+      'pollo a la plancha',
+      'pechuga a la plancha',
+      'pollo hecho',
+      'pechuga hecha',
+    ],
+    times_used: 20,
     last_used_at: new Date().toISOString(),
   },
   {
@@ -203,8 +229,42 @@ export const DEFAULT_FREQUENT_FOODS: UserFrequentFood[] = [
     last_used_at: new Date().toISOString(),
   },
   {
+    id: 'fav-lomo-cocinado',
+    name: 'Cinta de Lomo de Cerdo Cocinada / Plancha Hacendado',
+    brand: 'Hacendado',
+    category: 'carnes_aves',
+    calories_100g: 167,
+    protein_100g: 29.3,
+    carbs_100g: 0.0,
+    fat_100g: 5.3,
+    default_serving_grams: 120,
+    unit_name: 'filete',
+    aliases: [
+      'lomo cocinado',
+      'lomo a la plancha',
+      'cinta de lomo cocinada',
+      'lomo hecho',
+      'lomo pesado cocinado',
+      'cinta de lomo a la plancha',
+      'lomo plancha',
+      'lomo de cerdo cocinado',
+      'lomo frito',
+      'filetes de lomo cocinados',
+      'lomo de cerdo a la plancha',
+      'cinta de lomo hecha',
+      'lomo de cerdo',
+      'lomo',
+      'cinta de lomo',
+      'filetes de lomo',
+      'filete de lomo',
+      'lomo cerdo',
+    ],
+    times_used: 20,
+    last_used_at: new Date().toISOString(),
+  },
+  {
     id: 'fav-lomo-fresco',
-    name: 'Cinta de Lomo Fresca de Cerdo Hacendado',
+    name: 'Cinta de Lomo Fresca de Cerdo (Crudo) Hacendado',
     brand: 'Hacendado',
     category: 'carnes_aves',
     calories_100g: 125,
@@ -214,19 +274,16 @@ export const DEFAULT_FREQUENT_FOODS: UserFrequentFood[] = [
     default_serving_grams: 150,
     unit_name: 'filete',
     aliases: [
-      'lomo',
-      'cinta de lomo',
+      'lomo crudo',
+      'cinta de lomo cruda',
       'lomo fresco',
-      'lomo de cerdo',
-      'filetes de lomo',
-      'filete de lomo',
+      'lomo de cerdo crudo',
+      'filetes de lomo crudos',
+      'lomo en crudo',
       'cinta de lomo fresca',
-      'lomo a la plancha',
-      'cinta de lomo de cerdo',
-      'filetes de cinta de lomo',
-      'lomo cerdo',
+      'cinta de lomo en crudo',
     ],
-    times_used: 15,
+    times_used: 10,
     last_used_at: new Date().toISOString(),
   },
   {
@@ -480,6 +537,16 @@ export async function findUserFrequentFood(query: string): Promise<UserFrequentF
       const normAlias = normalizeText(alias);
       const aliasTokens = normAlias.split(' ').filter((t) => t.length > 2);
 
+      // Detección de estado de cocción en query y alias
+      const queryIsCooked = targetQueries.some((q) =>
+        /\b(?:cocinad[oa]s?|plancha|hech[oa]s?|frit[oa]s?|asado|asada)\b/i.test(q)
+      );
+      const queryIsRaw = targetQueries.some((q) =>
+        /\b(?:crud[oa]s?|fresc[oa]s?|en\s+crudo)\b/i.test(q)
+      );
+      const aliasIsCooked = /\b(?:cocinad[oa]s?|plancha|hech[oa]s?|frit[oa]s?|asado|asada)\b/i.test(normAlias);
+      const aliasIsRaw = /\b(?:crud[oa]s?|fresc[oa]s?|en\s+crudo)\b/i.test(normAlias);
+
       // A. Contención de frase completa con límites de palabra (\b)
       for (const tq of targetQueries) {
         if (tq.length >= 3 && normAlias.length >= 3) {
@@ -491,6 +558,11 @@ export async function findUserFrequentFood(query: string): Promise<UserFrequentF
                 score -= 100;
               }
             }
+            if (queryIsCooked && aliasIsCooked) score += 80;
+            if (queryIsCooked && aliasIsRaw) score -= 120;
+            if (queryIsRaw && aliasIsRaw) score += 80;
+            if (queryIsRaw && aliasIsCooked) score -= 120;
+
             if (score > highestScore) {
               highestScore = score;
               bestMatch = prod;
@@ -505,6 +577,11 @@ export async function findUserFrequentFood(query: string): Promise<UserFrequentF
                 score -= 100;
               }
             }
+            if (queryIsCooked && aliasIsCooked) score += 80;
+            if (queryIsCooked && aliasIsRaw) score -= 120;
+            if (queryIsRaw && aliasIsRaw) score += 80;
+            if (queryIsRaw && aliasIsCooked) score -= 120;
+
             if (score > highestScore) {
               highestScore = score;
               bestMatch = prod;
@@ -525,6 +602,11 @@ export async function findUserFrequentFood(query: string): Promise<UserFrequentF
             score -= 100;
           }
         }
+        if (queryIsCooked && aliasIsCooked) score += 80;
+        if (queryIsCooked && aliasIsRaw) score -= 120;
+        if (queryIsRaw && aliasIsRaw) score += 80;
+        if (queryIsRaw && aliasIsCooked) score -= 120;
+
         if (score > highestScore) {
           highestScore = score;
           bestMatch = prod;

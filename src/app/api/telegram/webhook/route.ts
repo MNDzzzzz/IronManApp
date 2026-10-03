@@ -178,10 +178,10 @@ async function analyzeStravaScreenshotWithGemini(
   coach_assessment?: string;
 } | null> {
   const visionModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getSpainTodayStr();
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  const yesterdayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(yesterday);
 
   const prompt = `
 Eres un entrenador de atletismo, fisioterapeuta biomecánico y analista de telemetría deportiva para Álvaro (101 kg, en preparación para la Media Maratón del 28 de Febrero de 2027).
@@ -479,6 +479,95 @@ _${assessment.articularDiagnosis.headline}_
   }
 }
 
+/**
+ * Devuelve la fecha de hoy formateada YYYY-MM-DD en la zona horaria oficial de España (Europe/Madrid)
+ */
+function getSpainTodayStr(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date());
+}
+
+/**
+ * Consulta y consolida todas las comidas y registros de agua del día actual,
+ * garantizando que si Supabase está activo, lea los datos reales acumulados
+ * (evitando que el conteo empiece de 0 en cada petición serverless),
+ * y sincronizando la memoria local (mockStore).
+ */
+async function getTodayNutritionTotals(todayStr: string): Promise<{
+  meals: NutritionLog[];
+  waterLogs: WaterLog[];
+  totalKcal: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFat: number;
+  totalWaterMl: number;
+}> {
+  let meals: NutritionLog[] = [];
+  let waterLogs: WaterLog[] = [];
+
+  if (isSupabaseConfigured && supabaseAdmin) {
+    try {
+      const [mealsRes, waterRes] = await Promise.all([
+        supabaseAdmin
+          .from('nutrition_logs')
+          .select('*')
+          .eq('date', todayStr)
+          .neq('meal_type', 'PESO_CORPORAL'),
+        supabaseAdmin
+          .from('water_logs')
+          .select('*')
+          .eq('date', todayStr),
+      ]);
+
+      if (mealsRes.data && Array.isArray(mealsRes.data)) {
+        meals = mealsRes.data as NutritionLog[];
+      }
+      if (waterRes.data && Array.isArray(waterRes.data)) {
+        waterLogs = waterRes.data as WaterLog[];
+      }
+    } catch (err) {
+      console.warn('Aviso obteniendo totales de nutrición en Supabase:', err);
+    }
+  }
+
+  // Si no hay datos en Supabase o falló la consulta, recurrir a mockStore
+  if (meals.length === 0) {
+    meals = mockStore.nutritionLogs.filter((m) => m.date === todayStr && m.meal_type !== 'PESO_CORPORAL');
+  } else {
+    // Sincronizar hacia mockStore
+    for (const m of meals) {
+      if (!mockStore.nutritionLogs.some((existing) => existing.id === m.id)) {
+        mockStore.nutritionLogs.push(m);
+      }
+    }
+  }
+
+  if (waterLogs.length === 0) {
+    waterLogs = mockStore.waterLogs.filter((w) => w.date === todayStr);
+  } else {
+    for (const w of waterLogs) {
+      if (!mockStore.waterLogs.some((existing) => existing.id === w.id)) {
+        mockStore.waterLogs.push(w);
+      }
+    }
+  }
+
+  const totalKcal = meals.reduce((acc, m) => acc + (Number(m.calories) || 0), 0);
+  const totalProtein = meals.reduce((acc, m) => acc + (Number(m.protein_g) || 0), 0);
+  const totalCarbs = meals.reduce((acc, m) => acc + (Number(m.carbs_g) || 0), 0);
+  const totalFat = meals.reduce((acc, m) => acc + (Number(m.fat_g) || 0), 0);
+  const totalWaterMl = waterLogs.reduce((acc, w) => acc + (Number(w.amount_ml) || 0), 0);
+
+  return {
+    meals,
+    waterLogs,
+    totalKcal,
+    totalProtein,
+    totalCarbs,
+    totalFat,
+    totalWaterMl,
+  };
+}
+
 // --------------------------------------------------------------------
 // 3. CAPTURA DEL ESTADO COMPLETO DE LA APP (SNAPSHOT PARA GEMINI)
 // --------------------------------------------------------------------
@@ -501,8 +590,22 @@ async function getAppSnapshot(todayStr: string) {
         supabaseAdmin.from('daily_health_metrics').select('*').order('date', { ascending: false }).limit(1),
       ]);
 
-      if (mealsRes.data && mealsRes.data.length > 0) todayMeals = mealsRes.data;
-      if (waterRes.data && waterRes.data.length > 0) todayWater = waterRes.data;
+      if (mealsRes.data && mealsRes.data.length > 0) {
+        todayMeals = mealsRes.data.filter((m: any) => m.meal_type !== 'PESO_CORPORAL');
+        for (const m of todayMeals) {
+          if (!mockStore.nutritionLogs.some((existing) => existing.id === m.id)) {
+            mockStore.nutritionLogs.push(m);
+          }
+        }
+      }
+      if (waterRes.data && waterRes.data.length > 0) {
+        todayWater = waterRes.data;
+        for (const w of todayWater) {
+          if (!mockStore.waterLogs.some((existing) => existing.id === w.id)) {
+            mockStore.waterLogs.push(w);
+          }
+        }
+      }
       if (gymRes.data && gymRes.data.length > 0) todayGymLogs = gymRes.data;
       if (weightsRes.data && weightsRes.data.length > 0) recentWeights = weightsRes.data;
       if (activitiesRes.data && activitiesRes.data.length > 0) recentActivities = activitiesRes.data;
@@ -868,6 +971,10 @@ INSTRUCCIONES DE CLASIFICACIÓN Y ACCIÓN:
        - Copia EXACTAMENTE esos números en "calories", "protein_g", "carbs_g", "fat_g".
        - Pon "user_explicit_macros": true.
        - Esos números dictados por Álvaro prevalecerán al 100% y NUNCA se sobreescribirán con estimaciones genéricas.
+     * ALIMENTOS COCINADOS VS CRUDOS (MERMA Y PRECISIÓN BÁSCULA):
+       - Si Álvaro especifica que el alimento fue pesado COCINADO, HECHO, A LA PLANCHA o HERVIDO (ej: "200g de lomo cocinado", "150g de pechuga a la plancha", "200g de patata hervida", "pollo cocinado"):
+         En "food" pon explícitamente el alimento con el término "cocinado" o "cocinada" o el modo de preparación (ej: "lomo cocinado", "pechuga de pollo cocinada", "patata hervida") para que el analizador de Mercadona aplique los factores nutricionales exactos de producto cocinado (la carne pierde ~25% de agua al cocinarse, concentrando calorías y proteína por 100g).
+       - Si no dice cocinado o dice crudo/fresco (ej: "200g de lomo fresco", "filete de ternera"), pon "lomo fresco" o "lomo crudo".
      * Extrae agua en ml si la menciona ("water_ml") y si tomó creatina ("creatine_detected": true).
 
 5.b. Si Álvaro pide RECORDAR, MEMORIZAR O GUARDAR UN ALIMENTO DE SU DESPENSA (ej: "Acuérdate de la crema de cacahuete de Hacendado que tiene 618 kcal, 30g proteina, 7g carbs y 50g grasa por 100g", "Recuerda este producto...", "Apunta mi pan de molde con 230 kcal..."):
@@ -1458,8 +1565,8 @@ async function handleAdjustValue(
     }
     mockStore.waterLogs.unshift(newWater);
 
-    const todayWater = mockStore.waterLogs.filter((w) => w.date === todayStr);
-    const totalWater = todayWater.reduce((acc, w) => acc + w.amount_ml, 0);
+    const totals = await getTodayNutritionTotals(todayStr);
+    const totalWater = totals.totalWaterMl;
 
     return {
       metricName: 'Agua',
@@ -1497,11 +1604,11 @@ async function handleAdjustValue(
   }
   mockStore.nutritionLogs.unshift(newMeal);
 
-  const todayMeals = mockStore.nutritionLogs.filter((m) => m.date === todayStr);
-  const totalKcal = todayMeals.reduce((acc, m) => acc + m.calories, 0);
-  const totalProt = todayMeals.reduce((acc, m) => acc + m.protein_g, 0);
-  const totalCarbs = todayMeals.reduce((acc, m) => acc + m.carbs_g, 0);
-  const totalFat = todayMeals.reduce((acc, m) => acc + m.fat_g, 0);
+  const totals = await getTodayNutritionTotals(todayStr);
+  const totalKcal = totals.totalKcal;
+  const totalProt = totals.totalProtein;
+  const totalCarbs = totals.totalCarbs;
+  const totalFat = totals.totalFat;
 
   let metricName = 'Calorías';
   let unit = 'kcal';
@@ -1584,11 +1691,11 @@ async function handleSetValue(
   }
 
   // Para nutrición (calorías, proteínas, carbohidratos, grasas):
-  const todayMeals = mockStore.nutritionLogs.filter((m) => m.date === todayStr);
-  const totalKcal = todayMeals.reduce((acc, m) => acc + m.calories, 0);
-  const totalProt = todayMeals.reduce((acc, m) => acc + m.protein_g, 0);
-  const totalCarbs = todayMeals.reduce((acc, m) => acc + m.carbs_g, 0);
-  const totalFat = todayMeals.reduce((acc, m) => acc + m.fat_g, 0);
+  const totals = await getTodayNutritionTotals(todayStr);
+  const totalKcal = totals.totalKcal;
+  const totalProt = totals.totalProtein;
+  const totalCarbs = totals.totalCarbs;
+  const totalFat = totals.totalFat;
 
   let currentVal = totalKcal;
   let metricName = 'Calorías';
@@ -1692,7 +1799,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const message = update.message || update;
     const chatId = message.chat?.id || 123456789;
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getSpainTodayStr();
 
     let spokenText = message.text || message.caption || '';
     let audioData: { base64: string; mimeType: string } | null = null;
@@ -2937,11 +3044,11 @@ ${aiResult.coach_tip ? `💡 *Coach:* _${aiResult.coach_tip}_` : ''}
         mockStore.waterLogs.unshift(newWater);
       }
 
-      const updatedTodayMeals = mockStore.nutritionLogs.filter((m) => m.date === todayStr);
-      const updatedTotalKcal = updatedTodayMeals.reduce((acc, m) => acc + m.calories, 0);
-      const updatedTotalProt = updatedTodayMeals.reduce((acc, m) => acc + m.protein_g, 0);
-      const updatedTodayWater = mockStore.waterLogs.filter((w) => w.date === todayStr);
-      const updatedTotalWater = updatedTodayWater.reduce((acc, w) => acc + w.amount_ml, 0);
+      // Obtener los totales acumulados reales del día actual desde Supabase y mockStore
+      const dayTotals = await getTodayNutritionTotals(todayStr);
+      const updatedTotalKcal = dayTotals.totalKcal;
+      const updatedTotalProt = dayTotals.totalProtein;
+      const updatedTotalWater = dayTotals.totalWaterMl;
       const t = activeProtocol.targets;
       const remainingKcal = Math.max(0, t.calories - updatedTotalKcal);
 
@@ -3273,7 +3380,7 @@ ${aiResult.coach_tip ? `💡 *Coach:* _${aiResult.coach_tip}_` : ''}
 // 10. DIAGNÓSTICO Y HEALTHCHECK: ROUTE GET
 // --------------------------------------------------------------------
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getSpainTodayStr();
   const snapshot = await getAppSnapshot(todayStr);
 
   const urlObj = new URL(request.url);
