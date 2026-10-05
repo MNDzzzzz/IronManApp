@@ -262,6 +262,8 @@ export async function getWeeklyReportDataset(
         supabaseAdmin
           .from('weight_logs')
           .select('*')
+          .gte('date', startDateStr)
+          .lte('date', endDateStr)
           .order('date', { ascending: true }),
       ]);
 
