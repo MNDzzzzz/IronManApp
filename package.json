@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "tsx --test tests/**/*.test.ts",
     "mock:fit3": "tsx scripts/simulate-fit3.ts",
     "mock:strava": "tsx scripts/simulate-strava.ts",
     "mock:all": "tsx scripts/simulate-all.ts"

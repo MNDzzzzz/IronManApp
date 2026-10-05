@@ -2126,63 +2126,76 @@ export function getScientificReferenceNutrition(query: string): MercadonaProduct
 /**
  * Aplica auditoría fisiológica estricta a cualquier producto para evitar
  * carbohidratos en carnes o excesos calóricos en verduras.
+ * IMPORTANTE: Siempre clona el producto para NO mutar el catálogo estático en memoria.
  */
 function applyNutritionalSanityChecks(prod: MercadonaProduct, originalName: string): MercadonaProduct {
-  const norm = normalizeText(originalName + ' ' + prod.name);
+  const result: MercadonaProduct = { ...prod };
+  const prodNorm = normalizeText(prod.name);
+  const origNorm = normalizeText(originalName);
+  const combinedNorm = origNorm + ' ' + prodNorm;
 
   // Carnes y pescados sin rebozar NUNCA tienen carbohidratos
   const isMeatOrFish =
-    norm.includes('pollo') ||
-    norm.includes('pavo') ||
-    norm.includes('ternera') ||
-    norm.includes('lomo') ||
-    norm.includes('cerdo') ||
-    norm.includes('contramuslo') ||
-    norm.includes('muslo') ||
-    norm.includes('alita') ||
-    norm.includes('conejo') ||
-    norm.includes('salmon') ||
-    norm.includes('merluza') ||
-    norm.includes('atun') ||
-    norm.includes('bacalao') ||
-    norm.includes('dorada') ||
-    norm.includes('lubina');
+    prod.category === 'carnes_aves' ||
+    prod.category === 'pescados_mariscos' ||
+    prodNorm.includes('pollo') ||
+    prodNorm.includes('pavo') ||
+    prodNorm.includes('ternera') ||
+    prodNorm.includes('lomo') ||
+    prodNorm.includes('cerdo') ||
+    prodNorm.includes('contramuslo') ||
+    prodNorm.includes('muslo') ||
+    prodNorm.includes('alita') ||
+    prodNorm.includes('conejo') ||
+    prodNorm.includes('salmon') ||
+    prodNorm.includes('merluza') ||
+    prodNorm.includes('atun') ||
+    prodNorm.includes('bacalao') ||
+    prodNorm.includes('dorada') ||
+    prodNorm.includes('lubina');
 
-  const isBreaded = norm.includes('empanad') || norm.includes('rebozad') || norm.includes('nugget') || norm.includes('san jacobo');
+  const isBreaded = combinedNorm.includes('empanad') || combinedNorm.includes('rebozad') || combinedNorm.includes('nugget') || combinedNorm.includes('san jacobo');
 
   if (isMeatOrFish && !isBreaded) {
-    prod.carbs_100g = 0.0;
+    result.carbs_100g = 0.0;
   }
 
   // Verduras y hortalizas NUNCA superan 45 kcal/100g (salvo aguacate o tubérculos)
   const isGreenVeg =
-    norm.includes('calabacin') ||
-    norm.includes('pepino') ||
-    norm.includes('lechuga') ||
-    norm.includes('espinaca') ||
-    norm.includes('acelga') ||
-    norm.includes('apio') ||
-    norm.includes('brocoli') ||
-    norm.includes('coliflor') ||
-    norm.includes('champinon') ||
-    norm.includes('champiñon') ||
-    norm.includes('esparrago');
+    prod.category === 'frutas_verduras' ||
+    prodNorm.includes('calabacin') ||
+    prodNorm.includes('pepino') ||
+    prodNorm.includes('lechuga') ||
+    prodNorm.includes('espinaca') ||
+    prodNorm.includes('acelga') ||
+    prodNorm.includes('apio') ||
+    prodNorm.includes('brocoli') ||
+    prodNorm.includes('coliflor') ||
+    prodNorm.includes('champinon') ||
+    prodNorm.includes('champiñon') ||
+    prodNorm.includes('esparrago');
 
   if (isGreenVeg) {
-    if (prod.calories_100g > 45) prod.calories_100g = 25;
-    if (prod.protein_100g > 4.0) prod.protein_100g = 2.0;
-    if (prod.carbs_100g > 8.0) prod.carbs_100g = 3.5;
+    if (result.calories_100g > 45) result.calories_100g = 25;
+    if (result.protein_100g > 4.0) result.protein_100g = 2.0;
+    if (result.carbs_100g > 8.0) result.carbs_100g = 3.5;
   }
 
-  // Aceites puros
-  if (norm.includes('aceite') || norm.includes('aove') || norm.includes('oliva')) {
-    prod.carbs_100g = 0.0;
-    prod.protein_100g = 0.0;
-    if (prod.fat_100g < 85) prod.fat_100g = 91.6;
-    if (prod.calories_100g < 750) prod.calories_100g = 824;
+  // Aceites puros: SOLO si el producto emparejado es realmente un aceite o grasa
+  const isPureOil =
+    (prod.category === 'grasas_aceites_frutos' || prod.id.includes('aceite') || prod.id.includes('aove')) &&
+    !isMeatOrFish &&
+    !isGreenVeg &&
+    (prodNorm.includes('aceite') || prodNorm.includes('aove') || origNorm.includes('aceite') || origNorm.includes('aove'));
+
+  if (isPureOil) {
+    result.carbs_100g = 0.0;
+    result.protein_100g = 0.0;
+    if (result.fat_100g < 85) result.fat_100g = 91.6;
+    if (result.calories_100g < 750) result.calories_100g = 824;
   }
 
-  return prod;
+  return result;
 }
 
 // --------------------------------------------------------------------
@@ -2393,6 +2406,19 @@ export async function calculateMealFromWeighedItems(
 }
 
 /**
+ * Limpia y normaliza el nombre del alimento extrayendo prefijos conversacionales o de preparación.
+ */
+function cleanFoodName(rawFood: string): string {
+  if (!rawFood) return '';
+  return rawFood
+    .trim()
+    .replace(/^[;:,.\-\s]+|[;:,.\-\s]+$/g, '')
+    .replace(/^(?:para cocinar(?:lo|la|los|las| estas dos cosas| todo esto)?\s+(?:hemos usado|usamos|use|usé)?|hemos usado|usamos|usé|le puse|le pusimos|de\s+)\s*/i, '')
+    .replace(/^[;:,.\-\s]+|[;:,.\-\s]+$/g, '')
+    .trim();
+}
+
+/**
  * Extrae ingredientes y cantidades en gramos de un texto en lenguaje natural
  * (ej: "he puesto 25 gramos de crema de cacahuete", "200g pechuga de pollo y 80g arroz").
  * Respeta rigurosamente los gramos dictados y nunca inventa cantidades por defecto.
@@ -2404,20 +2430,47 @@ export function extractItemsFromText(text: string): WeighedItemInput[] {
 
   // 1. Limpiar menciones de macros (ej: "155 kcal", "7.5g proteina", etc.) para que no interfieran
   // pero conservando los alimentos y sus pesajes
-  const cleanedText = text
+  let cleanedText = text
     .replace(/\b\d+(?:[.,]\d+)?\s*(?:kcal|calorias|calorías|cal)\b/gi, '')
-    .replace(/\b\d+(?:[.,]\d+)?\s*(?:gramos|gr|g)?\s*(?:de\s+)?(?:prot|proteina|proteinas|proteína|proteínas|carb|carbs|hidrato|hidratos|ch|grasa|grasas|fat)\b/gi, '');
+    .replace(/\b\d+(?:[.,]\d+)?\s*(?:gramos|gr|g)?\s*(?:de\s+)?(?:prot|proteina|proteinas|proteína|proteínas|carb|carbs|hidrato|hidratos|ch|grasa|grasas|fat)\b/gi, '')
+    // Reemplazar conectores de elaboración que introducen un nuevo alimento
+    .replace(/\s+(?:para\s+cocinar(?:lo|la|los|las| estas dos cosas| todo esto)?\s+(?:hemos usado|hemos puesto|usamos|usé|utilizamos|le puse|le pusimos|lleva|llevaba)|para freír|para aliñar)\s+/gi, ', ')
+    .replace(/\s+(?:hemos usado|he usado|usamos|usé|utilicé|utilizamos|le hemos echado|le eché|le puse|le pusimos|añadimos|agregamos)\s+/gi, ', ');
 
-  // Dividir por comas, conjunciones (" y ", " e ", " con ", " + ") o saltos de línea
-  const segments = cleanedText
-    .split(/[,;\n\+]|\s+(?:y|e|con)\s+/i)
+  // Dividir por puntos, comas, punto y coma, saltos de línea, o conjunciones ("y", "e", "con", "+")
+  const rawSegments = cleanedText
+    .split(/[.,;\n\+]|\s+(?:y|e|con)\s+/i)
     .map((s) => s.trim())
     .filter((s) => s.length > 1);
 
+  // Subdividir segmentos que aún contengan múltiples patrones de pesaje
+  const segments: string[] = [];
+  for (const seg of rawSegments) {
+    const gramMatches: Array<{ index: number }> = [];
+    const rx = /\b\d+(?:[.,]\d+)?\s*(?:gramos|gr|g|ml)\b/gi;
+    let m: RegExpExecArray | null;
+    while ((m = rx.exec(seg)) !== null) {
+      gramMatches.push({ index: m.index });
+    }
+
+    if (gramMatches.length > 1) {
+      let lastIdx = 0;
+      for (let i = 1; i < gramMatches.length; i++) {
+        const splitPos = gramMatches[i].index;
+        segments.push(seg.slice(lastIdx, splitPos).trim());
+        lastIdx = splitPos;
+      }
+      segments.push(seg.slice(lastIdx).trim());
+    } else {
+      segments.push(seg);
+    }
+  }
+
   for (const rawSeg of segments) {
     // Quitar verbos y fórmulas conversacionales
-    const seg = rawSeg
+    let seg = rawSeg
       .replace(/^(?:he\s+(?:puesto|tomado|comido|bebido|cenado|merendado|añadido)|puse|tomé|tome|comí|comi|añadí|anadi|añadi|le\s+eché|le\s+eche|eché|eche|le\s+puse|llevaba|lleva|metí|meti|para\s+(?:desayunar|comer|cenar|merendar)|de\s+desayuno|de\s+comida|de\s+cena|de\s+merienda)\s+/i, '')
+      .replace(/^(?:para cocinar(?:lo|la|los|las| estas dos cosas| todo esto)?|hemos usado|usamos|usé|utilizamos|de base|el relleno|de relleno)\s+/i, '')
       .trim();
 
     if (!seg) continue;
@@ -2426,7 +2479,7 @@ export function extractItemsFromText(text: string): WeighedItemInput[] {
     const gramFrontMatch = seg.match(/^(\d+(?:[.,]\d+)?)\s*(?:gramos|gr|g|ml)\b\s*(?:de\s+)?(.+)$/i);
     if (gramFrontMatch) {
       const amount = parseFloat(gramFrontMatch[1].replace(',', '.'));
-      const food = gramFrontMatch[2].trim().replace(/^[;:,.\-\s]+|[;:,.\-\s]+$/g, '');
+      const food = cleanFoodName(gramFrontMatch[2]);
       if (food.length > 1) {
         items.push({ food, amount, unit: 'g' });
         continue;
@@ -2436,7 +2489,7 @@ export function extractItemsFromText(text: string): WeighedItemInput[] {
     // 2. Patrón Gramos / Mililitros al final: "crema de cacahuete 25 gramos" / "pechuga de pollo 200g"
     const gramEndMatch = seg.match(/^(.+?)\s+(\d+(?:[.,]\d+)?)\s*(?:gramos|gr|g|ml)\b$/i);
     if (gramEndMatch) {
-      const food = gramEndMatch[1].trim().replace(/^[;:,.\-\s]+|[;:,.\-\s]+$/g, '');
+      const food = cleanFoodName(gramEndMatch[1]);
       const amount = parseFloat(gramEndMatch[2].replace(',', '.'));
       if (food.length > 1) {
         items.push({ food, amount, unit: 'g' });
@@ -2448,7 +2501,7 @@ export function extractItemsFromText(text: string): WeighedItemInput[] {
     const gramAnywhereMatch = seg.match(/(\d+(?:[.,]\d+)?)\s*(?:gramos|gr|g|ml)\b\s*(?:de\s+)?([a-záéíóúñ\s0-9%]+)/i);
     if (gramAnywhereMatch) {
       const amount = parseFloat(gramAnywhereMatch[1].replace(',', '.'));
-      const food = gramAnywhereMatch[2].trim().replace(/^[;:,.\-\s]+|[;:,.\-\s]+$/g, '');
+      const food = cleanFoodName(gramAnywhereMatch[2]);
       if (food.length > 1) {
         items.push({ food, amount, unit: 'g' });
         continue;
@@ -2491,7 +2544,6 @@ export function extractItemsFromText(text: string): WeighedItemInput[] {
     // 7. Si no tiene cantidad explícita pero es un alimento reconocible en Mercadona o Despensa
     const matched = findMercadonaProduct(seg);
     if (matched) {
-      // Comprobar si hay algún número aislado en el segmento que se nos haya escapado
       const anyNum = seg.match(/\b(\d+(?:[.,]\d+)?)\b/);
       if (anyNum) {
         const numVal = parseFloat(anyNum[1].replace(',', '.'));
