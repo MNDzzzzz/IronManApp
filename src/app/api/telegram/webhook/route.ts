@@ -77,6 +77,7 @@ import {
   getLatestNutritionAdaptation,
 } from '@/lib/reports/nutritionAdapter';
 import { RoutineKey } from '@/types/database';
+import { recalculateDayNutrition } from '@/lib/coach/coachCore';
 
 // --------------------------------------------------------------------
 // 1. UTILIDAD: DESCARGA DE AUDIO DE TELEGRAM
@@ -773,7 +774,8 @@ interface UniversalAssistantResponse {
     | 'gym_exercise_modification'
     | 'adapt_diet'
     | 'apply_diet'
-    | 'memorize_food';
+    | 'memorize_food'
+    | 'recalculate_today_nutrition';
   transcription?: string;
   // Para sumar o restar valores de la app
   adjust?: {
@@ -1055,6 +1057,9 @@ INSTRUCCIONES DE CLASIFICACIÓN Y ACCIÓN:
    - Pon "action": "apply_diet".
    - Rellena "apply_diet": {}
 
+15. Si Álvaro pide ANALIZAR, RECALCULAR O AUDITAR LAS COMIDAS DE HOY O RECALCULAR LOS MACROS A PARTIR DE SUS AUDIOS (ej: "analiza las comidas de hoy y vuelve a hacer el cálculo de los macros", "recalcula las comidas de hoy", "audita las comidas de hoy", "vuelve a calcular los macros de hoy con mis audios"):
+   - Pon "action": "recalculate_today_nutrition".
+
 8. Si se adjunta un audio, escúchalo con máxima atención y transcribe todo en "transcription".
 9. Añade siempre un consejo de entrenador o fisioterapeuta de alto nivel en "coach_tip".
 
@@ -1062,7 +1067,7 @@ Mensaje escrito (si aplica): "${textOrHint}"
 
 DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin markdown ni texto alrededor):
 {
-  "action": "log_workout" | "log_cardio" | "log_nutrition" | "query" | "protocol_update" | "adjust_value" | "set_value" | "log_weight" | "schedule_swap" | "schedule_reassign" | "gym_exercise_modification" | "adapt_diet" | "apply_diet" | "memorize_food",
+  "action": "log_workout" | "log_cardio" | "log_nutrition" | "query" | "protocol_update" | "adjust_value" | "set_value" | "log_weight" | "schedule_swap" | "schedule_reassign" | "gym_exercise_modification" | "adapt_diet" | "apply_diet" | "memorize_food" | "recalculate_today_nutrition",
   "transcription": "transcripción literal",
   "schedule_swap": {
     "date1": "2026-10-01",
@@ -2758,6 +2763,28 @@ _${s.note}_
       }
     }
 
+    // 30. /recalcular_comidas (Auditar y recalcular comidas de hoy a partir de audios originales)
+    if (
+      mainCommand === '/recalcular_comidas' ||
+      mainCommand === '/auditar_comidas' ||
+      cleanCmd === 'recalcular comidas' ||
+      cleanCmd === 'auditar comidas' ||
+      cleanCmd.includes('recalcula las comidas de hoy') ||
+      cleanCmd.includes('recalcular los macros') ||
+      cleanCmd.includes('vuelve a hacer el calculo de los macros') ||
+      cleanCmd.includes('vuelve a calcular los macros')
+    ) {
+      const auditResult = await recalculateDayNutrition(todayStr);
+      if (botToken && message.chat?.id) {
+        await sendTelegramMessage(chatId, auditResult.summaryMessage, botToken);
+      }
+      return NextResponse.json({
+        success: true,
+        command: 'recalculate_today_nutrition',
+        data: auditResult,
+      });
+    }
+
     // ================================================================
     // PROCESADO INTELIGENTE MULTIMODAL CON GEMINI FLASH
     // (Entrenamiento Fuerza, Cardio, Nutrición o Consultas)
@@ -3366,6 +3393,19 @@ ${saved.default_serving_grams ? `• ⚖️ Ración habitual: *${saved.default_s
         success: true,
         action: 'memorize_food',
         food: saved,
+      });
+    }
+
+    // CASO M: AUDITORÍA Y RECÁLCULO RETROSPECTIVO DE COMIDAS A PARTIR DE AUDIOS ORIGINALES
+    if (aiResult.action === 'recalculate_today_nutrition') {
+      const auditResult = await recalculateDayNutrition(todayStr);
+      if (botToken && message.chat?.id) {
+        await sendTelegramMessage(chatId, auditResult.summaryMessage, botToken);
+      }
+      return NextResponse.json({
+        success: true,
+        action: 'recalculate_today_nutrition',
+        data: auditResult,
       });
     }
 

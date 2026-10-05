@@ -66,6 +66,7 @@ export interface UniversalAssistantResponse {
     | 'schedule_swap'
     | 'schedule_reassign'
     | 'gym_exercise_modification'
+    | 'recalculate_today_nutrition'
     | 'adjust_value'
     | 'set_value'
     | 'save_food_preference'
@@ -372,6 +373,29 @@ export async function parseWithGemini(
   snapshot: any,
   audioData?: { base64: string; mimeType: string } | null
 ): Promise<UniversalAssistantResponse> {
+  const lowerHint = (textOrHint || '').toLowerCase();
+  const isRecalculateRequest =
+    (lowerHint.includes('recalcula') ||
+      lowerHint.includes('recalcular') ||
+      lowerHint.includes('vuelve a calcular') ||
+      lowerHint.includes('volver a calcular') ||
+      lowerHint.includes('revisa las comidas') ||
+      lowerHint.includes('analiza las comidas') ||
+      lowerHint.includes('audita')) &&
+    (lowerHint.includes('comida') ||
+      lowerHint.includes('macro') ||
+      lowerHint.includes('hoy') ||
+      lowerHint.includes('audio') ||
+      lowerHint.includes('calor'));
+
+  if (isRecalculateRequest) {
+    return {
+      action: 'recalculate_today_nutrition',
+      reply_text: 'Iniciando auditoría y recálculo de las comidas de hoy a partir de tus audios originales...',
+      coach_tip: 'Re-evaluando cada ingrediente con el catálogo Mercadona y la base científica BEDCA.',
+    };
+  }
+
   const prompt = `
 Eres el Head Coach, Biomecánico y Fisioterapeuta Deportivo Personal de Álvaro para IronManApp.
 Tu misión es guiarlo hacia su meta de la MEDIA MARATÓN (21,097 KM) el 28 de Febrero de 2027 sin dolor articular y con recomposición corporal exitosa.
@@ -387,11 +411,13 @@ REGLAS DE RESOLUCIÓN BROMATOLÓGICA Y NUTRICIONAL ESTRICTAS:
 2. Contramuslo deshuesado cocinado / pollo cocinado: ~175-180 kcal, ~25g proteína, 0g carbohidratos, ~8g grasa por 100g.
 3. Calabacín cocinado / verduras acuosas: ~16-20 kcal, ~1.2g proteína, ~2.5g carbohidratos, ~0.3g grasa por 100g. ¡Jamás inflar a 100+ kcal!
 4. Si Álvaro dicta números explícitos de macros (ej: "40g proteína, 250 kcal"), respétalos al 100% y activa "user_explicit_macros": true.
+5. Si Álvaro pide RECALCULAR, AUDITAR O VOLVER A CALCULAR LAS COMIDAS DE HOY O SUS MACROS A PARTIR DE SUS AUDIOS/MENSAJES (ej: "analiza las comidas de hoy y vuelve a hacer el cálculo de los macros", "recalcula las comidas de hoy", "vuelve a calcular los macros de hoy con mis audios", "revisa lo que he comido hoy"):
+   Pon "action": "recalculate_today_nutrition".
 
 INSTRUCCIÓN DE SALIDA:
 Analiza el mensaje o audio y responde EXCLUSIVAMENTE un objeto JSON válido con este esquema:
 {
-  "action": "log_nutrition" | "log_workout" | "log_cardio" | "log_water" | "log_weight" | "schedule_swap" | "schedule_reassign" | "query" | "protocol_update",
+  "action": "log_nutrition" | "log_workout" | "log_cardio" | "log_water" | "log_weight" | "schedule_swap" | "schedule_reassign" | "recalculate_today_nutrition" | "query" | "protocol_update",
   "transcription": "Texto transcrito",
   "nutrition": {
     "meal_type": "Desayuno" | "Almuerzo" | "Cena" | "Snack",
@@ -469,6 +495,190 @@ Analiza el mensaje o audio y responde EXCLUSIVAMENTE un objeto JSON válido con 
     action: 'query',
     reply_text: `He recibido tu mensaje "${textOrHint}". Todo tu plan sigue activo enfocado a tu déficit y la Media Maratón.`,
     coach_tip: 'Prioriza la constancia y la báscula de cocina en cada comida.',
+  };
+}
+
+// --------------------------------------------------------------------
+// AUDITORÍA Y RECÁLCULO RETROSPECTIVO DE COMIDAS A PARTIR DE AUDIOS
+// --------------------------------------------------------------------
+
+export async function recalculateDayNutrition(targetDateStr: string): Promise<{
+  success: boolean;
+  recalculatedMeals: Array<{
+    id: string;
+    mealType: string;
+    transcription: string;
+    before: { calories: number; protein_g: number; carbs_g: number; fat_g: number };
+    after: { calories: number; protein_g: number; carbs_g: number; fat_g: number };
+    breakdown: string;
+  }>;
+  totalBefore: { calories: number; protein: number; carbs: number; fat: number };
+  totalAfter: { calories: number; protein: number; carbs: number; fat: number };
+  summaryMessage: string;
+}> {
+  let meals: NutritionLog[] = [];
+  if (isSupabaseConfigured && supabaseAdmin) {
+    try {
+      const res = await supabaseAdmin
+        .from('nutrition_logs')
+        .select('*')
+        .eq('date', targetDateStr)
+        .neq('meal_type', 'PESO_CORPORAL')
+        .order('timestamp', { ascending: true });
+      if (res.data) meals = res.data as NutritionLog[];
+    } catch (e) {
+      console.warn('Error leyendo comidas para recálculo en Supabase:', e);
+    }
+  }
+
+  if (meals.length === 0) {
+    meals = mockStore.nutritionLogs.filter(m => m.date === targetDateStr && m.meal_type !== 'PESO_CORPORAL');
+  }
+
+  if (meals.length === 0) {
+    return {
+      success: false,
+      recalculatedMeals: [],
+      totalBefore: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+      totalAfter: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+      summaryMessage: `⚠️ No se encontraron comidas registradas para la fecha **${targetDateStr}** para auditar.`,
+    };
+  }
+
+  let totalBeforeKcal = 0;
+  let totalBeforeP = 0;
+  let totalBeforeC = 0;
+  let totalBeforeF = 0;
+
+  let totalAfterKcal = 0;
+  let totalAfterP = 0;
+  let totalAfterC = 0;
+  let totalAfterF = 0;
+
+  const recalculatedMeals = [];
+
+  for (const meal of meals) {
+    const before = {
+      calories: Number(meal.calories) || 0,
+      protein_g: Number(meal.protein_g) || 0,
+      carbs_g: Number(meal.carbs_g) || 0,
+      fat_g: Number(meal.fat_g) || 0,
+    };
+    totalBeforeKcal += before.calories;
+    totalBeforeP += before.protein_g;
+    totalBeforeC += before.carbs_g;
+    totalBeforeF += before.fat_g;
+
+    const sourceText = meal.raw_audio_transcription || meal.description || '';
+    const explicitMacros = extractExplicitMacrosFromText(sourceText);
+    const items = extractItemsFromText(sourceText);
+
+    let afterCalories = before.calories;
+    let afterProtein = before.protein_g;
+    let afterCarbs = before.carbs_g;
+    let afterFat = before.fat_g;
+    let breakdown = '';
+
+    if (explicitMacros.hasExplicitMacros) {
+      if (explicitMacros.calories !== undefined) afterCalories = explicitMacros.calories;
+      if (explicitMacros.protein_g !== undefined) afterProtein = explicitMacros.protein_g;
+      if (explicitMacros.carbs_g !== undefined) afterCarbs = explicitMacros.carbs_g;
+      if (explicitMacros.fat_g !== undefined) afterFat = explicitMacros.fat_g;
+      breakdown = `🎯 Macros explícitos dictados: ${afterCalories} kcal | ${afterProtein}g P | ${afterCarbs}g HC | ${afterFat}g G`;
+    } else if (items.length > 0) {
+      const calc = await calculateMealFromWeighedItems(items);
+      afterCalories = calc.totalCalories;
+      afterProtein = calc.totalProtein;
+      afterCarbs = calc.totalCarbs;
+      afterFat = calc.totalFat;
+      breakdown = calc.formattedBreakdown;
+    }
+
+    totalAfterKcal += afterCalories;
+    totalAfterP += afterProtein;
+    totalAfterC += afterCarbs;
+    totalAfterF += afterFat;
+
+    // Actualizar en Supabase
+    if (isSupabaseConfigured && supabaseAdmin) {
+      try {
+        await supabaseAdmin
+          .from('nutrition_logs')
+          .update({
+            calories: afterCalories,
+            protein_g: afterProtein,
+            carbs_g: afterCarbs,
+            fat_g: afterFat,
+          })
+          .eq('id', meal.id);
+      } catch (err) {
+        console.warn('Error actualizando comida recalculada en Supabase:', err);
+      }
+    }
+
+    // Actualizar en mockStore
+    const idx = mockStore.nutritionLogs.findIndex(m => m.id === meal.id);
+    if (idx !== -1) {
+      mockStore.nutritionLogs[idx].calories = afterCalories;
+      mockStore.nutritionLogs[idx].protein_g = afterProtein;
+      mockStore.nutritionLogs[idx].carbs_g = afterCarbs;
+      mockStore.nutritionLogs[idx].fat_g = afterFat;
+    }
+
+    recalculatedMeals.push({
+      id: meal.id,
+      mealType: meal.meal_type,
+      transcription: sourceText,
+      before,
+      after: {
+        calories: afterCalories,
+        protein_g: afterProtein,
+        carbs_g: afterCarbs,
+        fat_g: afterFat,
+      },
+      breakdown,
+    });
+  }
+
+  totalBeforeP = Math.round(totalBeforeP * 10) / 10;
+  totalBeforeC = Math.round(totalBeforeC * 10) / 10;
+  totalBeforeF = Math.round(totalBeforeF * 10) / 10;
+
+  totalAfterP = Math.round(totalAfterP * 10) / 10;
+  totalAfterC = Math.round(totalAfterC * 10) / 10;
+  totalAfterF = Math.round(totalAfterF * 10) / 10;
+
+  let msg = `🔄 **Auditoría & Recálculo de Comidas de Hoy Completado**\n\n`;
+  msg += `He analizado los audios literales transcritos de tus comidas y re-procesado cada alimento con el catálogo Mercadona y la base científica BEDCA:\n\n`;
+
+  for (const m of recalculatedMeals) {
+    msg += `🍽️ **${m.mealType}:** _"${m.transcription}"_\n`;
+    msg += `• **Anterior:** ${m.before.calories} kcal | ${m.before.protein_g}g P | ${m.before.carbs_g}g HC | ${m.before.fat_g}g G\n`;
+    msg += `• **Corregido:** **${m.after.calories} kcal** | 🥩 **${m.after.protein_g}g** P | 🍚 **${m.after.carbs_g}g** HC | 🥑 **${m.after.fat_g}g** G\n`;
+    if (m.breakdown) {
+      msg += `${m.breakdown}\n`;
+    }
+    msg += `\n`;
+  }
+
+  const calDiff = totalAfterKcal - totalBeforeKcal;
+  const pDiff = Math.round((totalAfterP - totalBeforeP) * 10) / 10;
+  const diffSignCal = calDiff > 0 ? `+${calDiff}` : `${calDiff}`;
+  const diffSignP = pDiff > 0 ? `+${pDiff}` : `${pDiff}`;
+
+  msg += `📊 **Impacto en el Total de Hoy (${targetDateStr}):**\n`;
+  msg += `• **Calorías:** ${totalBeforeKcal} ➔ **${totalAfterKcal} kcal** (${diffSignCal} kcal)\n`;
+  msg += `• **Proteína:** ${totalBeforeP}g ➔ **${totalAfterP}g** (${diffSignP}g P)\n`;
+  msg += `• **Carbohidratos:** ${totalBeforeC}g ➔ **${totalAfterC}g**\n`;
+  msg += `• **Grasas:** ${totalBeforeF}g ➔ **${totalAfterF}g**\n\n`;
+  msg += `💡 _Tu base de datos y el panel de la app ya reflejan estos valores reales actualizados._`;
+
+  return {
+    success: true,
+    recalculatedMeals,
+    totalBefore: { calories: totalBeforeKcal, protein: totalBeforeP, carbs: totalBeforeC, fat: totalBeforeF },
+    totalAfter: { calories: totalAfterKcal, protein: totalAfterP, carbs: totalAfterC, fat: totalAfterF },
+    summaryMessage: msg,
   };
 }
 
@@ -647,6 +857,13 @@ export async function executeCoachTurn({
         dataSummary = { reassign: targetDate, routine: aiResult.schedule_reassign.routine_key };
         replyText = `⚡ **Sesión adaptada:** Asignada rutina **${aiResult.schedule_reassign.title || aiResult.schedule_reassign.routine_key}** al **${targetDate}**.`;
       }
+      break;
+    }
+
+    case 'recalculate_today_nutrition': {
+      const auditResult = await recalculateDayNutrition(todayStr);
+      replyText = auditResult.summaryMessage;
+      dataSummary = { audit: auditResult };
       break;
     }
 
