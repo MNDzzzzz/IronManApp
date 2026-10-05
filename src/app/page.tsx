@@ -445,7 +445,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col justify-between selection:bg-orange-500 selection:text-black">
+    <div className="min-h-screen bg-[#121211] text-zinc-100 flex flex-col justify-between selection:bg-amber-500/20 selection:text-white">
       {/* Barra Superior */}
       <TopBar
         onOpenSettings={() => setIsSettingsOpen(true)}
@@ -471,6 +471,7 @@ export default function Home() {
                 onNavigateTab={(tab) => setCurrentTab(tab)}
                 onSelectActivity={(act) => setSelectedActivity(act)}
                 onOpenReport={() => setIsReportOpen(true)}
+                onReloadData={loadAllData}
               />
             )}
 

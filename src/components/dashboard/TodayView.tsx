@@ -15,9 +15,14 @@ import {
   Scale,
   Dumbbell,
   ArrowLeftRight,
+  Calendar,
+  ChevronRight,
+  CheckCircle2,
 } from 'lucide-react';
 import { DailyHealthMetric, NutritionLog, StravaActivity } from '@/types/database';
 import { ScheduleManagerModal } from '@/components/schedule/ScheduleManagerModal';
+import { CoachChat } from '@/components/coach/CoachChat';
+import { CoachTurnResult } from '@/lib/coach/coachCore';
 
 interface TodayViewProps {
   health: DailyHealthMetric | null;
@@ -34,6 +39,7 @@ interface TodayViewProps {
   onNavigateTab: (tab: any) => void;
   onSelectActivity: (activity: StravaActivity) => void;
   onOpenReport?: () => void;
+  onReloadData?: () => void;
 }
 
 export const TodayView: React.FC<TodayViewProps> = ({
@@ -45,14 +51,20 @@ export const TodayView: React.FC<TodayViewProps> = ({
   onNavigateTab,
   onSelectActivity,
   onOpenReport,
+  onReloadData,
 }) => {
   const stepsGoal = 10000;
   const steps = health?.total_steps || 0;
   const stepsPercent = Math.min(100, Math.round((steps / stepsGoal) * 100));
 
-  const caloriesBurned = health?.active_calories ? health.active_calories + 1850 : 0;
+  const caloriesTarget = 2400;
   const caloriesConsumed = nutritionTotals.calories || 0;
-  const netCalories = caloriesConsumed - caloriesBurned;
+  const caloriesRemaining = Math.max(0, caloriesTarget - caloriesConsumed);
+  const caloriesPercent = Math.min(100, Math.round((caloriesConsumed / caloriesTarget) * 100));
+
+  const proteinTarget = 202;
+  const proteinConsumed = nutritionTotals.protein_g || 0;
+  const proteinPercent = Math.min(100, Math.round((proteinConsumed / proteinTarget) * 100));
 
   const waterGoal = 3000;
   const waterPercent = Math.min(100, Math.round((nutritionTotals.water_ml / waterGoal) * 100));
@@ -66,7 +78,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [effectiveRoutine, setEffectiveRoutine] = useState<any>(null);
 
-  useEffect(() => {
+  const fetchSchedule = () => {
     fetch('/api/schedule')
       .then((res) => res.json())
       .then((data) => {
@@ -76,351 +88,240 @@ export const TodayView: React.FC<TodayViewProps> = ({
         }
       })
       .catch((err) => console.warn('Aviso cargando rutina de hoy:', err));
+  };
+
+  useEffect(() => {
+    fetchSchedule();
   }, []);
 
+  const handleCoachTurnCompleted = (result: CoachTurnResult) => {
+    fetchSchedule();
+    if (onReloadData) onReloadData();
+  };
+
+  const daysToMarathon = Math.max(
+    0,
+    Math.ceil((new Date('2027-02-28T09:00:00').getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+  );
+
   return (
-    <div className="space-y-4 pb-24 px-4 pt-2">
-      {/* 0. SESIÓN DEL DÍA & MOTOR MODULAR */}
+    <div className="space-y-4 pb-24 px-3.5 pt-2 font-sans selection:bg-amber-500/20">
+      {/* ================================================================ */}
+      {/* 1. HERO DEL DÍA: SESIÓN PRINCIPAL & OBJETIVO (ESTILO APPLE)       */}
+      {/* ================================================================ */}
       {effectiveRoutine && (
-        <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 shadow-xl space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400">
-                <Dumbbell className="w-4 h-4" />
+        <section className="relative overflow-hidden rounded-3xl bg-[#171716] border border-white/[0.08] p-5 shadow-xl transition-all">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold tracking-wider uppercase text-amber-400">
+                  {effectiveRoutine.dayName} • Sesión de Hoy
+                </span>
+                {effectiveRoutine.isOverridden && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-medium border border-amber-500/30">
+                    Adaptada ⚡
+                  </span>
+                )}
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xs uppercase font-bold tracking-wider text-zinc-400">
-                    Sesión de Hoy ({effectiveRoutine.dayName})
-                  </h2>
-                  {effectiveRoutine.isOverridden && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/40 font-bold">
-                      Adaptada ⚡
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm font-bold text-white mt-0.5">
-                  {effectiveRoutine.routine.title}
-                </p>
-              </div>
+              <h1 className="text-lg font-bold text-zinc-100 tracking-tight mt-1">
+                {effectiveRoutine.routine.title}
+              </h1>
+              <p className="text-xs text-zinc-400 mt-1 leading-relaxed line-clamp-2">
+                {effectiveRoutine.routine.description}
+              </p>
             </div>
+
             <button
               onClick={() => setIsScheduleModalOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white transition-all flex items-center gap-1.5 active:scale-95 shadow-md"
+              className="shrink-0 px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-xs font-medium text-zinc-200 hover:text-white transition-all flex items-center gap-1.5 active:scale-95"
             >
-              <ArrowLeftRight className="w-3.5 h-3.5 text-orange-400" />
-              <span>Cambiar / Mover</span>
+              <ArrowLeftRight className="w-3.5 h-3.5 text-amber-400" />
+              <span>Cambiar</span>
             </button>
           </div>
 
-          <p className="text-xs text-zinc-400">
-            {effectiveRoutine.routine.description}
-          </p>
-
-          <div className="flex items-center justify-between pt-2 border-t border-zinc-900 text-xs text-zinc-500">
-            <span>👟 Meta pasos: <strong className="text-zinc-300 font-mono">{effectiveRoutine.routine.targetSteps.min.toLocaleString()} – {effectiveRoutine.routine.targetSteps.max.toLocaleString()}</strong></span>
-            <span className="capitalize">{effectiveRoutine.routine.category}</span>
-          </div>
-        </div>
-      )}
-      {/* ACCESO RÁPIDO: INFORME Y RESUMEN SEMANAL */}
-      {onOpenReport && (
-        <button
-          onClick={onOpenReport}
-          className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-transparent border border-orange-500/30 flex items-center justify-between text-left hover:border-orange-500/50 active:scale-[0.99] transition-all group shadow-lg"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 group-hover:scale-105 transition-transform">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-white group-hover:text-orange-400 transition-colors">
-                Informe Semanal de Rendimiento
-              </p>
-              <p className="text-[11px] text-zinc-400">
-                100% datos reales, diagnóstico clínico y descarga PDF
-              </p>
-            </div>
-          </div>
-          <ArrowUpRight className="w-4 h-4 text-orange-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-        </button>
-      )}
-
-      {/* 1. BALANCE ENERGÉTICO DIARIO */}
-      <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 shadow-xl relative overflow-hidden">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400">
-              <Flame className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-xs uppercase font-bold tracking-wider text-zinc-400">Balance Calórico</h2>
-              <p className="text-xs text-zinc-500">Consumidas vs Quemadas</p>
-            </div>
-          </div>
-          <span
-            className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${
-              caloriesBurned > 0
-                ? netCalories <= 0
-                  ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40'
-                  : 'bg-amber-950/60 text-amber-400 border border-amber-800/40'
-                : 'bg-zinc-900 text-zinc-400 border border-zinc-800'
-            }`}
-          >
-            {caloriesBurned > 0
-              ? netCalories > 0
-                ? `+${netCalories} kcal`
-                : `${netCalories} kcal`
-              : 'Fit3 sin sincronizar'}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 pt-1">
-          <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-3">
-            <span className="text-[11px] text-zinc-400">Ingeridas (Dieta)</span>
-            <div className="text-xl font-black text-white mt-0.5">{caloriesConsumed} <span className="text-xs font-normal text-zinc-400">kcal</span></div>
-            <div className="w-full bg-zinc-800 h-1.5 rounded-full mt-2 overflow-hidden">
-              <div
-                className="bg-orange-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, (caloriesConsumed / 2500) * 100)}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-3">
-            <span className="text-[11px] text-zinc-400">Quemadas (Total)</span>
-            <div className="text-xl font-black text-white mt-0.5">
-              {caloriesBurned > 0 ? caloriesBurned : '--'}{' '}
-              <span className="text-xs font-normal text-zinc-400">kcal</span>
-            </div>
-            <div className="w-full bg-zinc-800 h-1.5 rounded-full mt-2 overflow-hidden">
-              <div
-                className="bg-rose-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, (caloriesBurned / 2500) * 100)}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. CONTROL DE PESO CORPORAL (PESAJE ANTES DE CENAR) */}
-      <div
-        onClick={() => onNavigateTab('salud')}
-        className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-between shadow-lg hover:border-zinc-800"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-            <Scale className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs uppercase font-bold tracking-wider text-zinc-400">Peso Corporal</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold flex items-center gap-0.5">
-                <TrendingDown className="w-3 h-3 inline" /> -1.5 kg
+          <div className="flex items-center justify-between pt-3.5 mt-3.5 border-t border-white/[0.06] text-xs text-zinc-400">
+            <div className="flex items-center gap-1.5">
+              <Footprints className="w-3.5 h-3.5 text-zinc-500" />
+              <span>
+                Meta pasos:{' '}
+                <strong className="text-zinc-200 font-mono">
+                  {effectiveRoutine.routine.targetSteps.min.toLocaleString()} – {effectiveRoutine.routine.targetSteps.max.toLocaleString()}
+                </strong>
               </span>
             </div>
-            <p className="text-xs text-zinc-500 mt-0.5">
-              Pesaje antes de cenar / post-entreno
-            </p>
-          </div>
-        </div>
-
-        <div className="text-right flex items-center gap-2">
-          <div>
-            <div className="text-2xl font-black text-white">
-              {currentWeight.toFixed(1)} <span className="text-xs font-normal text-zinc-400">kg</span>
-            </div>
-            <span className="text-[10px] text-zinc-500 block">Inicio: 102.5 kg</span>
-          </div>
-          <ArrowUpRight className="w-4 h-4 text-zinc-500" />
-        </div>
-      </div>
-
-      {/* 3. GRID 2X2: PULSO REPOSO, SUEÑO, PASOS, AGUA */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Pulso en Reposo (Fit3) */}
-        <div
-          onClick={() => onNavigateTab('salud')}
-          className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 active:scale-95 transition-all cursor-pointer flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between text-rose-500">
-            <Heart className="w-5 h-5 fill-rose-500/20" />
-            <span className="text-[10px] text-zinc-500 font-mono">FIT3</span>
-          </div>
-          <div className="mt-3">
-            <span className="text-[11px] text-zinc-400">FC en Reposo</span>
-            <div className="text-2xl font-black text-white flex items-baseline gap-1">
-              {restingHr} <span className="text-xs font-medium text-zinc-400">bpm</span>
-            </div>
-            <p className="text-[10px] text-zinc-500 mt-1 flex items-center gap-0.5">
-              {health?.resting_hr ? (
-                <>
-                  <TrendingDown className="w-3 h-3 text-emerald-400" />
-                  <span className="text-emerald-400">Óptimo recuperación</span>
-                </>
-              ) : (
-                'Sin datos Fit3 hoy'
-              )}
-            </p>
-          </div>
-        </div>
-
-        {/* Sueño y Calidad (Fit3) */}
-        <div
-          onClick={() => onNavigateTab('salud')}
-          className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 active:scale-95 transition-all cursor-pointer flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between text-indigo-400">
-            <Moon className="w-5 h-5 fill-indigo-400/20" />
-            <span className="text-[10px] px-1.5 py-0.5 bg-indigo-950/60 border border-indigo-800/40 text-indigo-300 rounded-md font-bold">
-              {sleepScore}
+            <span className="text-[11px] px-2 py-0.5 rounded-md bg-white/[0.04] text-zinc-300 capitalize">
+              {effectiveRoutine.routine.category}
             </span>
           </div>
-          <div className="mt-3">
-            <span className="text-[11px] text-zinc-400">Sueño Anoche</span>
-            <div className="text-2xl font-black text-white flex items-baseline gap-1">
-              {sleepHours} <span className="text-xs font-medium text-zinc-400">horas</span>
+        </section>
+      )}
+
+      {/* ================================================================ */}
+      {/* 2. ANILLOS DE BALANCE DIARIO (CALORÍAS, PROTEÍNA, AGUA, SUEÑO)   */}
+      {/* ================================================================ */}
+      <section className="grid grid-cols-2 gap-3">
+        {/* Calorías & Déficit */}
+        <div className="p-4 rounded-3xl bg-[#171716] border border-white/[0.08] flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">Calorías</span>
+            <div className="w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400">
+              <Flame className="w-3.5 h-3.5" />
             </div>
-            <p className="text-[10px] text-zinc-500 mt-1">
-              {health?.deep_sleep_minutes
-                ? `${health.deep_sleep_minutes}m Profundo`
-                : 'Sin datos Fit3 hoy'}
+          </div>
+          <div className="mt-3">
+            <div className="text-xl font-bold text-zinc-100 flex items-baseline gap-1">
+              {caloriesConsumed} <span className="text-xs font-normal text-zinc-400">/ {caloriesTarget}</span>
+            </div>
+            <p className="text-[11px] text-amber-400/90 font-medium mt-0.5">
+              {caloriesRemaining > 0 ? `${caloriesRemaining} kcal restantes` : 'Objetivo cumplido'}
             </p>
-          </div>
-        </div>
-
-        {/* Pasos Diarios */}
-        <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-cyan-400">
-            <Footprints className="w-5 h-5" />
-            <span className="text-[10px] text-zinc-500 font-mono">{stepsPercent}%</span>
-          </div>
-          <div className="mt-3">
-            <span className="text-[11px] text-zinc-400">Pasos Hoy</span>
-            <div className="text-2xl font-black text-white">{steps.toLocaleString()}</div>
-            <div className="w-full bg-zinc-900 h-1 rounded-full mt-2 overflow-hidden">
-              <div className="bg-cyan-400 h-full rounded-full" style={{ width: `${stepsPercent}%` }} />
+            <div className="w-full bg-white/[0.06] h-1.5 rounded-full mt-2.5 overflow-hidden">
+              <div
+                className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                style={{ width: `${caloriesPercent}%` }}
+              />
             </div>
           </div>
         </div>
 
-        {/* Hidratación Rápida */}
-        <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-blue-400">
-            <Droplet className="w-5 h-5 fill-blue-400/20" />
-            <div className="flex items-center gap-1.5">
+        {/* Proteína Real */}
+        <div className="p-4 rounded-3xl bg-[#171716] border border-white/[0.08] flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">Proteína</span>
+            <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+              <Dumbbell className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="text-xl font-bold text-zinc-100 flex items-baseline gap-1">
+              {proteinConsumed} <span className="text-xs font-normal text-zinc-400">/ {proteinTarget}g</span>
+            </div>
+            <p className="text-[11px] text-emerald-400/90 font-medium mt-0.5">
+              {proteinConsumed >= proteinTarget ? 'Meta cubierta' : `${(proteinTarget - proteinConsumed).toFixed(1)}g restantes`}
+            </p>
+            <div className="w-full bg-white/[0.06] h-1.5 rounded-full mt-2.5 overflow-hidden">
+              <div
+                className="bg-emerald-400 h-full rounded-full transition-all duration-500"
+                style={{ width: `${proteinPercent}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Hidratación con Botones Rápidos */}
+        <div className="p-4 rounded-3xl bg-[#171716] border border-white/[0.08] flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">Agua</span>
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => onQuickAddWater(-250)}
-                className="p-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 active:scale-90 transition-all"
-                title="Restar 250ml"
                 aria-label="Restar 250ml"
+                className="p-1 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-all active:scale-90"
               >
-                <Minus className="w-3.5 h-3.5" />
+                <Minus className="w-3 h-3" />
               </button>
               <button
                 onClick={() => onQuickAddWater(250)}
-                className="p-1 rounded-full bg-blue-500/20 border border-blue-500/40 text-blue-300 hover:bg-blue-500/30 active:scale-90 transition-all"
-                title="Añadir 250ml"
                 aria-label="Añadir 250ml"
+                className="p-1 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-all active:scale-90"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-3 h-3" />
               </button>
             </div>
           </div>
           <div className="mt-3">
-            <span className="text-[11px] text-zinc-400">Agua ({nutritionTotals.water_ml} ml)</span>
-            <div className="text-2xl font-black text-white">{((nutritionTotals.water_ml || 0) / 1000).toFixed(1)} <span className="text-xs font-medium text-zinc-400">/ 3.0L</span></div>
-            <div className="w-full bg-zinc-900 h-1 rounded-full mt-2 overflow-hidden">
-              <div className="bg-blue-500 h-full rounded-full" style={{ width: `${waterPercent}%` }} />
+            <div className="text-xl font-bold text-zinc-100 flex items-baseline gap-1">
+              {((nutritionTotals.water_ml || 0) / 1000).toFixed(1)}{' '}
+              <span className="text-xs font-normal text-zinc-400">/ 3.0 L</span>
+            </div>
+            <p className="text-[11px] text-blue-400/90 font-medium mt-0.5">
+              {nutritionTotals.water_ml} ml hoy
+            </p>
+            <div className="w-full bg-white/[0.06] h-1.5 rounded-full mt-2.5 overflow-hidden">
+              <div
+                className="bg-blue-500 h-full rounded-full transition-all duration-500"
+                style={{ width: `${waterPercent}%` }}
+              />
             </div>
           </div>
         </div>
-      </div>
 
-      {/* 3. ROADMAP MEDIA MARATÓN 28 FEB 2027 & ÚLTIMO RODAJE GALAXY FIT3 */}
-      <div className="p-4 rounded-3xl bg-gradient-to-r from-orange-950/40 via-zinc-950 to-zinc-950 border border-orange-500/20 space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-base">🎯</span>
-            <div>
-              <span className="text-xs font-black uppercase tracking-wider text-orange-400">
-                Media Maratón 28 Feb 2027
-              </span>
-              <p className="text-[10px] text-zinc-400">Objetivo: 21,097 km • Fase 1: CaCo & Zona 2</p>
+        {/* Sueño / Fit3 */}
+        <div
+          onClick={() => onNavigateTab('salud')}
+          className="p-4 rounded-3xl bg-[#171716] border border-white/[0.08] flex flex-col justify-between shadow-sm cursor-pointer hover:border-white/[0.15] active:scale-[0.98] transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">Sueño</span>
+            <div className="w-6 h-6 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+              <Moon className="w-3.5 h-3.5" />
             </div>
           </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/30 font-bold">
-            {Math.max(0, Math.ceil((new Date('2027-02-28T09:00:00').getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} días
+          <div className="mt-3">
+            <div className="text-xl font-bold text-zinc-100 flex items-baseline gap-1">
+              {sleepHours} <span className="text-xs font-normal text-zinc-400">horas</span>
+            </div>
+            <p className="text-[11px] text-indigo-300 font-medium mt-0.5">
+              Score: {sleepScore}
+            </p>
+            <div className="text-[10px] text-zinc-500 mt-2 flex items-center justify-between">
+              <span>FC: {restingHr} bpm</span>
+              <span className="text-indigo-400">Fit3 &rarr;</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================================ */}
+      {/* 3. AI COACH HUB: CHAT Y NOTAS DE VOZ EN VIVO                    */}
+      {/* ================================================================ */}
+      <section className="pt-1">
+        <CoachChat onTurnCompleted={handleCoachTurnCompleted} />
+      </section>
+
+      {/* ================================================================ */}
+      {/* 4. ACCESO AL INFORME SEMANAL & CUENTA ATRÁS 21K                  */}
+      {/* ================================================================ */}
+      <section className="space-y-3 pt-1">
+        {onOpenReport && (
+          <button
+            onClick={onOpenReport}
+            className="w-full p-4 rounded-3xl bg-gradient-to-r from-amber-500/[0.08] via-amber-500/[0.03] to-transparent border border-amber-500/20 hover:border-amber-500/40 flex items-center justify-between text-left active:scale-[0.99] transition-all group shadow-sm"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-zinc-100 group-hover:text-amber-300 transition-colors">
+                  Informe Semanal de Rendimiento
+                </p>
+                <p className="text-[11px] text-zinc-400 mt-0.5">
+                  Telemetría real auditada, diagnóstico de rodilla y PDF
+                </p>
+              </div>
+            </div>
+            <ArrowUpRight className="w-4 h-4 text-amber-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </button>
+        )}
+
+        <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between text-xs text-zinc-400">
+          <div className="flex items-center gap-2">
+            <span>🏁</span>
+            <span>Media Maratón 28 Feb 2027</span>
+          </div>
+          <span className="font-mono text-zinc-300 font-bold">
+            Faltan {daysToMarathon} días
           </span>
         </div>
-      </div>
-
-      {latestActivity && (
-        <div
-          onClick={() => onSelectActivity(latestActivity)}
-          className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 hover:border-zinc-800 active:scale-98 transition-all cursor-pointer shadow-lg"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-950/80 text-orange-400 border border-orange-800/40 font-bold uppercase tracking-wider">
-              Galaxy Fit3 • Último Rodaje
-            </span>
-            <ArrowUpRight className="w-4 h-4 text-zinc-400" />
-          </div>
-
-          <h3 className="text-base font-bold text-white leading-tight">{latestActivity.name}</h3>
-
-          <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-zinc-900 text-center">
-            <div>
-              <span className="text-[10px] text-zinc-500 block">Distancia</span>
-              <p className="text-sm font-black text-white">{(latestActivity.distance / 1000).toFixed(2)} km</p>
-            </div>
-            <div>
-              <span className="text-[10px] text-zinc-500 block">Tiempo</span>
-              <p className="text-sm font-black text-white">{Math.round(latestActivity.elapsed_time / 60)} min</p>
-            </div>
-            <div>
-              <span className="text-[10px] text-zinc-500 block">Cadencia</span>
-              <p className="text-sm font-black text-amber-400">{latestActivity.avg_cadence || 168} ppm</p>
-            </div>
-            <div>
-              <span className="text-[10px] text-rose-400 block">Pulso Fit3</span>
-              <p className="text-sm font-black text-rose-400">{latestActivity.avg_hr || 142} bpm</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 4. BANNER RECORDATORIO ASISTENTE DE VOZ TELEGRAM */}
-      <div
-        onClick={() => onNavigateTab('nutricion')}
-        className="p-3.5 rounded-2xl bg-gradient-to-r from-zinc-900 to-zinc-950 border border-zinc-800/80 flex items-center justify-between cursor-pointer active:scale-98 transition-all"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
-            <Sparkles className="w-4 h-4" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-white">¿Has comido algo?</p>
-            <p className="text-[11px] text-zinc-400">Envía un audio por Telegram para registrarlo</p>
-          </div>
-        </div>
-        <span className="text-xs text-blue-400 font-semibold">Ver Dieta &rarr;</span>
-      </div>
+      </section>
 
       {/* Modal Modular de Calendario */}
       <ScheduleManagerModal
         isOpen={isScheduleModalOpen}
         onClose={() => setIsScheduleModalOpen(false)}
-        onScheduleUpdated={() => {
-          fetch('/api/schedule')
-            .then((res) => res.json())
-            .then((data) => {
-              if (data.success && data.schedule) {
-                const todaySched = data.schedule.find((s: any) => s.date === data.referenceDate);
-                if (todaySched) setEffectiveRoutine(todaySched);
-              }
-            });
-        }}
+        onScheduleUpdated={fetchSchedule}
       />
     </div>
   );
