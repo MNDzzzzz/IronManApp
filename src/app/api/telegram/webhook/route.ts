@@ -1815,7 +1815,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const update = await request.json();
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const geminiKey = process.env.GEMINI_API_KEY || 'AQ.Ab8RN6KDuJBXcLC6s3MNyV0Q2d_nWRoPPvJl-ICpuaXo_Bwuvw';
+    const geminiKey = process.env.GEMINI_API_KEY || '';
 
     const message = update.message || update;
     const chatId = message.chat?.id || 123456789;

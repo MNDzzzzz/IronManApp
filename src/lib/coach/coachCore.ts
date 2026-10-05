@@ -695,7 +695,7 @@ export async function executeCoachTurn({
   audioBase64?: string;
   mimeType?: string;
 }): Promise<CoachTurnResult> {
-  const geminiKey = process.env.GEMINI_API_KEY || 'AQ.Ab8RN6KDuJBXcLC6s3MNyV0Q2d_nWRoPPvJl-ICpuaXo_Bwuvw';
+  const geminiKey = process.env.GEMINI_API_KEY || '';
   const todayStr = getSpainTodayStr();
 
   let spokenText = text?.trim() || '';
@@ -774,7 +774,11 @@ export async function executeCoachTurn({
         };
 
         if (isSupabaseConfigured && supabaseAdmin) {
-          await supabaseAdmin.from('nutrition_logs').insert([newMeal]);
+          try {
+            await supabaseAdmin.from('nutrition_logs').insert([newMeal]);
+          } catch (err) {
+            console.warn('Fallo guardando comida en Supabase, fallback a mockStore:', err);
+          }
         }
         mockStore.nutritionLogs.unshift(newMeal);
 
@@ -786,7 +790,11 @@ export async function executeCoachTurn({
             amount_ml: nutri.water_ml,
           };
           if (isSupabaseConfigured && supabaseAdmin) {
-            await supabaseAdmin.from('water_logs').insert([newWater]);
+            try {
+              await supabaseAdmin.from('water_logs').insert([newWater]);
+            } catch (err) {
+              console.warn('Fallo guardando agua en Supabase, fallback a mockStore:', err);
+            }
           }
           mockStore.waterLogs.unshift(newWater);
         }
@@ -810,7 +818,11 @@ export async function executeCoachTurn({
         amount_ml: amount,
       };
       if (isSupabaseConfigured && supabaseAdmin) {
-        await supabaseAdmin.from('water_logs').insert([newWater]);
+        try {
+          await supabaseAdmin.from('water_logs').insert([newWater]);
+        } catch (err) {
+          console.warn('Fallo guardando agua en Supabase, fallback a mockStore:', err);
+        }
       }
       mockStore.waterLogs.unshift(newWater);
       dataSummary = { water_ml: amount };
@@ -830,7 +842,11 @@ export async function executeCoachTurn({
           notes: aiResult.weight_log?.notes || 'Registrado desde la app',
         };
         if (isSupabaseConfigured && supabaseAdmin) {
-          await supabaseAdmin.from('weight_logs').insert([newWeight]);
+          try {
+            await supabaseAdmin.from('weight_logs').insert([newWeight]);
+          } catch (err) {
+            console.warn('Fallo guardando peso en Supabase, fallback a mockStore:', err);
+          }
         }
         mockStore.weightLogs.unshift(newWeight);
         dataSummary = { weight_kg: weightVal };
