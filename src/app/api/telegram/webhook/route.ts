@@ -797,7 +797,15 @@ interface UniversalAssistantResponse {
   nutrition?: {
     meal_type: 'Desayuno' | 'Almuerzo' | 'Cena' | 'Snack';
     description: string;
-    items?: Array<{ food: string; amount: number; unit?: string }>;
+    items?: Array<{
+      food: string;
+      amount: number;
+      unit?: string;
+      ai_calories_100g?: number;
+      ai_protein_100g?: number;
+      ai_carbs_100g?: number;
+      ai_fat_100g?: number;
+    }>;
     calories: number;
     protein_g: number;
     carbs_g: number;
@@ -971,10 +979,17 @@ INSTRUCCIONES DE CLASIFICACIÓN Y ACCIÓN:
        - Copia EXACTAMENTE esos números en "calories", "protein_g", "carbs_g", "fat_g".
        - Pon "user_explicit_macros": true.
        - Esos números dictados por Álvaro prevalecerán al 100% y NUNCA se sobreescribirán con estimaciones genéricas.
-     * ALIMENTOS COCINADOS VS CRUDOS (MERMA Y PRECISIÓN BÁSCULA):
-       - Si Álvaro especifica que el alimento fue pesado COCINADO, HECHO, A LA PLANCHA o HERVIDO (ej: "200g de lomo cocinado", "150g de pechuga a la plancha", "200g de patata hervida", "pollo cocinado"):
-         En "food" pon explícitamente el alimento con el término "cocinado" o "cocinada" o el modo de preparación (ej: "lomo cocinado", "pechuga de pollo cocinada", "patata hervida") para que el analizador de Mercadona aplique los factores nutricionales exactos de producto cocinado (la carne pierde ~25% de agua al cocinarse, concentrando calorías y proteína por 100g).
-       - Si no dice cocinado o dice crudo/fresco (ej: "200g de lomo fresco", "filete de ternera"), pon "lomo fresco" o "lomo crudo".
+      * ALIMENTOS COCINADOS VS CRUDOS (MERMA Y PRECISIÓN BÁSCULA):
+        - Si Álvaro especifica que el alimento fue pesado COCINADO, HECHO, A LA PLANCHA o HERVIDO (ej: "200g de lomo cocinado", "204g de contramuslo cocinado", "217g de calabacín cocinado", "150g de pechuga a la plancha", "200g de patata hervida", "pollo cocinado"):
+          En "food" pon explícitamente el alimento con el término "cocinado" o "cocinada" o el modo de preparación (ej: "lomo cocinado", "contramuslo deshuesado cocinado", "calabacin cocinado", "pechuga de pollo cocinada", "patata hervida") para que el analizador aplique los factores nutricionales exactos de producto cocinado (la carne pierde ~25% de agua al cocinarse, concentrando calorías y proteína por 100g).
+        - Si no dice cocinado o dice crudo/fresco (ej: "200g de lomo fresco", "filete de ternera"), pon "lomo fresco" o "lomo crudo".
+      * RIGOR BROMATOLÓGICO Y CERO MACROS FANTASMA:
+        - Para CADA elemento en "items", añade siempre "ai_calories_100g", "ai_protein_100g", "ai_carbs_100g" y "ai_fat_100g" con la composición real por 100g según tablas oficiales (BEDCA / USDA).
+        - CARNES, AVES, PESCADOS Y MARISCOS A LA PLANCHA/COCINADOS: Tienen SIEMPRE 0g de carbohidratos ("ai_carbs_100g": 0.0). ESTÁ ESTRICTAMENTE PROHIBIDO asignarles carbohidratos si no llevan rebozado.
+          Ejemplo: "contramuslo deshuesado cocinado": 178 kcal, 25.0g P, 0.0g HC, 8.8g G por 100g.
+        - VERDURAS ACUOSAS (calabacín, pepino, lechuga, espinacas): Tienen entre 15 y 22 kcal por 100g ("ai_calories_100g": 18, "ai_protein_100g": 1.2, "ai_carbs_100g": 2.7, "ai_fat_100g": 0.4). ESTÁ TERMINANTEMENTE PROHIBIDO inflar el calabacín a más de 25 kcal/100g.
+        - ACEITE DE OLIVA (AOVE): 884 kcal, 0g P, 0g HC, 100g G por 100g.
+        - QUESO MOZZARELLA FRESCO: 245 kcal, 17.5g P, 1.5g HC, 18.5g G por 100g.
      * Extrae agua en ml si la menciona ("water_ml") y si tomó creatina ("creatine_detected": true).
 
 5.b. Si Álvaro pide RECORDAR, MEMORIZAR O GUARDAR UN ALIMENTO DE SU DESPENSA (ej: "Acuérdate de la crema de cacahuete de Hacendado que tiene 618 kcal, 30g proteina, 7g carbs y 50g grasa por 100g", "Recuerda este producto...", "Apunta mi pan de molde con 230 kcal..."):
@@ -1102,8 +1117,8 @@ DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin mark
     "meal_type": "Desayuno" | "Almuerzo" | "Cena" | "Snack",
     "description": "texto descriptivo",
     "items": [
-      { "food": "crema de cacahuete", "amount": 25, "unit": "g" },
-      { "food": "pechuga de pollo", "amount": 200, "unit": "g" }
+      { "food": "calabacin cocinado", "amount": 217, "unit": "g", "ai_calories_100g": 18, "ai_protein_100g": 1.2, "ai_carbs_100g": 2.7, "ai_fat_100g": 0.4 },
+      { "food": "contramuslo deshuesado cocinado", "amount": 204, "unit": "g", "ai_calories_100g": 178, "ai_protein_100g": 25.0, "ai_carbs_100g": 0.0, "ai_fat_100g": 8.8 }
     ],
     "calories": 155,
     "protein_g": 7.5,

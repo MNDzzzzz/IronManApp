@@ -39,6 +39,10 @@ export interface WeighedItemInput {
   food: string;
   amount: number;
   unit?: string; // 'g', 'ml', 'unidad', 'rebanada', 'lata', etc.
+  ai_calories_100g?: number;
+  ai_protein_100g?: number;
+  ai_carbs_100g?: number;
+  ai_fat_100g?: number;
 }
 
 export interface CalculatedItemResult {
@@ -50,7 +54,7 @@ export interface CalculatedItemResult {
   protein_g: number;
   carbs_g: number;
   fat_g: number;
-  source: 'mercadona_catalog' | 'open_food_facts' | 'heuristica';
+  source: 'mercadona_catalog' | 'open_food_facts' | 'bedca_referencia' | 'heuristica_ia' | 'heuristica';
 }
 
 export interface MealCalculationResult {
@@ -103,6 +107,100 @@ export const MERCADONA_CATALOG: MercadonaProduct[] = [
       'pollo hecho',
       'pechuga hecha',
     ],
+  },
+  {
+    id: 'contramuslo_pollo_cocinado',
+    name: 'Contramuslo de Pollo Deshuesado Cocinado / Plancha Hacendado',
+    brand: 'Hacendado',
+    category: 'carnes_aves',
+    calories_100g: 178,
+    protein_100g: 25.0,
+    carbs_100g: 0.0,
+    fat_100g: 8.8,
+    defaultServingGrams: 150,
+    unitName: 'unidad',
+    aliases: [
+      'contramuslo',
+      'contramuslos',
+      'contramuslo deshuesado',
+      'contramuslos deshuesados',
+      'contramuslo cocinado',
+      'contramuslos cocinados',
+      'contramuslo deshuesado cocinado',
+      'contramuslos deshuesados cocinados',
+      'contramuslo a la plancha',
+      'contramuslos a la plancha',
+      'contramuslo de pollo cocinado',
+      'contramuslos de pollo cocinados',
+      'contramuslo pollo cocinado',
+      'contramuslos pollo cocinados',
+      'contramuslo hecho',
+      'contramuslos hechos',
+      'contramuslo al horno',
+      'contramuslos al horno',
+      'contramuslo de pollo',
+      'contramuslos de pollo',
+      'contramuslo pollo',
+      'contramuslos pollo',
+    ],
+  },
+  {
+    id: 'contramuslo_pollo_fresco',
+    name: 'Contramuslo de Pollo Deshuesado Fresco (Crudo) Hacendado',
+    brand: 'Hacendado',
+    category: 'carnes_aves',
+    calories_100g: 135,
+    protein_100g: 19.5,
+    carbs_100g: 0.0,
+    fat_100g: 6.3,
+    defaultServingGrams: 160,
+    unitName: 'unidad',
+    aliases: [
+      'contramuslo crudo',
+      'contramuslos crudos',
+      'contramuslo fresco',
+      'contramuslos frescos',
+      'contramuslo de pollo crudo',
+      'contramuslos de pollo crudos',
+      'contramuslo deshuesado crudo',
+      'contramuslos deshuesados crudos',
+      'contramuslo en crudo',
+    ],
+  },
+  {
+    id: 'muslos_pollo_cocinados',
+    name: 'Muslos / Jamoncitos de Pollo Cocinados Hacendado',
+    brand: 'Hacendado',
+    category: 'carnes_aves',
+    calories_100g: 175,
+    protein_100g: 24.0,
+    carbs_100g: 0.0,
+    fat_100g: 8.5,
+    defaultServingGrams: 100,
+    unitName: 'unidad',
+    aliases: [
+      'muslo de pollo',
+      'muslos de pollo',
+      'muslos de pollo cocinados',
+      'muslo de pollo cocinado',
+      'jamoncitos de pollo',
+      'jamoncito de pollo',
+      'jamoncitos de pollo cocinados',
+      'muslos a la plancha',
+    ],
+  },
+  {
+    id: 'alitas_pollo_cocinadas',
+    name: 'Alitas de Pollo al Horno Hacendado',
+    brand: 'Hacendado',
+    category: 'carnes_aves',
+    calories_100g: 210,
+    protein_100g: 22.0,
+    carbs_100g: 0.0,
+    fat_100g: 13.0,
+    defaultServingGrams: 60,
+    unitName: 'unidad',
+    aliases: ['alitas de pollo', 'alitas pollo', 'alitas de pollo cocinadas', 'alitas al horno'],
   },
   {
     id: 'pechuga_pavo_fresca',
@@ -504,6 +602,82 @@ export const MERCADONA_CATALOG: MercadonaProduct[] = [
     carbs_100g: 2.5,
     fat_100g: 3.0,
     aliases: ['cottage', 'queso cottage', 'cottage cheese'],
+  },
+  {
+    id: 'mozzarella_fresca',
+    name: 'Queso Mozzarella Fresco Galbani / Hacendado',
+    brand: 'Hacendado / Galbani',
+    category: 'lacteos_proteinas',
+    calories_100g: 245,
+    protein_100g: 17.5,
+    carbs_100g: 1.5,
+    fat_100g: 18.5,
+    defaultServingGrams: 125,
+    unitName: 'bola',
+    aliases: [
+      'mozzarella',
+      'mozzarela',
+      'queso mozzarella',
+      'mozzarella fresca',
+      'mozzarella galbani',
+      'galbani mozzarella',
+      'bola mozzarella',
+      'bola de mozzarella',
+      'mozzarella en bola',
+      'mozzarella de vaca',
+    ],
+  },
+  {
+    id: 'mozzarella_rallada',
+    name: 'Queso Rallado Especial Pizza Mozzarella Hacendado',
+    brand: 'Hacendado',
+    category: 'lacteos_proteinas',
+    calories_100g: 295,
+    protein_100g: 25.0,
+    carbs_100g: 2.0,
+    fat_100g: 21.0,
+    defaultServingGrams: 30,
+    unitName: 'porcion',
+    aliases: ['mozzarella rallada', 'queso rallado mozzarella', 'mozzarela rallada'],
+  },
+  {
+    id: 'mozzarella_light',
+    name: 'Queso Mozzarella Light Hacendado',
+    brand: 'Hacendado',
+    category: 'lacteos_proteinas',
+    calories_100g: 165,
+    protein_100g: 20.0,
+    carbs_100g: 1.5,
+    fat_100g: 9.0,
+    defaultServingGrams: 100,
+    unitName: 'bola',
+    aliases: ['mozzarella light', 'mozzarella ligera', 'queso mozzarella light'],
+  },
+  {
+    id: 'parmesano_grana',
+    name: 'Queso Grana Padano / Parmesano Hacendado',
+    brand: 'Hacendado',
+    category: 'lacteos_proteinas',
+    calories_100g: 398,
+    protein_100g: 33.0,
+    carbs_100g: 0.0,
+    fat_100g: 29.0,
+    defaultServingGrams: 20,
+    unitName: 'porcion',
+    aliases: ['parmesano', 'grana padano', 'queso parmesano', 'parmesano en polvo'],
+  },
+  {
+    id: 'queso_feta',
+    name: 'Queso Feta Griego Hacendado',
+    brand: 'Hacendado',
+    category: 'lacteos_proteinas',
+    calories_100g: 264,
+    protein_100g: 14.0,
+    carbs_100g: 1.0,
+    fat_100g: 22.0,
+    defaultServingGrams: 50,
+    unitName: 'porcion',
+    aliases: ['queso feta', 'feta', 'feta griego'],
   },
   {
     id: 'leche_desnatada',
@@ -937,7 +1111,181 @@ export const MERCADONA_CATALOG: MercadonaProduct[] = [
     protein_100g: 1.2,
     carbs_100g: 2.0,
     fat_100g: 0.2,
-    aliases: ['ensalada', 'lechuga', 'brotes tiernos', 'mezclum'],
+    aliases: ['ensalada', 'lechuga', 'brotes tiernos', 'mezclum', 'canónigos', 'rucula'],
+  },
+  {
+    id: 'calabacin_cocinado',
+    name: 'Calabacín Cocinado / Plancha / Hervido',
+    brand: 'Hacendado / Verdulería',
+    category: 'frutas_verduras',
+    calories_100g: 18,
+    protein_100g: 1.2,
+    carbs_100g: 2.7,
+    fat_100g: 0.4,
+    defaultServingGrams: 200,
+    aliases: [
+      'calabacin cocinado',
+      'calabacin a la plancha',
+      'calabacin hervido',
+      'calabacin salteado',
+      'calabacines cocinados',
+      'calabacin hecho',
+      'calabacin al vapor',
+      'calabacin frito',
+      'calabacin plancha',
+      'calabacin',
+      'calabacines',
+    ],
+  },
+  {
+    id: 'calabacin_crudo',
+    name: 'Calabacín Fresco (Crudo) Hacendado',
+    brand: 'Hacendado',
+    category: 'frutas_verduras',
+    calories_100g: 17,
+    protein_100g: 1.2,
+    carbs_100g: 2.2,
+    fat_100g: 0.2,
+    defaultServingGrams: 250,
+    aliases: ['calabacin crudo', 'calabacin fresco', 'calabacines crudos', 'calabacin en crudo'],
+  },
+  {
+    id: 'berenjena_cocinada',
+    name: 'Berenjena Cocinada / Plancha / Asada',
+    brand: 'Hacendado / Verdulería',
+    category: 'frutas_verduras',
+    calories_100g: 25,
+    protein_100g: 1.0,
+    carbs_100g: 4.5,
+    fat_100g: 0.2,
+    defaultServingGrams: 200,
+    aliases: [
+      'berenjena cocinada',
+      'berenjena a la plancha',
+      'berenjena asada',
+      'berenjenas cocinadas',
+      'berenjenas a la plancha',
+      'berenjena',
+      'berenjenas',
+    ],
+  },
+  {
+    id: 'berenjena_cruda',
+    name: 'Berenjena Fresca Hacendado',
+    brand: 'Hacendado',
+    category: 'frutas_verduras',
+    calories_100g: 20,
+    protein_100g: 1.0,
+    carbs_100g: 3.5,
+    fat_100g: 0.2,
+    defaultServingGrams: 250,
+    aliases: ['berenjena cruda', 'berenjena fresca', 'berenjenas crudas'],
+  },
+  {
+    id: 'pimiento_rojo_cocinado',
+    name: 'Pimiento Rojo Asado / Plancha',
+    brand: 'Hacendado',
+    category: 'frutas_verduras',
+    calories_100g: 32,
+    protein_100g: 1.1,
+    carbs_100g: 6.0,
+    fat_100g: 0.3,
+    defaultServingGrams: 150,
+    aliases: ['pimiento rojo cocinado', 'pimiento rojo asado', 'pimiento rojo plancha', 'pimiento rojo', 'pimientos rojos'],
+  },
+  {
+    id: 'pimiento_verde_cocinado',
+    name: 'Pimiento Verde Plancha / Salteado',
+    brand: 'Hacendado',
+    category: 'frutas_verduras',
+    calories_100g: 28,
+    protein_100g: 0.9,
+    carbs_100g: 4.5,
+    fat_100g: 0.4,
+    defaultServingGrams: 150,
+    aliases: ['pimiento verde cocinado', 'pimiento verde plancha', 'pimiento verde frito', 'pimiento verde', 'pimientos verdes'],
+  },
+  {
+    id: 'cebolla_cocinada',
+    name: 'Cebolla Cocinada / Salteada',
+    brand: 'Hacendado',
+    category: 'frutas_verduras',
+    calories_100g: 42,
+    protein_100g: 1.2,
+    carbs_100g: 8.5,
+    fat_100g: 0.2,
+    defaultServingGrams: 100,
+    aliases: ['cebolla cocinada', 'cebolla pochada', 'cebolla salteada', 'cebolla a la plancha', 'cebolla', 'cebollas'],
+  },
+  {
+    id: 'champinones_cocinados',
+    name: 'Champiñones Laminados Salteados / Plancha',
+    brand: 'Hacendado',
+    category: 'frutas_verduras',
+    calories_100g: 28,
+    protein_100g: 3.1,
+    carbs_100g: 2.5,
+    fat_100g: 0.5,
+    defaultServingGrams: 150,
+    aliases: [
+      'champinones',
+      'champinon',
+      'champiñones',
+      'champinones cocinados',
+      'champiñones cocinados',
+      'champiñones salteados',
+      'champis',
+      'setas',
+      'setas salteadas',
+    ],
+  },
+  {
+    id: 'esparragos_verdes',
+    name: 'Espárragos Verdes Trigueros a la Plancha',
+    brand: 'Hacendado',
+    category: 'frutas_verduras',
+    calories_100g: 22,
+    protein_100g: 2.4,
+    carbs_100g: 2.0,
+    fat_100g: 0.2,
+    defaultServingGrams: 150,
+    aliases: ['esparragos', 'esparragos verdes', 'esparragos trigueros', 'esparragos a la plancha'],
+  },
+  {
+    id: 'pepino',
+    name: 'Pepino Fresco',
+    brand: 'Hacendado',
+    category: 'frutas_verduras',
+    calories_100g: 15,
+    protein_100g: 0.7,
+    carbs_100g: 2.8,
+    fat_100g: 0.1,
+    defaultServingGrams: 150,
+    aliases: ['pepino', 'pepinos'],
+  },
+  {
+    id: 'coliflor_cocinada',
+    name: 'Coliflor Cocida / Vapor',
+    brand: 'Hacendado',
+    category: 'frutas_verduras',
+    calories_100g: 25,
+    protein_100g: 1.9,
+    carbs_100g: 3.8,
+    fat_100g: 0.3,
+    defaultServingGrams: 200,
+    aliases: ['coliflor', 'coliflor cocida', 'coliflor al vapor'],
+  },
+  {
+    id: 'puerro_cocinado',
+    name: 'Puerro Cocinado / Salteado',
+    brand: 'Hacendado',
+    category: 'frutas_verduras',
+    calories_100g: 32,
+    protein_100g: 1.5,
+    carbs_100g: 5.5,
+    fat_100g: 0.3,
+    defaultServingGrams: 150,
+    aliases: ['puerro', 'puerros', 'puerro cocinado'],
   },
 
   // --- SUPLEMENTOS Y OTROS ---
@@ -1281,7 +1629,492 @@ export async function searchOpenFoodFacts(
 }
 
 // --------------------------------------------------------------------
-// 4. MOTOR DE RESOLUCIÓN Y CÁLCULO MATEMÁTICO POR PESAJE
+// 4. BASE BROMATOLÓGICA CIENTÍFICA DE REFERENCIA (BEDCA / USDA)
+// --------------------------------------------------------------------
+/**
+ * Base de datos bromatológica científica (BEDCA / USDA / FNDDS).
+ * Clasifica y devuelve los macronutrientes reales por 100g para alimentos genéricos
+ * de consumo habitual, evitando asignaciones absurdas de carbohidratos o calorías.
+ */
+export function getScientificReferenceNutrition(query: string): MercadonaProduct | null {
+  const norm = normalizeText(query);
+  if (!norm) return null;
+
+  const isCooked = norm.includes('cocina') || norm.includes('plancha') || norm.includes('asado') || norm.includes('horno') || norm.includes('hervid') || norm.includes('vapor') || norm.includes('frit') || norm.includes('hech');
+  const isRaw = norm.includes('crud') || norm.includes('fresc');
+
+  // 1. CARNES DE AVE (Pollo, Pavo, Conejo)
+  if (norm.includes('contramuslo') || norm.includes('muslo')) {
+    const isDarkCooked = isCooked || !isRaw;
+    return {
+      id: `bedca-contramuslo-${Date.now()}`,
+      name: isDarkCooked ? 'Contramuslo de Pollo Deshuesado Cocinado / Plancha' : 'Contramuslo de Pollo Deshuesado (Crudo)',
+      brand: 'Bromatología BEDCA',
+      category: 'carnes_aves',
+      calories_100g: isDarkCooked ? 178 : 135,
+      protein_100g: isDarkCooked ? 25.0 : 19.5,
+      carbs_100g: 0.0,
+      fat_100g: isDarkCooked ? 8.8 : 6.3,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('alita')) {
+    return {
+      id: `bedca-alitas-${Date.now()}`,
+      name: 'Alitas de Pollo Cocinadas',
+      brand: 'Bromatología BEDCA',
+      category: 'carnes_aves',
+      calories_100g: 210,
+      protein_100g: 22.0,
+      carbs_100g: 0.0,
+      fat_100g: 13.0,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('pechuga') || norm.includes('pollo') || norm.includes('pavo') || norm.includes('conejo')) {
+    const isWhiteCooked = isCooked || !isRaw;
+    return {
+      id: `bedca-ave-${Date.now()}`,
+      name: isWhiteCooked ? 'Pechuga / Carne de Ave Cocinada a la Plancha' : 'Pechuga / Carne de Ave (Cruda)',
+      brand: 'Bromatología BEDCA',
+      category: 'carnes_aves',
+      calories_100g: isWhiteCooked ? 145 : 106,
+      protein_100g: isWhiteCooked ? 31.0 : 23.0,
+      carbs_100g: 0.0,
+      fat_100g: isWhiteCooked ? 1.8 : 1.2,
+      aliases: [query],
+    };
+  }
+
+  // 2. CARNES ROJAS Y PORCINO
+  if (norm.includes('lomo') || norm.includes('solomillo')) {
+    const isLomoCooked = isCooked || !isRaw;
+    return {
+      id: `bedca-lomo-${Date.now()}`,
+      name: isLomoCooked ? 'Lomo / Solomillo Magro Cocinado' : 'Lomo / Solomillo Magro (Crudo)',
+      brand: 'Bromatología BEDCA',
+      category: 'carnes_aves',
+      calories_100g: isLomoCooked ? 167 : 125,
+      protein_100g: isLomoCooked ? 29.3 : 22.0,
+      carbs_100g: 0.0,
+      fat_100g: isLomoCooked ? 5.3 : 4.0,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('ternera') || norm.includes('buey') || norm.includes('vaca') || norm.includes('añojo') || norm.includes('chuleton')) {
+    const isBeefCooked = isCooked || !isRaw;
+    return {
+      id: `bedca-ternera-${Date.now()}`,
+      name: isBeefCooked ? 'Carne de Vacuno Magra Cocinada' : 'Carne de Vacuno Magra (Cruda)',
+      brand: 'Bromatología BEDCA',
+      category: 'carnes_aves',
+      calories_100g: isBeefCooked ? 175 : 130,
+      protein_100g: isBeefCooked ? 28.0 : 21.0,
+      carbs_100g: 0.0,
+      fat_100g: isBeefCooked ? 7.0 : 5.0,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('hamburguesa') || norm.includes('picada')) {
+    return {
+      id: `bedca-picada-${Date.now()}`,
+      name: 'Carne Picada / Hamburguesa Cocinada',
+      brand: 'Bromatología BEDCA',
+      category: 'carnes_aves',
+      calories_100g: 175,
+      protein_100g: 20.0,
+      carbs_100g: 0.5,
+      fat_100g: 10.5,
+      aliases: [query],
+    };
+  }
+
+  // 3. PESCADOS Y MARISCOS
+  if (norm.includes('salmon') || norm.includes('atun') || norm.includes('bonito') || norm.includes('caballa') || norm.includes('sardina')) {
+    const isFishCooked = isCooked || !isRaw;
+    return {
+      id: `bedca-pescado-azul-${Date.now()}`,
+      name: isFishCooked ? 'Pescado Azul Cocinado a la Plancha' : 'Pescado Azul (Crudo)',
+      brand: 'Bromatología BEDCA',
+      category: 'pescados_mariscos',
+      calories_100g: isFishCooked ? 205 : 180,
+      protein_100g: isFishCooked ? 22.0 : 20.0,
+      carbs_100g: 0.0,
+      fat_100g: isFishCooked ? 12.5 : 11.0,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('merluza') || norm.includes('bacalao') || norm.includes('dorada') || norm.includes('lubina') || norm.includes('lenguado') || norm.includes('pescadilla') || norm.includes('gallo') || norm.includes('rape')) {
+    const isWhiteFishCooked = isCooked || !isRaw;
+    return {
+      id: `bedca-pescado-blanco-${Date.now()}`,
+      name: isWhiteFishCooked ? 'Pescado Blanco Cocinado a la Plancha' : 'Pescado Blanco (Crudo)',
+      brand: 'Bromatología BEDCA',
+      category: 'pescados_mariscos',
+      calories_100g: isWhiteFishCooked ? 92 : 75,
+      protein_100g: isWhiteFishCooked ? 19.5 : 16.5,
+      carbs_100g: 0.0,
+      fat_100g: isWhiteFishCooked ? 1.2 : 0.8,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('gamba') || norm.includes('langostino') || norm.includes('mejillon') || norm.includes('calamar') || norm.includes('sepia') || norm.includes('pulpo')) {
+    return {
+      id: `bedca-marisco-${Date.now()}`,
+      name: 'Marisco / Molusco Cocinado',
+      brand: 'Bromatología BEDCA',
+      category: 'pescados_mariscos',
+      calories_100g: 88,
+      protein_100g: 19.0,
+      carbs_100g: 0.8,
+      fat_100g: 1.0,
+      aliases: [query],
+    };
+  }
+
+  // 4. VERDURAS Y HORTALIZAS (Calorías reales de base botánica)
+  if (norm.includes('calabacin') || norm.includes('pepino') || norm.includes('apio') || norm.includes('rabano')) {
+    return {
+      id: `bedca-calabacin-${Date.now()}`,
+      name: 'Calabacín Cocinado / Hortaliza de Agua',
+      brand: 'Bromatología BEDCA',
+      category: 'frutas_verduras',
+      calories_100g: 18,
+      protein_100g: 1.2,
+      carbs_100g: 2.7,
+      fat_100g: 0.4,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('berenjena')) {
+    return {
+      id: `bedca-berenjena-${Date.now()}`,
+      name: 'Berenjena Cocinada a la Plancha',
+      brand: 'Bromatología BEDCA',
+      category: 'frutas_verduras',
+      calories_100g: 25,
+      protein_100g: 1.0,
+      carbs_100g: 4.5,
+      fat_100g: 0.2,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('brocoli') || norm.includes('coliflor') || norm.includes('col') || norm.includes('repollo')) {
+    return {
+      id: `bedca-crucifera-${Date.now()}`,
+      name: 'Brócoli / Coliflor al Vapor',
+      brand: 'Bromatología BEDCA',
+      category: 'frutas_verduras',
+      calories_100g: 30,
+      protein_100g: 2.5,
+      carbs_100g: 4.0,
+      fat_100g: 0.4,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('pimiento')) {
+    return {
+      id: `bedca-pimiento-${Date.now()}`,
+      name: 'Pimiento Asado / Plancha',
+      brand: 'Bromatología BEDCA',
+      category: 'frutas_verduras',
+      calories_100g: 30,
+      protein_100g: 1.0,
+      carbs_100g: 5.5,
+      fat_100g: 0.3,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('cebolla') || norm.includes('puerro')) {
+    return {
+      id: `bedca-cebolla-${Date.now()}`,
+      name: 'Cebolla / Puerro Cocinado',
+      brand: 'Bromatología BEDCA',
+      category: 'frutas_verduras',
+      calories_100g: 38,
+      protein_100g: 1.3,
+      carbs_100g: 7.5,
+      fat_100g: 0.2,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('champinon') || norm.includes('champiñon') || norm.includes('seta')) {
+    return {
+      id: `bedca-setas-${Date.now()}`,
+      name: 'Champiñones / Setas Salteadas',
+      brand: 'Bromatología BEDCA',
+      category: 'frutas_verduras',
+      calories_100g: 28,
+      protein_100g: 3.1,
+      carbs_100g: 2.5,
+      fat_100g: 0.5,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('esparrago')) {
+    return {
+      id: `bedca-esparragos-${Date.now()}`,
+      name: 'Espárragos Trigueros a la Plancha',
+      brand: 'Bromatología BEDCA',
+      category: 'frutas_verduras',
+      calories_100g: 22,
+      protein_100g: 2.4,
+      carbs_100g: 2.0,
+      fat_100g: 0.2,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('judia verde') || norm.includes('judias verdes')) {
+    return {
+      id: `bedca-judias-${Date.now()}`,
+      name: 'Judías Verdes Cocidas',
+      brand: 'Bromatología BEDCA',
+      category: 'frutas_verduras',
+      calories_100g: 28,
+      protein_100g: 1.9,
+      carbs_100g: 4.2,
+      fat_100g: 0.3,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('espinaca') || norm.includes('acelga')) {
+    return {
+      id: `bedca-hoja-verde-${Date.now()}`,
+      name: 'Espinacas / Acelgas Cocinadas',
+      brand: 'Bromatología BEDCA',
+      category: 'frutas_verduras',
+      calories_100g: 25,
+      protein_100g: 2.8,
+      carbs_100g: 3.0,
+      fat_100g: 0.4,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('lechuga') || norm.includes('ensalada') || norm.includes('brotes') || norm.includes('rucula') || norm.includes('canonigos')) {
+    return {
+      id: `bedca-ensalada-${Date.now()}`,
+      name: 'Ensalada / Brotes Tiernos',
+      brand: 'Bromatología BEDCA',
+      category: 'frutas_verduras',
+      calories_100g: 15,
+      protein_100g: 1.2,
+      carbs_100g: 2.0,
+      fat_100g: 0.2,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('tomate')) {
+    return {
+      id: `bedca-tomate-${Date.now()}`,
+      name: 'Tomate Fresco',
+      brand: 'Bromatología BEDCA',
+      category: 'frutas_verduras',
+      calories_100g: 18,
+      protein_100g: 0.9,
+      carbs_100g: 3.8,
+      fat_100g: 0.2,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('zanahoria')) {
+    return {
+      id: `bedca-zanahoria-${Date.now()}`,
+      name: 'Zanahoria',
+      brand: 'Bromatología BEDCA',
+      category: 'frutas_verduras',
+      calories_100g: 38,
+      protein_100g: 0.9,
+      carbs_100g: 8.5,
+      fat_100g: 0.2,
+      aliases: [query],
+    };
+  }
+
+  // 5. QUESOS Y LÁCTEOS
+  if (norm.includes('mozzarella') || norm.includes('mozzarela')) {
+    return {
+      id: `bedca-mozzarella-${Date.now()}`,
+      name: 'Queso Mozzarella Fresco',
+      brand: 'Bromatología BEDCA',
+      category: 'lacteos_proteinas',
+      calories_100g: 245,
+      protein_100g: 17.5,
+      carbs_100g: 1.5,
+      fat_100g: 18.5,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('feta')) {
+    return {
+      id: `bedca-feta-${Date.now()}`,
+      name: 'Queso Feta',
+      brand: 'Bromatología BEDCA',
+      category: 'lacteos_proteinas',
+      calories_100g: 264,
+      protein_100g: 14.0,
+      carbs_100g: 1.0,
+      fat_100g: 22.0,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('parmesano') || norm.includes('grana padano')) {
+    return {
+      id: `bedca-parmesano-${Date.now()}`,
+      name: 'Queso Curado / Parmesano',
+      brand: 'Bromatología BEDCA',
+      category: 'lacteos_proteinas',
+      calories_100g: 398,
+      protein_100g: 33.0,
+      carbs_100g: 0.0,
+      fat_100g: 29.0,
+      aliases: [query],
+    };
+  }
+
+  // 6. ACEITES Y GRASAS
+  if (norm.includes('aceite') || norm.includes('aove') || norm.includes('oliva')) {
+    return {
+      id: `bedca-aceite-${Date.now()}`,
+      name: 'Aceite de Oliva Virgen Extra',
+      brand: 'Bromatología BEDCA',
+      category: 'grasas_aceites_frutos',
+      calories_100g: 884,
+      protein_100g: 0.0,
+      carbs_100g: 0.0,
+      fat_100g: 100.0,
+      aliases: [query],
+    };
+  }
+
+  // 7. TUBÉRCULOS Y CARBOHIDRATOS COCIDOS
+  if (norm.includes('patata') || norm.includes('papa')) {
+    return {
+      id: `bedca-patata-${Date.now()}`,
+      name: 'Patata Cocida / Hervida',
+      brand: 'Bromatología BEDCA',
+      category: 'cereales_arroces_pastas',
+      calories_100g: 80,
+      protein_100g: 2.0,
+      carbs_100g: 17.5,
+      fat_100g: 0.1,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('arroz')) {
+    return {
+      id: `bedca-arroz-${Date.now()}`,
+      name: 'Arroz Blanco Cocido',
+      brand: 'Bromatología BEDCA',
+      category: 'cereales_arroces_pastas',
+      calories_100g: 130,
+      protein_100g: 2.7,
+      carbs_100g: 28.0,
+      fat_100g: 0.3,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('pasta') || norm.includes('macarron') || norm.includes('espagueti')) {
+    return {
+      id: `bedca-pasta-${Date.now()}`,
+      name: 'Pasta Cocida',
+      brand: 'Bromatología BEDCA',
+      category: 'cereales_arroces_pastas',
+      calories_100g: 135,
+      protein_100g: 5.0,
+      carbs_100g: 26.0,
+      fat_100g: 0.8,
+      aliases: [query],
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Aplica auditoría fisiológica estricta a cualquier producto para evitar
+ * carbohidratos en carnes o excesos calóricos en verduras.
+ */
+function applyNutritionalSanityChecks(prod: MercadonaProduct, originalName: string): MercadonaProduct {
+  const norm = normalizeText(originalName + ' ' + prod.name);
+
+  // Carnes y pescados sin rebozar NUNCA tienen carbohidratos
+  const isMeatOrFish =
+    norm.includes('pollo') ||
+    norm.includes('pavo') ||
+    norm.includes('ternera') ||
+    norm.includes('lomo') ||
+    norm.includes('cerdo') ||
+    norm.includes('contramuslo') ||
+    norm.includes('muslo') ||
+    norm.includes('alita') ||
+    norm.includes('conejo') ||
+    norm.includes('salmon') ||
+    norm.includes('merluza') ||
+    norm.includes('atun') ||
+    norm.includes('bacalao') ||
+    norm.includes('dorada') ||
+    norm.includes('lubina');
+
+  const isBreaded = norm.includes('empanad') || norm.includes('rebozad') || norm.includes('nugget') || norm.includes('san jacobo');
+
+  if (isMeatOrFish && !isBreaded) {
+    prod.carbs_100g = 0.0;
+  }
+
+  // Verduras y hortalizas NUNCA superan 45 kcal/100g (salvo aguacate o tubérculos)
+  const isGreenVeg =
+    norm.includes('calabacin') ||
+    norm.includes('pepino') ||
+    norm.includes('lechuga') ||
+    norm.includes('espinaca') ||
+    norm.includes('acelga') ||
+    norm.includes('apio') ||
+    norm.includes('brocoli') ||
+    norm.includes('coliflor') ||
+    norm.includes('champinon') ||
+    norm.includes('champiñon') ||
+    norm.includes('esparrago');
+
+  if (isGreenVeg) {
+    if (prod.calories_100g > 45) prod.calories_100g = 25;
+    if (prod.protein_100g > 4.0) prod.protein_100g = 2.0;
+    if (prod.carbs_100g > 8.0) prod.carbs_100g = 3.5;
+  }
+
+  // Aceites puros
+  if (norm.includes('aceite') || norm.includes('aove') || norm.includes('oliva')) {
+    prod.carbs_100g = 0.0;
+    prod.protein_100g = 0.0;
+    if (prod.fat_100g < 85) prod.fat_100g = 91.6;
+    if (prod.calories_100g < 750) prod.calories_100g = 824;
+  }
+
+  return prod;
+}
+
+// --------------------------------------------------------------------
+// 5. MOTOR DE RESOLUCIÓN Y CÁLCULO MATEMÁTICO POR PESAJE
 // --------------------------------------------------------------------
 /**
  * Resuelve la nutrición de un alimento individual y calcula sus macros
@@ -1299,7 +2132,7 @@ export async function resolveSingleFoodItem(
   }
 
   let matchedProduct: MercadonaProduct | null = null;
-  let source: 'mercadona_catalog' | 'open_food_facts' | 'heuristica' = 'mercadona_catalog';
+  let source: 'mercadona_catalog' | 'open_food_facts' | 'bedca_referencia' | 'heuristica_ia' | 'heuristica' = 'mercadona_catalog';
 
   if (frequentMatch) {
     matchedProduct = {
@@ -1320,66 +2153,64 @@ export async function resolveSingleFoodItem(
   } else {
     // 2. Catálogo maestro Mercadona / Hacendado
     matchedProduct = findMercadonaProduct(itemInput.food) || findMercadonaProduct(cleanName);
-    if (!matchedProduct) {
-      // 3. Consulta externa a Open Food Facts con validación
-      const offProduct = await searchOpenFoodFacts(itemInput.food) || await searchOpenFoodFacts(cleanName);
-      if (offProduct) {
-        matchedProduct = offProduct;
-        source = 'open_food_facts';
+    if (matchedProduct) {
+      source = 'mercadona_catalog';
+    } else {
+      // 3. Base bromatológica científica (BEDCA / USDA)
+      const bedcaMatch = getScientificReferenceNutrition(itemInput.food) || getScientificReferenceNutrition(cleanName);
+      if (bedcaMatch) {
+        matchedProduct = bedcaMatch;
+        source = 'bedca_referencia';
+      } else if (itemInput.ai_calories_100g !== undefined && itemInput.ai_calories_100g > 0) {
+        // 4. Estimación proporcionada directamente por Gemini
+        matchedProduct = {
+          id: 'ai-' + Date.now(),
+          name: cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
+          brand: 'IA Nutricional (Gemini)',
+          category: 'suplementos_otros',
+          calories_100g: Math.round(itemInput.ai_calories_100g),
+          protein_100g: Number(itemInput.ai_protein_100g || 0),
+          carbs_100g: Number(itemInput.ai_carbs_100g || 0),
+          fat_100g: Number(itemInput.ai_fat_100g || 0),
+          aliases: [cleanName, itemInput.food],
+        };
+        source = 'heuristica_ia';
+      } else {
+        // 5. Consulta externa a Open Food Facts con validación
+        const offProduct = (await searchOpenFoodFacts(itemInput.food)) || (await searchOpenFoodFacts(cleanName));
+        if (offProduct) {
+          matchedProduct = offProduct;
+          source = 'open_food_facts';
+        }
       }
     }
   }
 
-  // 4. Fallback si no se encuentra: NUNCA cambiar a otro alimento (ej. avena),
-  // mantener el alimento exacto dictado por Álvaro con macros heurísticos coherentes
+  // 6. Fallback final seguro si aún no se encuentra:
+  // Reintentar con base bromatológica o crear producto seguro con control biológico estricto
   if (!matchedProduct) {
-    source = 'heuristica';
-    const lowerName = cleanName.toLowerCase();
-    let estKcal = 120;
-    let estProt = 8.0;
-    let estCarbs = 10.0;
-    let estFat = 4.0;
-
-    if (lowerName.includes('ketchup') || lowerName.includes('mostaza') || lowerName.includes('salsa tomate')) {
-      estKcal = 40;
-      estProt = 1.0;
-      estCarbs = 8.0;
-      estFat = 0.2;
-    } else if (lowerName.includes('mayonesa') || lowerName.includes('alioli') || lowerName.includes('mahonesa')) {
-      estKcal = 280;
-      estProt = 0.8;
-      estCarbs = 4.5;
-      estFat = 28.5;
-    } else if (
-      lowerName.includes('lomo') ||
-      lowerName.includes('ternera') ||
-      lowerName.includes('pollo') ||
-      lowerName.includes('carne') ||
-      lowerName.includes('pavo')
-    ) {
-      estKcal = 130;
-      estProt = 22.0;
-      estCarbs = 0.0;
-      estFat = 4.0;
-    } else if (lowerName.includes('patata') || lowerName.includes('arroz') || lowerName.includes('pasta')) {
-      estKcal = 85;
-      estProt = 2.0;
-      estCarbs = 18.0;
-      estFat = 0.2;
+    const finalBedca = getScientificReferenceNutrition(cleanName) || getScientificReferenceNutrition(itemInput.food);
+    if (finalBedca) {
+      matchedProduct = finalBedca;
+      source = 'bedca_referencia';
+    } else {
+      source = 'heuristica';
+      matchedProduct = {
+        id: 'gen-' + Date.now(),
+        name: cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
+        brand: 'Despensa / Tienda',
+        category: 'suplementos_otros',
+        calories_100g: 100,
+        protein_100g: 5.0,
+        carbs_100g: 10.0,
+        fat_100g: 2.0,
+        aliases: [cleanName, itemInput.food],
+      };
     }
-
-    matchedProduct = {
-      id: 'gen-' + Date.now(),
-      name: cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
-      brand: 'Despensa / Tienda',
-      category: 'suplementos_otros',
-      calories_100g: estKcal,
-      protein_100g: estProt,
-      carbs_100g: estCarbs,
-      fat_100g: estFat,
-      aliases: [cleanName, itemInput.food],
-    };
   }
+
+  // Aplicar control estricto de coherencia bromatológica (cero hidratos en carnes/pescados, etc.)
+  matchedProduct = applyNutritionalSanityChecks(matchedProduct, itemInput.food);
 
   // Determinar los gramos reales con precisión matemática ESTRICTA
   let effectiveGrams = Number(itemInput.amount);
@@ -1463,7 +2294,16 @@ export async function calculateMealFromWeighedItems(
 
   // Formatear desglose visual para Telegram
   const breakdownLines = calculatedItems.map((it) => {
-    const sourceIcon = it.source === 'mercadona_catalog' ? '🟢 Mercadona' : it.source === 'open_food_facts' ? '🔵 OpenFoodFacts' : '⚪ Estimado';
+    const sourceIcon =
+      it.source === 'mercadona_catalog'
+        ? '🟢 Mercadona'
+        : it.source === 'open_food_facts'
+        ? '🔵 OpenFoodFacts'
+        : it.source === 'bedca_referencia'
+        ? '🟣 Referencia BEDCA'
+        : it.source === 'heuristica_ia'
+        ? '🟡 IA Nutricional'
+        : '⚪ Estimado';
     return `• *${it.grams}g* ${it.matchedName} (${it.brand}):\n  └ *${it.calories} kcal* | 🥩 *${it.protein_g}g* P | 🍚 *${it.carbs_g}g* HC | 🥑 *${it.fat_g}g* G _[${sourceIcon}]_`;
   });
 
