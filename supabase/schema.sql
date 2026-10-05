@@ -89,13 +89,14 @@ CREATE TABLE IF NOT EXISTS nutrition_logs (
     id TEXT PRIMARY KEY,
     timestamp TIMESTAMPTZ DEFAULT now(),
     date DATE NOT NULL DEFAULT CURRENT_DATE,
-    meal_type TEXT, -- 'Desayuno', 'Almuerzo', 'Cena', 'Snack'
+    meal_type TEXT, -- 'Desayuno', 'Almuerzo', 'Cena', 'Snack', 'Bebida', 'Merienda', 'PESO_CORPORAL'
     description TEXT NOT NULL,
     calories INTEGER NOT NULL,
     protein_g NUMERIC(5,1) DEFAULT 0,
     carbs_g NUMERIC(5,1) DEFAULT 0,
     fat_g NUMERIC(5,1) DEFAULT 0,
-    raw_audio_transcription TEXT
+    raw_audio_transcription TEXT,
+    items JSONB
 );
 
 CREATE INDEX IF NOT EXISTS idx_nutrition_date ON nutrition_logs (date DESC);
