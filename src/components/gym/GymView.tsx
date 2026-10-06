@@ -1,20 +1,24 @@
 'use client';
 
+// ====================================================================
+// VISTA DE GIMNASIO & FUERZA: IronManApp (Liquid Glass Dual Mode)
+// Módulo de sobrecarga progresiva, prescripción articular anti-impacto
+// y registro determinista de series con preestablecimiento automático.
+// Idioma: Español (Strict TypeScript / Clean Architecture)
+// ====================================================================
+
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   Dumbbell,
   CheckCircle2,
   Plus,
-  Flame,
   TrendingUp,
   RotateCcw,
   Sparkles,
   Info,
   Clock,
-  ChevronRight,
   Trash2,
   ArrowLeftRight,
-  Settings,
   Sliders,
 } from 'lucide-react';
 import { GymExercise, GymWorkoutLog } from '@/types/database';
@@ -42,7 +46,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
   }, []);
 
   const [selectedDay, setSelectedDay] = useState<'Día 1: Torso' | 'Día 2: Pierna' | 'Día 3: Full Body' | 'Todos'>(initialDayFilter);
-  
+
   // Modales modulares de reorganización de calendario y ejercicios
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isExerciseModalOpen, setIsExerciseModalOpen] = useState(false);
@@ -184,17 +188,17 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
       <div className="space-y-4 pb-24 px-4 pt-2">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-black text-white tracking-tight">Fuerza & Gimnasio</h1>
-            <p className="text-xs text-zinc-400">Plan diario, sobrecarga progresiva y prevención de carrera</p>
+            <h1 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Fuerza & Gimnasio</h1>
+            <p className="text-xs text-[var(--text-secondary)]">Plan diario, sobrecarga progresiva y prevención articular</p>
           </div>
         </div>
-        <div className="p-8 rounded-3xl bg-zinc-950 border border-zinc-900 text-center space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center mx-auto">
+        <div className="p-8 rounded-3xl liquid-glass-card border border-[var(--glass-border)] text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-[#2D68C4]/10 border border-[#2D68C4]/20 text-[#2D68C4] flex items-center justify-center mx-auto">
             <Dumbbell className="w-7 h-7" />
           </div>
           <div className="space-y-1.5">
-            <h3 className="text-base font-bold text-white">Cargando tu rutina...</h3>
-            <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
+            <h3 className="text-base font-bold text-[var(--text-primary)]">Cargando tu rutina...</h3>
+            <p className="text-xs text-[var(--text-secondary)] max-w-sm mx-auto leading-relaxed">
               Configurando tus ejercicios de fuerza y compatibilidad con running.
             </p>
           </div>
@@ -208,22 +212,26 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
       {/* CABECERA */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-black text-white tracking-tight">Fuerza & Prevención</h1>
-          <p className="text-xs text-zinc-400">Torso • Pierna Anti-impacto • Full Body</p>
+          <h1 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Fuerza & Prevención</h1>
+          <p className="text-xs text-[var(--text-secondary)]">Torso • Pierna Anti-impacto • Full Body</p>
         </div>
-        <div className="flex bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+        <div className="flex p-1 rounded-2xl liquid-glass-pill border border-[var(--glass-border)]">
           <button
             onClick={() => setActiveTab('routine')}
-            className={`text-[10px] px-3 py-1 rounded-lg font-bold transition-all ${
-              activeTab === 'routine' ? 'bg-orange-500 text-white' : 'text-zinc-400'
+            className={`text-[11px] px-3 py-1 rounded-xl font-bold transition-all ${
+              activeTab === 'routine'
+                ? 'bg-[#2D68C4] text-white shadow-sm'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
             Rutina
           </button>
           <button
             onClick={() => setActiveTab('history')}
-            className={`text-[10px] px-3 py-1 rounded-lg font-bold transition-all ${
-              activeTab === 'history' ? 'bg-orange-500 text-white' : 'text-zinc-400'
+            className={`text-[11px] px-3 py-1 rounded-xl font-bold transition-all ${
+              activeTab === 'history'
+                ? 'bg-[#2D68C4] text-white shadow-sm'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
             Historial ({logs.length})
@@ -233,15 +241,15 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
 
       {/* SELECTOR DE DÍA / DISTRIBUCIÓN SEMANAL */}
       {activeTab === 'routine' && (
-        <div className="flex items-center gap-1.5 p-1 bg-zinc-950 border border-zinc-900 rounded-2xl overflow-x-auto">
+        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl liquid-glass-pill border border-[var(--glass-border)] overflow-x-auto scrollbar-thin">
           {(['Día 1: Torso', 'Día 2: Pierna', 'Día 3: Full Body', 'Todos'] as const).map((day) => (
             <button
               key={day}
               onClick={() => setSelectedDay(day)}
-              className={`flex-1 py-1.5 px-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap text-center ${
+              className={`flex-1 py-1.5 px-3 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap text-center ${
                 selectedDay === day
-                  ? 'bg-orange-500 text-black shadow-sm'
-                  : 'text-zinc-400 hover:text-white'
+                  ? 'bg-[#2D68C4] text-white shadow-sm'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               {day}
@@ -255,16 +263,16 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsScheduleModalOpen(true)}
-            className="flex-1 py-2 px-3 rounded-2xl bg-zinc-950 hover:bg-zinc-900 border border-zinc-900 hover:border-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white transition-all flex items-center justify-center gap-1.5 active:scale-98 shadow-sm"
+            className="flex-1 py-2.5 px-3 rounded-2xl liquid-glass-card border border-[var(--glass-border)] hover:border-[#2D68C4]/40 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex items-center justify-center gap-1.5 active:scale-98 shadow-sm"
           >
-            <ArrowLeftRight className="w-3.5 h-3.5 text-orange-400" />
+            <ArrowLeftRight className="w-3.5 h-3.5 text-[#D97757]" />
             <span>Reorganizar Días</span>
           </button>
           <button
             onClick={() => setIsExerciseModalOpen(true)}
-            className="flex-1 py-2 px-3 rounded-2xl bg-zinc-950 hover:bg-zinc-900 border border-zinc-900 hover:border-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white transition-all flex items-center justify-center gap-1.5 active:scale-98 shadow-sm"
+            className="flex-1 py-2.5 px-3 rounded-2xl liquid-glass-card border border-[var(--glass-border)] hover:border-[#2D68C4]/40 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex items-center justify-center gap-1.5 active:scale-98 shadow-sm"
           >
-            <Sliders className="w-3.5 h-3.5 text-emerald-400" />
+            <Sliders className="w-3.5 h-3.5 text-emerald-500" />
             <span>Personalizar Ejercicios</span>
           </button>
         </div>
@@ -273,23 +281,23 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
       {activeTab === 'routine' ? (
         <>
           {/* PANEL DE REGISTRO RÁPIDO DE SERIE */}
-          <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 shadow-xl space-y-3">
+          <div className="p-4 rounded-3xl liquid-glass-card border border-[var(--glass-border)] shadow-xl space-y-3.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs uppercase font-bold tracking-wider text-orange-400 flex items-center gap-1.5">
+              <span className="text-xs uppercase font-bold tracking-wider text-[#2D68C4] dark:text-[#5B95E0] flex items-center gap-1.5">
                 <Dumbbell className="w-3.5 h-3.5" /> Registrar Serie #{nextSetNumber}
               </span>
-              <span className="text-[10px] text-zinc-500 font-mono">
+              <span className="text-[10px] text-[var(--text-tertiary)] font-mono">
                 {currentExerciseLogs.length} series registradas hoy
               </span>
             </div>
 
             {/* Selector de Ejercicio */}
             <div>
-              <label className="text-[11px] text-zinc-400 block mb-1">Ejercicio a registrar</label>
+              <label className="text-[11px] text-[var(--text-secondary)] block mb-1 font-medium">Ejercicio a registrar</label>
               <select
                 value={selectedExerciseId}
                 onChange={(e) => handleSelectExercise(e.target.value)}
-                className="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-xs font-semibold focus:outline-none focus:border-orange-500"
+                className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-semibold focus:outline-none focus:border-[#2D68C4]"
               >
                 {filteredExercises.map((ex) => (
                   <option key={ex.id} value={ex.id}>
@@ -301,20 +309,20 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
 
             {/* Tarjeta de Especificación y Enfoque del Ejercicio */}
             {selectedExercise && (
-              <div className="p-3 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 space-y-1.5 text-xs">
-                <div className="flex items-center justify-between text-zinc-300">
-                  <span className="font-semibold text-orange-300">
+              <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] space-y-1 text-xs">
+                <div className="flex items-center justify-between text-[var(--text-secondary)]">
+                  <span className="font-semibold text-[#2D68C4] dark:text-[#5B95E0]">
                     Objetivo: {selectedExercise.target_sets || 3}x {selectedExercise.target_reps || '8-10 reps'}
                   </span>
                   {selectedExercise.rest_time && (
-                    <span className="text-[10px] text-zinc-400 flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-zinc-500" /> {selectedExercise.rest_time}
+                    <span className="text-[10px] text-[var(--text-tertiary)] flex items-center gap-1 font-mono">
+                      <Clock className="w-3 h-3 text-[var(--text-tertiary)]" /> {selectedExercise.rest_time}
                     </span>
                   )}
                 </div>
                 {selectedExercise.notes && (
-                  <p className="text-[11px] text-zinc-400 leading-snug">
-                    <span className="text-zinc-500 font-medium">Clave:</span> {selectedExercise.notes}
+                  <p className="text-[11px] text-[var(--text-secondary)] leading-snug">
+                    <span className="text-[var(--text-tertiary)] font-medium">Clave:</span> {selectedExercise.notes}
                   </p>
                 )}
               </div>
@@ -322,20 +330,20 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
 
             {/* Banner de Referencia de Sesión Anterior (Sobrecarga Progresiva) */}
             {lastSessionBenchmark ? (
-              <div className="p-3 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-between text-xs">
+              <div className="p-3 rounded-2xl bg-[#D97757]/10 border border-[#D97757]/20 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-[#D97757]/20 text-[#D97757] flex items-center justify-center shrink-0">
                     <TrendingUp className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-[10px] text-orange-300 font-bold uppercase tracking-wider">
+                    <div className="text-[10px] text-[#D97757] font-bold uppercase tracking-wider">
                       Sesión Anterior ({lastSessionDate})
                     </div>
-                    <div className="text-white font-black text-sm">
+                    <div className="text-[var(--text-primary)] font-black text-sm">
                       {lastSessionBenchmark.reps} reps @{' '}
                       {lastSessionBenchmark.weight_kg > 0 ? `${lastSessionBenchmark.weight_kg} kg` : 'Peso Corporal'}
                       {lastSessionBenchmark.rpe && (
-                        <span className="text-[10px] font-normal text-zinc-400 ml-1.5 font-mono">
+                        <span className="text-[10px] font-normal text-[var(--text-tertiary)] ml-1.5 font-mono">
                           (RPE {lastSessionBenchmark.rpe})
                         </span>
                       )}
@@ -343,15 +351,15 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 font-bold border border-orange-500/30">
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#D97757]/20 text-[#D97757] font-bold border border-[#D97757]/30">
                     Sobrecarga +
                   </span>
-                  <p className="text-[9px] text-zinc-400 mt-0.5">Preestablecido</p>
+                  <p className="text-[9px] text-[var(--text-tertiary)] mt-0.5">Preestablecido</p>
                 </div>
               </div>
             ) : (
-              <div className="p-2.5 rounded-2xl bg-zinc-900/50 border border-zinc-800/60 text-xs text-zinc-400 flex items-center gap-2">
-                <Info className="w-4 h-4 text-zinc-500 flex-shrink-0" />
+              <div className="p-2.5 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs text-[var(--text-secondary)] flex items-center gap-2">
+                <Info className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" />
                 <span>Sin registros previos. Registra tu carga base de partida.</span>
               </div>
             )}
@@ -359,19 +367,19 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
             {/* Controles de Carga (kg) y Repeticiones */}
             <div className="grid grid-cols-2 gap-3">
               {/* Carga en kg */}
-              <div className="bg-zinc-900/60 p-3 rounded-2xl border border-zinc-800">
-                <span className="text-[10px] text-zinc-400 block">Carga (kg)</span>
+              <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+                <span className="text-[10px] text-[var(--text-secondary)] block font-medium">Carga (kg)</span>
                 <div className="flex items-center justify-between mt-1">
                   <button
                     onClick={() => setWeightKg((w) => Math.max(0, w - 2.5))}
-                    className="w-7 h-7 rounded-lg bg-zinc-800 text-white font-bold active:scale-90"
+                    className="w-8 h-8 rounded-xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold active:scale-95 transition-all flex items-center justify-center border border-[var(--glass-border)]"
                   >
                     -
                   </button>
-                  <span className="text-xl font-black text-white">{weightKg}</span>
+                  <span className="text-xl font-black text-[var(--text-primary)] font-mono">{weightKg}</span>
                   <button
                     onClick={() => setWeightKg((w) => w + 2.5)}
-                    className="w-7 h-7 rounded-lg bg-zinc-800 text-white font-bold active:scale-90"
+                    className="w-8 h-8 rounded-xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold active:scale-95 transition-all flex items-center justify-center border border-[var(--glass-border)]"
                   >
                     +
                   </button>
@@ -381,7 +389,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                     <button
                       key={inc}
                       onClick={() => setWeightKg((w) => Math.max(0, w + inc))}
-                      className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 hover:text-white active:scale-95"
+                      className="text-[9px] px-1.5 py-0.5 rounded-lg bg-[var(--glass-surface-thick)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--glass-border)] active:scale-95 transition-all"
                     >
                       {inc > 0 ? `+${inc}` : inc}
                     </button>
@@ -390,32 +398,34 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
               </div>
 
               {/* Repeticiones */}
-              <div className="bg-zinc-900/60 p-3 rounded-2xl border border-zinc-800">
-                <span className="text-[10px] text-zinc-400 block">Repeticiones</span>
+              <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+                <span className="text-[10px] text-[var(--text-secondary)] block font-medium">Repeticiones</span>
                 <div className="flex items-center justify-between mt-1">
                   <button
                     onClick={() => setReps((r) => Math.max(1, r - 1))}
-                    className="w-7 h-7 rounded-lg bg-zinc-800 text-white font-bold active:scale-90"
+                    className="w-8 h-8 rounded-xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold active:scale-95 transition-all flex items-center justify-center border border-[var(--glass-border)]"
                   >
                     -
                   </button>
-                  <span className="text-xl font-black text-white">{reps}</span>
+                  <span className="text-xl font-black text-[var(--text-primary)] font-mono">{reps}</span>
                   <button
                     onClick={() => setReps((r) => r + 1)}
-                    className="w-7 h-7 rounded-lg bg-zinc-800 text-white font-bold active:scale-90"
+                    className="w-8 h-8 rounded-xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold active:scale-95 transition-all flex items-center justify-center border border-[var(--glass-border)]"
                   >
                     +
                   </button>
                 </div>
-                <div className="flex items-center justify-between mt-2 text-[9px] text-zinc-400">
+                <div className="flex items-center justify-between mt-2 text-[9px] text-[var(--text-secondary)]">
                   <span>RPE: {rpe}/10</span>
                   <div className="flex gap-1">
                     {[7, 8, 9].map((val) => (
                       <button
                         key={val}
                         onClick={() => setRpe(val)}
-                        className={`px-1.5 py-0.5 rounded ${
-                          rpe === val ? 'bg-orange-500 text-black font-bold' : 'bg-zinc-800 text-zinc-400'
+                        className={`px-1.5 py-0.5 rounded-lg transition-all ${
+                          rpe === val
+                            ? 'bg-[#2D68C4] text-white font-bold'
+                            : 'bg-[var(--glass-surface-thick)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
                         }`}
                       >
                         {val}
@@ -430,7 +440,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
             <button
               onClick={handleSaveSet}
               disabled={isSaving}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-black font-black text-xs uppercase tracking-wider active:scale-98 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20"
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#2D68C4] to-[#1E4E96] text-white font-black text-xs uppercase tracking-wider active:scale-98 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 disabled:opacity-50"
             >
               <Plus className="w-4 h-4" />
               {isSaving ? 'Guardando serie...' : 'Guardar Serie'}
@@ -438,15 +448,15 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
 
             {/* Resumen de series de hoy y opción de deshacer */}
             {currentExerciseLogs.length > 0 && (
-              <div className="flex items-center justify-between pt-1 text-[11px] text-zinc-400">
+              <div className="flex items-center justify-between pt-1 text-[11px] text-[var(--text-secondary)]">
                 <span>
-                  Hoy: <strong className="text-white">{currentExerciseLogs.length}</strong> {currentExerciseLogs.length === 1 ? 'serie' : 'series'} (
+                  Hoy: <strong className="text-[var(--text-primary)]">{currentExerciseLogs.length}</strong> {currentExerciseLogs.length === 1 ? 'serie' : 'series'} (
                   {currentExerciseLogs.map((l) => `${l.reps}x${l.weight_kg > 0 ? `${l.weight_kg}k` : 'PC'}`).join(', ')})
                 </span>
                 {onDeleteSet && (
                   <button
                     onClick={() => onDeleteSet(currentExerciseLogs[currentExerciseLogs.length - 1].id)}
-                    className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 font-semibold transition-colors active:scale-95"
+                    className="text-xs text-rose-500 hover:text-rose-600 flex items-center gap-1 font-semibold transition-colors active:scale-95"
                     title="Deshacer última serie guardada"
                   >
                     <RotateCcw className="w-3 h-3" /> Deshacer
@@ -457,12 +467,12 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
           </div>
 
           {/* CHECKLIST DE LA RUTINA */}
-          <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 space-y-3">
+          <div className="p-4 rounded-3xl liquid-glass-card border border-[var(--glass-border)] space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                 {selectedDay === 'Todos' ? 'Todos los Ejercicios' : `Ejercicios ${selectedDay}`}
               </h3>
-              <span className="text-[10px] text-zinc-500 font-mono">
+              <span className="text-[10px] text-[var(--text-tertiary)] font-mono">
                 {filteredExercises.length} ejercicios
               </span>
             </div>
@@ -483,33 +493,35 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                   ? [...prevSessionSets].sort((a, b) => b.weight_kg - a.weight_kg || b.reps - a.reps)[0]
                   : null;
 
+                const isSelected = selectedExerciseId === ex.id;
+
                 return (
                   <div
                     key={ex.id}
                     onClick={() => handleSelectExercise(ex.id)}
-                    className={`p-3 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
-                      selectedExerciseId === ex.id
-                        ? 'bg-zinc-900/80 border-orange-500/60 ring-1 ring-orange-500/30'
-                        : 'bg-zinc-900/30 border-zinc-900 hover:border-zinc-800'
+                    className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
+                      isSelected
+                        ? 'bg-[var(--glass-surface-thick)] border-[#2D68C4] ring-1 ring-[#2D68C4]/40 shadow-sm'
+                        : 'bg-[var(--glass-surface)] border-[var(--glass-border)] hover:border-[#2D68C4]/40'
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div
                         className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                          isDone ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800 text-zinc-400'
+                          isDone ? 'bg-emerald-500/20 text-emerald-500' : 'bg-[var(--glass-surface-thick)] text-[var(--text-tertiary)]'
                         }`}
                       >
-                        {isDone ? <CheckCircle2 className="w-4 h-4" /> : completedSets.length}
+                        {isDone ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : completedSets.length}
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-white">{ex.name}</h4>
-                        <p className="text-[10px] text-zinc-500">
+                        <h4 className="text-xs font-bold text-[var(--text-primary)]">{ex.name}</h4>
+                        <p className="text-[10px] text-[var(--text-secondary)]">
                           {ex.target_sets || 3}x {ex.target_reps || '8-10'} • {ex.category}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-xs font-black text-orange-400 block">
+                      <span className="text-xs font-black text-[#2D68C4] dark:text-[#5B95E0] block font-mono">
                         {prevBestSet
                           ? prevBestSet.weight_kg > 0
                             ? `${prevBestSet.weight_kg} kg`
@@ -518,7 +530,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                           ? `${ex.current_weight_kg} kg`
                           : 'Por determinar'}
                       </span>
-                      <span className="text-[9px] text-zinc-500">
+                      <span className="text-[9px] text-[var(--text-tertiary)]">
                         {completedSets.length > 0
                           ? `${completedSets.length}/${targetSets} hoy`
                           : prevBestSet
@@ -533,24 +545,24 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
           </div>
 
           {/* RUTINA DE ESTIRAMIENTOS Y PREVENCIÓN RUNNING */}
-          <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+          <div className="p-4 rounded-3xl liquid-glass-card border border-[var(--glass-border)] space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" /> Movilidad & Prevención Lesiones Running
             </h3>
-            <p className="text-[11px] text-zinc-400">
-              Protocolo para blindar Aquiles, rodilla (cintilla) y fascia plantar tras el asfalto y las pesas.
+            <p className="text-[11px] text-[var(--text-secondary)]">
+              Protocolo para blindar Aquiles, rodilla (cintilla iliotibial) y fascia plantar tras el asfalto y las pesas.
             </p>
             <div className="space-y-2 pt-1">
               {stretchExercises.map((st) => (
                 <div
                   key={st.id}
-                  className="p-3 rounded-2xl bg-zinc-900/40 border border-zinc-900 flex items-center justify-between text-xs"
+                  className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] flex items-center justify-between text-xs"
                 >
                   <div className="space-y-0.5">
-                    <span className="text-zinc-200 font-semibold block">{st.name}</span>
-                    {st.notes && <span className="text-[10px] text-zinc-500">{st.notes}</span>}
+                    <span className="text-[var(--text-primary)] font-semibold block">{st.name}</span>
+                    {st.notes && <span className="text-[10px] text-[var(--text-secondary)]">{st.notes}</span>}
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-400 font-bold whitespace-nowrap ml-2">
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap ml-2 border border-emerald-500/20">
                     60 seg
                   </span>
                 </div>
@@ -560,25 +572,25 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
         </>
       ) : (
         /* HISTORIAL DE SERIES REGISTRADAS */
-        <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 space-y-3">
+        <div className="p-4 rounded-3xl liquid-glass-card border border-[var(--glass-border)] space-y-3.5">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
                 Historial de Series ({logs.length})
               </h3>
-              <span className="text-[10px] text-zinc-500 font-mono">
+              <span className="text-[10px] text-[var(--text-tertiary)] font-mono">
                 {sessionDates.length} sesiones registradas
               </span>
             </div>
 
             {/* Selector dinámico con todas las fechas reales en BBDD */}
-            <div className="flex gap-1.5 bg-zinc-900/80 p-1 rounded-2xl border border-zinc-800 text-[10px] overflow-x-auto scrollbar-thin">
+            <div className="flex gap-1.5 p-1 rounded-2xl liquid-glass-pill border border-[var(--glass-border)] text-[10px] overflow-x-auto scrollbar-thin">
               <button
                 onClick={() => setHistoryDateFilter('all')}
                 className={`px-3 py-1.5 rounded-xl whitespace-nowrap font-bold transition-all ${
                   historyDateFilter === 'all'
-                    ? 'bg-orange-500 text-black shadow-sm'
-                    : 'text-zinc-400 hover:text-white'
+                    ? 'bg-[#2D68C4] text-white shadow-sm'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 Todas ({logs.length})
@@ -597,14 +609,14 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                     onClick={() => setHistoryDateFilter(dStr)}
                     className={`px-2.5 py-1.5 rounded-xl whitespace-nowrap font-bold transition-all flex items-center gap-1.5 ${
                       historyDateFilter === dStr
-                        ? 'bg-orange-500 text-black shadow-sm ring-1 ring-orange-400'
-                        : 'text-zinc-400 hover:text-white'
+                        ? 'bg-[#2D68C4] text-white shadow-sm ring-1 ring-blue-400'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                     }`}
                   >
                     <span className="capitalize">{label}</span>
                     <span
                       className={`text-[9px] px-1.5 py-0.2 rounded-full font-mono ${
-                        historyDateFilter === dStr ? 'bg-black/25 text-black' : 'bg-zinc-800 text-zinc-400'
+                        historyDateFilter === dStr ? 'bg-white/20 text-white' : 'bg-[var(--glass-surface-thick)] text-[var(--text-tertiary)]'
                       }`}
                     >
                       {count}
@@ -616,14 +628,14 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
 
             {/* Tarjeta de métricas de la sesión seleccionada */}
             {displayedHistoryLogs.length > 0 && (
-              <div className="grid grid-cols-3 gap-2 p-2.5 bg-zinc-900/50 rounded-2xl border border-zinc-800/80 text-center text-xs">
+              <div className="grid grid-cols-3 gap-2 p-2.5 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-center text-xs">
                 <div>
-                  <span className="text-[9px] text-zinc-500 block uppercase">Series</span>
-                  <span className="font-black text-white">{displayedHistoryLogs.length}</span>
+                  <span className="text-[9px] text-[var(--text-tertiary)] block uppercase">Series</span>
+                  <span className="font-black text-[var(--text-primary)] font-mono">{displayedHistoryLogs.length}</span>
                 </div>
                 <div>
-                  <span className="text-[9px] text-zinc-500 block uppercase">Volumen</span>
-                  <span className="font-black text-orange-400">
+                  <span className="text-[9px] text-[var(--text-tertiary)] block uppercase">Volumen</span>
+                  <span className="font-black text-[#2D68C4] dark:text-[#5B95E0] font-mono">
                     {Math.round(
                       displayedHistoryLogs.reduce((sum, l) => sum + l.weight_kg * l.reps, 0)
                     ).toLocaleString()}{' '}
@@ -631,8 +643,8 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                   </span>
                 </div>
                 <div>
-                  <span className="text-[9px] text-zinc-500 block uppercase">Ejercicios</span>
-                  <span className="font-black text-amber-300">
+                  <span className="text-[9px] text-[var(--text-tertiary)] block uppercase">Ejercicios</span>
+                  <span className="font-black text-amber-500 font-mono">
                     {new Set(displayedHistoryLogs.map((l) => l.exercise_id)).size}
                   </span>
                 </div>
@@ -641,7 +653,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
           </div>
 
           {displayedHistoryLogs.length === 0 ? (
-            <p className="text-xs text-zinc-500 py-6 text-center">No hay series registradas para esta selección.</p>
+            <p className="text-xs text-[var(--text-tertiary)] py-6 text-center">No hay series registradas para esta selección.</p>
           ) : (
             <div className="space-y-2">
               {displayedHistoryLogs.map((log) => {
@@ -649,20 +661,20 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                 return (
                   <div
                     key={log.id}
-                    className="p-3 rounded-2xl bg-zinc-900/50 border border-zinc-800/80 flex items-center justify-between"
+                    className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] flex items-center justify-between"
                   >
                     <div>
-                      <h4 className="text-xs font-bold text-white">{ex?.name || 'Ejercicio'}</h4>
-                      <p className="text-[10px] text-zinc-400">
+                      <h4 className="text-xs font-bold text-[var(--text-primary)]">{ex?.name || 'Ejercicio'}</h4>
+                      <p className="text-[10px] text-[var(--text-secondary)]">
                         Serie #{log.set_number} • {log.date === todayStr ? 'Hoy' : log.date} • RPE {log.rpe || 8}
                       </p>
                     </div>
                     <div className="flex items-center gap-2.5">
                       <div className="text-right">
-                        <span className="text-sm font-black text-orange-400">
+                        <span className="text-sm font-black text-[#2D68C4] dark:text-[#5B95E0] font-mono">
                           {log.weight_kg > 0 ? `${log.weight_kg} kg` : 'Peso Corp.'}
                         </span>
-                        <p className="text-[10px] text-zinc-500">{log.reps} reps</p>
+                        <p className="text-[10px] text-[var(--text-tertiary)]">{log.reps} reps</p>
                       </div>
                       {onDeleteSet && (
                         <button
@@ -671,7 +683,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                               onDeleteSet(log.id);
                             }
                           }}
-                          className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 active:scale-90 transition-all"
+                          className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-rose-500 hover:bg-rose-500/10 active:scale-90 transition-all"
                           title="Eliminar serie"
                           aria-label="Eliminar serie"
                         >

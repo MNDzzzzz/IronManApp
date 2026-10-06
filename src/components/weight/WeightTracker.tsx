@@ -1,5 +1,12 @@
 'use client';
 
+// ====================================================================
+// COMPONENTE DE SEGUIMIENTO DE PESO CORPORAL: IronManApp
+// Gráfica de evolución con límites dinámicos, KPIs de recomposición,
+// registro rápido con notas y persistencia en Supabase.
+// Idioma: Español (Strict TypeScript / Clean Architecture / Liquid Glass)
+// ====================================================================
+
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   Scale,
@@ -7,11 +14,8 @@ import {
   TrendingUp,
   Calendar,
   Plus,
-  Check,
   X,
-  Sparkles,
   History,
-  Target,
   Trash2,
 } from 'lucide-react';
 import {
@@ -79,11 +83,9 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
     }
 
     if (timeframe === 'semanas') {
-      // Agrupación por semana del año
       const weekMap = new Map<string, { weights: number[]; lastDate: string }>();
       chronologicalLogs.forEach((log) => {
         const d = new Date(log.date);
-        // Calcular número aproximado de semana o rango
         const weekKey = `Sem ${Math.ceil(d.getUTCDate() / 7)} (${d.toLocaleString('es-ES', { month: 'short' })})`;
         const entry = weekMap.get(weekKey) || { weights: [], lastDate: log.date };
         entry.weights.push(log.weight_kg);
@@ -160,24 +162,24 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
   };
 
   return (
-    <div className="p-4 rounded-3xl bg-zinc-950 border border-zinc-900 shadow-xl space-y-4">
+    <div className="p-4 rounded-3xl liquid-glass-card border border-[var(--glass-border)] shadow-xl space-y-4">
       {/* Encabezado con KPI de Peso y Botón */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <div className="w-9 h-9 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-500">
             <Scale className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-sm font-black uppercase tracking-wider text-white">
+            <h2 className="text-sm font-black uppercase tracking-wider text-[var(--text-primary)]">
               Evolución de Peso
             </h2>
-            <p className="text-[11px] text-zinc-400">Pesaje antes de cenar / post-entreno</p>
+            <p className="text-[11px] text-[var(--text-secondary)]">Pesaje antes de cenar / post-entreno</p>
           </div>
         </div>
 
         <button
           onClick={() => setShowAddModal(true)}
-          className="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all hover:bg-emerald-500/20"
+          className="px-3 py-1.5 rounded-full liquid-glass-pill border border-[var(--glass-border)] text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all hover:bg-emerald-500/10 shadow-sm"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Anotar</span>
@@ -186,19 +188,19 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
 
       {/* Tarjetas de Resumen KPI */}
       <div className="grid grid-cols-3 gap-2 pt-1">
-        <div className="p-3 rounded-2xl bg-zinc-900/50 border border-zinc-900 text-left">
-          <span className="text-[10px] uppercase font-bold text-zinc-500 block">Actual</span>
-          <div className="text-lg font-black text-white mt-0.5">
-            {latestWeight.toFixed(1)} <span className="text-[10px] font-normal text-zinc-400">kg</span>
+        <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left">
+          <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Actual</span>
+          <div className="text-lg font-black text-[var(--text-primary)] mt-0.5 font-mono">
+            {latestWeight.toFixed(1)} <span className="text-[10px] font-normal text-[var(--text-secondary)]">kg</span>
           </div>
-          <span className="text-[10px] text-zinc-500">Hoy Jueves</span>
+          <span className="text-[10px] text-[var(--text-tertiary)]">Registro</span>
         </div>
 
-        <div className="p-3 rounded-2xl bg-zinc-900/50 border border-zinc-900 text-left">
-          <span className="text-[10px] uppercase font-bold text-zinc-500 block">Variación</span>
+        <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left">
+          <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Variación</span>
           <div
-            className={`text-lg font-black mt-0.5 flex items-center gap-0.5 ${
-              totalChangeKg <= 0 ? 'text-emerald-400' : 'text-amber-400'
+            className={`text-lg font-black mt-0.5 flex items-center gap-0.5 font-mono ${
+              totalChangeKg <= 0 ? 'text-emerald-500' : 'text-amber-500'
             }`}
           >
             {totalChangeKg <= 0 ? (
@@ -207,36 +209,36 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
               <TrendingUp className="w-4 h-4 inline" />
             )}
             <span>{totalChangeKg > 0 ? `+${totalChangeKg}` : totalChangeKg}</span>
-            <span className="text-[10px] font-normal text-zinc-400">kg</span>
+            <span className="text-[10px] font-normal text-[var(--text-secondary)]">kg</span>
           </div>
-          <span className="text-[10px] text-emerald-400/80">Recomposición</span>
+          <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Recomposición</span>
         </div>
 
-        <div className="p-3 rounded-2xl bg-zinc-900/50 border border-zinc-900 text-left">
-          <span className="text-[10px] uppercase font-bold text-zinc-500 block">Inicio</span>
-          <div className="text-lg font-black text-zinc-300 mt-0.5">
-            {initialWeight.toFixed(1)} <span className="text-[10px] font-normal text-zinc-400">kg</span>
+        <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left">
+          <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Inicio</span>
+          <div className="text-lg font-black text-[var(--text-primary)] mt-0.5 font-mono">
+            {initialWeight.toFixed(1)} <span className="text-[10px] font-normal text-[var(--text-secondary)]">kg</span>
           </div>
-          <span className="text-[10px] text-zinc-500">Dom 20 Sep</span>
+          <span className="text-[10px] text-[var(--text-tertiary)]">Punto de partida</span>
         </div>
       </div>
 
       {/* Selector Temporal (Días / Semanas / Meses) */}
       <div className="flex items-center justify-between pt-1">
-        <span className="text-[11px] font-bold text-zinc-400 flex items-center gap-1.5">
-          <Calendar className="w-3.5 h-3.5 text-zinc-500" />
+        <span className="text-[11px] font-bold text-[var(--text-secondary)] flex items-center gap-1.5">
+          <Calendar className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
           Rango de Visualización
         </span>
 
-        <div className="flex bg-zinc-900 p-0.5 rounded-xl border border-zinc-800 text-[11px]">
+        <div className="flex p-0.5 rounded-xl liquid-glass-pill border border-[var(--glass-border)] text-[11px]">
           {(['dias', 'semanas', 'meses'] as TimeframeType[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setTimeframe(tab)}
               className={`px-3 py-1 rounded-lg font-semibold transition-all ${
                 timeframe === tab
-                  ? 'bg-emerald-500 text-black shadow-md'
-                  : 'text-zinc-400 hover:text-white'
+                  ? 'bg-emerald-500 text-black shadow-md font-bold'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -259,15 +261,14 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
 
               <XAxis
                 dataKey="label"
-                stroke="#52525B"
+                stroke="var(--text-tertiary)"
                 fontSize={10}
                 tickLine={false}
-                axisLine={{ stroke: '#27272A' }}
               />
 
               <YAxis
                 domain={yDomain}
-                stroke="#52525B"
+                stroke="var(--text-tertiary)"
                 fontSize={10}
                 tickLine={false}
                 axisLine={false}
@@ -280,19 +281,19 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
                   if (active && payload && payload.length) {
                     const data = payload[0].payload;
                     return (
-                      <div className="bg-zinc-900/95 backdrop-blur-md p-2.5 rounded-xl border border-zinc-800 shadow-2xl text-xs space-y-1">
-                        <div className="text-[10px] text-zinc-400 font-medium">
+                      <div className="bg-[var(--glass-surface-thick)] backdrop-blur-md p-3 rounded-2xl border border-[var(--glass-border)] shadow-2xl text-xs space-y-1">
+                        <div className="text-[10px] text-[var(--text-secondary)] font-medium">
                           {data.date} • {data.label}
                         </div>
-                        <div className="text-base font-black text-white flex items-center gap-1">
-                          <span className="text-emerald-400">{data.weight} kg</span>
-                          <span className="text-[10px] text-zinc-400 font-normal">
+                        <div className="text-base font-black text-[var(--text-primary)] flex items-center gap-1 font-mono">
+                          <span className="text-emerald-500">{data.weight} kg</span>
+                          <span className="text-[10px] text-[var(--text-secondary)] font-normal">
                             ({data.weight - initialWeight <= 0 ? '' : '+'}
                             {(data.weight - initialWeight).toFixed(1)} kg)
                           </span>
                         </div>
                         {data.notes && (
-                          <div className="text-[10px] text-zinc-400 italic border-t border-zinc-800/80 pt-1 mt-1">
+                          <div className="text-[10px] text-[var(--text-secondary)] italic border-t border-[var(--glass-border)] pt-1 mt-1">
                             {data.notes}
                           </div>
                         )}
@@ -305,11 +306,11 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
 
               <ReferenceLine
                 y={initialWeight}
-                stroke="#71717A"
+                stroke="var(--text-tertiary)"
                 strokeDasharray="3 3"
                 label={{
                   value: `Inicio: ${initialWeight}kg`,
-                  fill: '#71717A',
+                  fill: 'var(--text-tertiary)',
                   fontSize: 9,
                   position: 'insideTopRight',
                 }}
@@ -322,23 +323,23 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
                 strokeWidth={2.5}
                 fillOpacity={1}
                 fill="url(#weightGradient)"
-                dot={{ r: 4, fill: '#10B981', stroke: '#09090B', strokeWidth: 2 }}
+                dot={{ r: 4, fill: '#10B981', stroke: 'var(--background)', strokeWidth: 2 }}
                 activeDot={{ r: 6, fill: '#34D399', stroke: '#fff', strokeWidth: 2 }}
               />
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-xs text-zinc-600">
+          <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-tertiary)]">
             Cargando gráfica de peso...
           </div>
         )}
       </div>
 
       {/* Historial Detallado de Pesajes */}
-      <div className="pt-2 border-t border-zinc-900/80 space-y-2">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1">
+      <div className="pt-2 border-t border-[var(--glass-border)] space-y-2">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-1">
           <History className="w-3.5 h-3.5" />
-          Registros Recientes (4 Pesajes)
+          Registros Recientes ({chronologicalLogs.length} Pesajes)
         </span>
 
         <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
@@ -347,15 +348,15 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
             return (
               <div
                 key={item.id || item.date}
-                className={`p-2.5 rounded-xl border flex items-center justify-between text-xs transition-colors ${
+                className={`p-2.5 rounded-2xl border flex items-center justify-between text-xs transition-colors ${
                   isLatest
-                    ? 'bg-emerald-950/20 border-emerald-500/30'
-                    : 'bg-zinc-900/40 border-zinc-900'
+                    ? 'bg-emerald-500/10 border-emerald-500/30'
+                    : 'bg-[var(--glass-surface)] border-[var(--glass-border)]'
                 }`}
               >
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-white">
+                    <span className="font-bold text-[var(--text-primary)]">
                       {new Date(item.date).toLocaleDateString('es-ES', {
                         weekday: 'short',
                         day: 'numeric',
@@ -363,24 +364,24 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
                       })}
                     </span>
                     {isLatest && (
-                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-semibold">
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/30">
                         Último
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-zinc-400 block mt-0.5">
+                  <span className="text-[10px] text-[var(--text-secondary)] block mt-0.5">
                     {item.notes || 'Antes de cenar, después de entrenar'}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2.5">
                   <div className="text-right">
-                    <span className="text-sm font-black text-white block">
-                      {item.weight_kg.toFixed(1)} <span className="text-[10px] font-normal text-zinc-400">kg</span>
+                    <span className="text-sm font-black text-[var(--text-primary)] block font-mono">
+                      {item.weight_kg.toFixed(1)} <span className="text-[10px] font-normal text-[var(--text-secondary)]">kg</span>
                     </span>
                     <span
                       className={`text-[10px] font-semibold ${
-                        item.weight_kg - initialWeight <= 0 ? 'text-emerald-400' : 'text-amber-400'
+                        item.weight_kg - initialWeight <= 0 ? 'text-emerald-500' : 'text-amber-500'
                       }`}
                     >
                       {item.weight_kg - initialWeight <= 0 ? '' : '+'}
@@ -394,7 +395,7 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
                           onDeleteWeight(item.id);
                         }
                       }}
-                      className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 active:scale-90 transition-all"
+                      className="p-1 rounded-lg text-[var(--text-tertiary)] hover:text-rose-500 hover:bg-rose-500/10 active:scale-90 transition-all"
                       title="Eliminar pesaje"
                       aria-label="Eliminar pesaje"
                     >
@@ -410,18 +411,19 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
 
       {/* Modal de Registro Rápido */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="liquid-glass-card bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center">
                   <Scale className="w-4 h-4" />
                 </div>
-                <h3 className="text-sm font-black text-white">Registrar Pesaje</h3>
+                <h3 className="text-sm font-black text-[var(--text-primary)]">Registrar Pesaje</h3>
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-zinc-400 hover:text-white p-1 rounded-full bg-zinc-900"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1.5 rounded-full bg-[var(--glass-surface)] border border-[var(--glass-border)]"
+                aria-label="Cerrar modal"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -429,7 +431,7 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
 
             <form onSubmit={handleSaveWeight} className="space-y-3">
               <div>
-                <label className="text-[11px] font-bold text-zinc-400 block mb-1">
+                <label className="text-[11px] font-bold text-[var(--text-secondary)] block mb-1">
                   Peso Corporal (kg)
                 </label>
                 <input
@@ -439,23 +441,23 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
                   value={newWeight}
                   onChange={(e) => setNewWeight(e.target.value)}
                   placeholder="ej: 101.0"
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white font-mono text-lg font-black focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-[var(--text-primary)] font-mono text-lg font-black focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-zinc-400 block mb-1">Fecha</label>
+                <label className="text-[11px] font-bold text-[var(--text-secondary)] block mb-1">Fecha</label>
                 <input
                   type="date"
                   required
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs focus:outline-none focus:border-emerald-500 font-mono"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-zinc-400 block mb-1">
+                <label className="text-[11px] font-bold text-[var(--text-secondary)] block mb-1">
                   Momento / Notas
                 </label>
                 <input
@@ -463,7 +465,7 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="ej: Antes de cenar, después de entrenar"
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -471,14 +473,14 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-400 hover:text-white transition-colors"
+                  className="flex-1 py-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors active:scale-95"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black text-xs font-black shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black text-xs font-black shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   {isSaving ? 'Guardando...' : 'Guardar Pesaje'}
                 </button>
