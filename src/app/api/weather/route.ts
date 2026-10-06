@@ -9,6 +9,13 @@ export async function GET(request: NextRequest) {
     const lat = parseFloat(searchParams.get('lat') || '40.4168');
     const lon = parseFloat(searchParams.get('lon') || '-3.7038');
 
+    if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+      return NextResponse.json(
+        { success: false, error: 'Coordenadas geográficas inválidas' },
+        { status: 400 }
+      );
+    }
+
     const weather = await getLiveRunningWeather(lat, lon);
     return NextResponse.json({ success: true, weather });
   } catch (error) {

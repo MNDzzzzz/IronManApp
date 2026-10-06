@@ -12,8 +12,15 @@ import { mergeStravaWithFit3HeartRate } from '@/lib/merging/temporalAligner';
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Verificación de Seguridad con Token Secreto
-    const expectedToken = process.env.BRIDGE_API_KEY || 'ironman_secret_fit3_token_2026';
+    // 1. Verificación de Seguridad Estricta con Token Secreto (Sin fallback hardcodeado)
+    const expectedToken = process.env.BRIDGE_API_KEY;
+    if (!expectedToken) {
+      console.error('Alerta de seguridad: BRIDGE_API_KEY no configurado en variables de entorno.');
+      return NextResponse.json(
+        { success: false, error: 'Servicio no configurado: BRIDGE_API_KEY ausente.' },
+        { status: 500 }
+      );
+    }
     const clientToken =
       request.headers.get('x-bridge-token') ||
       request.headers.get('authorization')?.replace('Bearer ', '');

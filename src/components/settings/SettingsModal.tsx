@@ -125,7 +125,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {copiedKey === 'bridge' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
-          <div className="text-[10px] text-[var(--text-tertiary)] font-mono">Cabecera: <code className="text-[#D97757]">x-bridge-token: ironman_secret_fit3_token_2026</code></div>
+          <div className="text-[10px] text-[var(--text-tertiary)] font-mono">Cabecera: <code className="text-[#D97757]">x-bridge-token: [Tu BRIDGE_API_KEY de Vercel]</code></div>
         </div>
 
         {/* 2. REGISTRO DIRECTO FIT3 (SIN STRAVA API DE PAGO) */}

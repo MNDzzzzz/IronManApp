@@ -87,11 +87,19 @@ async function downloadTelegramAudio(
   botToken: string
 ): Promise<{ base64: string; mimeType: string } | null> {
   try {
-    const resInfo = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`);
+    // Sanitización estricta de fileId contra inyecciones y caracteres extraños
+    if (!fileId || typeof fileId !== 'string' || !/^[a-zA-Z0-9_\-]+$/.test(fileId)) {
+      console.warn('Alerta de seguridad: file_id con caracteres sospechosos rechazado.');
+      return null;
+    }
+
+    const resInfo = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${encodeURIComponent(fileId)}`);
     if (!resInfo.ok) return null;
     const fileData = await resInfo.json();
     const filePath = fileData.result?.file_path;
-    if (!filePath) return null;
+    if (!filePath || typeof filePath !== 'string' || filePath.includes('..') || filePath.startsWith('/')) {
+      return null;
+    }
 
     const resFile = await fetch(`https://api.telegram.org/file/bot${botToken}/${filePath}`);
     if (!resFile.ok) return null;
@@ -124,11 +132,18 @@ async function downloadTelegramPhoto(
     const bestPhoto = photos[photos.length - 1];
     const fileId = bestPhoto.file_id;
 
-    const resInfo = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`);
+    if (!fileId || typeof fileId !== 'string' || !/^[a-zA-Z0-9_\-]+$/.test(fileId)) {
+      console.warn('Alerta de seguridad: photo file_id con caracteres sospechosos rechazado.');
+      return null;
+    }
+
+    const resInfo = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${encodeURIComponent(fileId)}`);
     if (!resInfo.ok) return null;
     const fileData = await resInfo.json();
     const filePath = fileData.result?.file_path;
-    if (!filePath) return null;
+    if (!filePath || typeof filePath !== 'string' || filePath.includes('..') || filePath.startsWith('/')) {
+      return null;
+    }
 
     const resFile = await fetch(`https://api.telegram.org/file/bot${botToken}/${filePath}`);
     if (!resFile.ok) return null;
@@ -1813,6 +1828,16 @@ function parseRelativeDate(dateInput: string, refDateStr: string): string {
 // --------------------------------------------------------------------
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    // 1. Verificación de Seguridad de Origen (Telegram Secret Token)
+    const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const incomingSecret = request.headers.get('x-telegram-bot-api-secret-token');
+      if (incomingSecret !== webhookSecret) {
+        console.warn('Alerta de seguridad: Petición no autorizada al webhook de Telegram.');
+        return NextResponse.json({ error: 'Acceso no autorizado' }, { status: 401 });
+      }
+    }
+
     const update = await request.json();
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const geminiKey = process.env.GEMINI_API_KEY || '';
@@ -3454,8 +3479,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Si se solicita setup=true, registrar automáticamente el webhook en la API de Telegram
     if (setupParam === 'true') {
       try {
+        const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+        const secretParam = webhookSecret ? `&secret_token=${encodeURIComponent(webhookSecret)}` : '';
         const setRes = await fetch(
-          `https://api.telegram.org/bot${botToken}/setWebhook?url=${encodeURIComponent(targetWebhookUrl)}&drop_pending_updates=false`
+          `https://api.telegram.org/bot${botToken}/setWebhook?url=${encodeURIComponent(targetWebhookUrl)}&drop_pending_updates=false${secretParam}`
         );
         setupResult = await setRes.json();
       } catch (err: any) {
