@@ -2,9 +2,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Mic, Square, Loader2, Keyboard, Send, CheckCircle2, AlertCircle } from 'lucide-react';
+import { CoachTurnResult } from '@/lib/coach/coachCore';
 
 interface HeroVoiceButtonProps {
-  onSuccessResult?: (result: any) => void;
+  onSuccessResult?: (result: CoachTurnResult) => void;
   onStatusChange?: (statusText: string) => void;
 }
 
@@ -106,11 +107,12 @@ export const HeroVoiceButton: React.FC<HeroVoiceButtonProps> = ({
         }
         setIsProcessing(false);
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error enviando audio:', err);
       setIsProcessing(false);
       setFeedbackState('error');
-      if (onStatusChange) onStatusChange('Error de red al procesar el audio.');
+      const errorMsg = err instanceof Error ? err.message : 'Error de red al procesar el audio.';
+      if (onStatusChange) onStatusChange(errorMsg);
     }
   };
 

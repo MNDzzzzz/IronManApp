@@ -232,11 +232,7 @@ export default function Home() {
                 latestActivity={activities[0] || null}
                 currentWeight={currentWeight}
                 onQuickAddWater={handleQuickAddWater}
-                onNavigateTab={(tab) => {
-                  if (tab === 'cardio' || tab === 'fuerza') setCurrentTab('entreno');
-                  else if (tab === 'nutricion') setCurrentTab('dieta');
-                  else setCurrentTab(tab as TabType);
-                }}
+                onNavigateTab={(tab) => setCurrentTab(tab)}
                 onSelectActivity={(act) => setSelectedActivity(act)}
                 onOpenReport={() => setIsReportOpen(true)}
                 onReloadData={loadAllData}

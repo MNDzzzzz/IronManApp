@@ -21,6 +21,19 @@ import { CoachChat } from '@/components/coach/CoachChat';
 import { CoachTurnResult } from '@/lib/coach/coachCore';
 import { HeroVoiceButton } from '@/components/voice/HeroVoiceButton';
 import { DynamicIslandCoach } from '@/components/dashboard/DynamicIslandCoach';
+import { TabType } from '@/components/navigation/BottomNav';
+
+export interface EffectiveRoutineItem {
+  date: string;
+  dayName: string;
+  isOverridden?: boolean;
+  routine: {
+    title: string;
+    description: string;
+    category: string;
+    targetSteps: { min: number; max: number };
+  };
+}
 
 interface TodayViewProps {
   health: DailyHealthMetric | null;
@@ -34,7 +47,7 @@ interface TodayViewProps {
   latestActivity: StravaActivity | null;
   currentWeight?: number;
   onQuickAddWater: (amountMl: number) => void;
-  onNavigateTab: (tab: any) => void;
+  onNavigateTab: (tab: TabType) => void;
   onSelectActivity: (activity: StravaActivity) => void;
   onOpenReport?: () => void;
   onReloadData?: () => void;
@@ -74,7 +87,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
   const sleepScore = health?.sleep_score ? `${health.sleep_score}/100` : '--';
 
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [effectiveRoutine, setEffectiveRoutine] = useState<any>(null);
+  const [effectiveRoutine, setEffectiveRoutine] = useState<EffectiveRoutineItem | null>(null);
   const [coachStatusMessage, setCoachStatusMessage] = useState<string>(
     'Head Coach listo. Habla para registrar comidas o mover entrenos.'
   );
@@ -84,8 +97,9 @@ export const TodayView: React.FC<TodayViewProps> = ({
     fetch('/api/schedule')
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && data.schedule) {
-          const todaySched = data.schedule.find((s: any) => s.date === data.referenceDate);
+        if (data.success && Array.isArray(data.schedule)) {
+          const scheduleList = data.schedule as EffectiveRoutineItem[];
+          const todaySched = scheduleList.find((s) => s.date === data.referenceDate);
           if (todaySched) setEffectiveRoutine(todaySched);
         }
       })
