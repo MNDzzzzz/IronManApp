@@ -570,8 +570,8 @@ export async function recalculateDayNutrition(targetDateStr: string): Promise<{
     totalBeforeF += before.fat_g;
 
     const sourceText = meal.raw_audio_transcription || meal.description || '';
-    const explicitMacros = extractExplicitMacrosFromText(sourceText);
     const items = extractItemsFromText(sourceText);
+    const explicitMacros = extractExplicitMacrosFromText(sourceText);
 
     let afterCalories = before.calories;
     let afterProtein = before.protein_g;
@@ -579,19 +579,21 @@ export async function recalculateDayNutrition(targetDateStr: string): Promise<{
     let afterFat = before.fat_g;
     let breakdown = '';
 
-    if (explicitMacros.hasExplicitMacros) {
-      if (explicitMacros.calories !== undefined) afterCalories = explicitMacros.calories;
-      if (explicitMacros.protein_g !== undefined) afterProtein = explicitMacros.protein_g;
-      if (explicitMacros.carbs_g !== undefined) afterCarbs = explicitMacros.carbs_g;
-      if (explicitMacros.fat_g !== undefined) afterFat = explicitMacros.fat_g;
-      breakdown = `🎯 Macros explícitos dictados: ${afterCalories} kcal | ${afterProtein}g P | ${afterCarbs}g HC | ${afterFat}g G`;
-    } else if (items.length > 0) {
+    if (items.length > 0) {
+      // Prioridad 1: Desglose aditivo determinista de ingredientes pesados
       const calc = await calculateMealFromWeighedItems(items);
       afterCalories = calc.totalCalories;
       afterProtein = calc.totalProtein;
       afterCarbs = calc.totalCarbs;
       afterFat = calc.totalFat;
       breakdown = calc.formattedBreakdown;
+    } else if (explicitMacros.hasExplicitMacros) {
+      // Prioridad 2: Macros explícitos para un plato único sin desglose de ingredientes
+      if (explicitMacros.calories !== undefined) afterCalories = explicitMacros.calories;
+      if (explicitMacros.protein_g !== undefined) afterProtein = explicitMacros.protein_g;
+      if (explicitMacros.carbs_g !== undefined) afterCarbs = explicitMacros.carbs_g;
+      if (explicitMacros.fat_g !== undefined) afterFat = explicitMacros.fat_g;
+      breakdown = `🎯 Macros explícitos dictados: ${afterCalories} kcal | ${afterProtein}g P | ${afterCarbs}g HC | ${afterFat}g G`;
     }
 
     totalAfterKcal += afterCalories;
@@ -745,19 +747,21 @@ export async function executeCoachTurn({
         let finalCarbs = Number(nutri.carbs_g) || 0;
         let finalFat = Number(nutri.fat_g) || 0;
 
-        if (userHasExactMacros) {
-          if (explicitMacros.calories !== undefined) finalCalories = explicitMacros.calories;
-          if (explicitMacros.protein_g !== undefined) finalProtein = explicitMacros.protein_g;
-          if (explicitMacros.carbs_g !== undefined) finalCarbs = explicitMacros.carbs_g;
-          if (explicitMacros.fat_g !== undefined) finalFat = explicitMacros.fat_g;
-          breakdownText = `Macros dictados: ${finalCalories} kcal | ${finalProtein}g P | ${finalCarbs}g HC | ${finalFat}g G`;
-        } else if (itemsToCalculate.length > 0) {
+        if (itemsToCalculate.length > 0) {
+          // Prioridad 1: Desglose aditivo determinista de ingredientes pesados
           const calc = await calculateMealFromWeighedItems(itemsToCalculate);
           finalCalories = calc.totalCalories;
           finalProtein = calc.totalProtein;
           finalCarbs = calc.totalCarbs;
           finalFat = calc.totalFat;
           breakdownText = calc.formattedBreakdown;
+        } else if (userHasExactMacros) {
+          // Prioridad 2: Macros explícitos para un plato único sin desglose de ingredientes
+          if (explicitMacros.calories !== undefined) finalCalories = explicitMacros.calories;
+          if (explicitMacros.protein_g !== undefined) finalProtein = explicitMacros.protein_g;
+          if (explicitMacros.carbs_g !== undefined) finalCarbs = explicitMacros.carbs_g;
+          if (explicitMacros.fat_g !== undefined) finalFat = explicitMacros.fat_g;
+          breakdownText = `Macros dictados: ${finalCalories} kcal | ${finalProtein}g P | ${finalCarbs}g HC | ${finalFat}g G`;
         }
 
         const newMeal: NutritionLog = {

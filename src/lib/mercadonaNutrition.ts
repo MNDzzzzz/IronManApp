@@ -39,6 +39,12 @@ export interface WeighedItemInput {
   food: string;
   amount: number;
   unit?: string; // 'g', 'ml', 'unidad', 'rebanada', 'lata', etc.
+  explicit_macros_100g?: {
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+  };
   ai_calories_100g?: number;
   ai_protein_100g?: number;
   ai_carbs_100g?: number;
@@ -54,7 +60,7 @@ export interface CalculatedItemResult {
   protein_g: number;
   carbs_g: number;
   fat_g: number;
-  source: 'mercadona_catalog' | 'open_food_facts' | 'bedca_referencia' | 'heuristica_ia' | 'heuristica';
+  source: 'mercadona_catalog' | 'open_food_facts' | 'bedca_referencia' | 'heuristica_ia' | 'heuristica' | 'etiqueta_dictada';
 }
 
 export interface MealCalculationResult {
@@ -2210,6 +2216,32 @@ export async function resolveSingleFoodItem(
 ): Promise<CalculatedItemResult> {
   const cleanName = cleanFoodSearchQuery(itemInput.food) || itemInput.food;
 
+  // 0. Prioridad suprema: Si el atleta dictó la etiqueta exacta por 100g para este producto
+  if (itemInput.explicit_macros_100g) {
+    const macros = itemInput.explicit_macros_100g;
+    let effectiveGrams = Number(itemInput.amount);
+    if (isNaN(effectiveGrams) || effectiveGrams <= 0) {
+      effectiveGrams = 100;
+    }
+    const factor = effectiveGrams / 100;
+    const itemCalories = Math.round(macros.calories * factor);
+    const itemProtein = parseFloat((macros.protein_g * factor).toFixed(1));
+    const itemCarbs = parseFloat((macros.carbs_g * factor).toFixed(1));
+    const itemFat = parseFloat((macros.fat_g * factor).toFixed(1));
+
+    return {
+      foodName: itemInput.food,
+      matchedName: cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
+      brand: 'Etiqueta dictada por voz',
+      grams: Math.round(effectiveGrams),
+      calories: itemCalories,
+      protein_g: itemProtein,
+      carbs_g: itemCarbs,
+      fat_g: itemFat,
+      source: 'etiqueta_dictada',
+    };
+  }
+
   // 1. Prioridad absoluta: Comprobar la despensa / memoria de alimentos frecuentes de Álvaro
   let frequentMatch = await findUserFrequentFood(itemInput.food);
   if (!frequentMatch && cleanName !== itemInput.food) {
@@ -2380,7 +2412,9 @@ export async function calculateMealFromWeighedItems(
   // Formatear desglose visual para Telegram
   const breakdownLines = calculatedItems.map((it) => {
     const sourceIcon =
-      it.source === 'mercadona_catalog'
+      it.source === 'etiqueta_dictada'
+        ? '🏷️ Etiqueta dictada'
+        : it.source === 'mercadona_catalog'
         ? '🟢 Mercadona'
         : it.source === 'open_food_facts'
         ? '🔵 OpenFoodFacts'
@@ -2406,14 +2440,37 @@ export async function calculateMealFromWeighedItems(
 }
 
 /**
+ * Parsea macros de un fragmento de texto con mención por 100g.
+ */
+function parseMacros100gFromText(str: string): { calories: number; protein_g: number; carbs_g: number; fat_g: number } | null {
+  const lower = str.toLowerCase();
+  const kcalMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:kcal|calorias|calorías|cal)\b/i);
+  const protMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:g|gr|gramos)?\s*(?:de\s+)?(?:prot|proteina|proteinas|proteína|proteínas)\b/i);
+  const carbMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:g|gr|gramos)?\s*(?:de\s+)?(?:carb|carbs|carbohidrato|carbohidratos|hidrato|hidratos|ch)\b/i);
+  const fatMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:g|gr|gramos)?\s*(?:de\s+)?(?:grasa|grasas|fat)\b/i);
+
+  if (!kcalMatch && !protMatch && !carbMatch && !fatMatch) return null;
+  return {
+    calories: kcalMatch ? Math.round(parseFloat(kcalMatch[1].replace(',', '.'))) : 0,
+    protein_g: protMatch ? parseFloat(parseFloat(protMatch[1].replace(',', '.')).toFixed(1)) : 0,
+    carbs_g: carbMatch ? parseFloat(parseFloat(carbMatch[1].replace(',', '.')).toFixed(1)) : 0,
+    fat_g: fatMatch ? parseFloat(parseFloat(fatMatch[1].replace(',', '.')).toFixed(1)) : 0,
+  };
+}
+
+/**
  * Limpia y normaliza el nombre del alimento extrayendo prefijos conversacionales o de preparación.
  */
 function cleanFoodName(rawFood: string): string {
   if (!rawFood) return '';
   return rawFood
     .trim()
+    .replace(/__MACROS_100G_\d+__/g, '')
     .replace(/^[;:,.\-\s]+|[;:,.\-\s]+$/g, '')
     .replace(/^(?:para cocinar(?:lo|la|los|las| estas dos cosas| todo esto)?\s+(?:hemos usado|usamos|use|usé)?|hemos usado|usamos|usé|le puse|le pusimos|de\s+)\s*/i, '')
+    .replace(/^(?:finalmente,?\s+)?(?:he\s+(?:usado|puesto|tomado|comido|añadido)|puse|tomé|comí|añadí)?\s*/i, '')
+    .replace(/^(?:un|una|unos|unas)\s+/i, '')
+    .replace(/\s+(?:que\s+pesaba|pesaba|de\s+peso|en\s+peso)$/i, '')
     .replace(/^[;:,.\-\s]+|[;:,.\-\s]+$/g, '')
     .trim();
 }
@@ -2421,16 +2478,32 @@ function cleanFoodName(rawFood: string): string {
 /**
  * Extrae ingredientes y cantidades en gramos de un texto en lenguaje natural
  * (ej: "he puesto 25 gramos de crema de cacahuete", "200g pechuga de pollo y 80g arroz").
- * Respeta rigurosamente los gramos dictados y nunca inventa cantidades por defecto.
+ * Respeta rigurosamente los gramos dictados, preserva las etiquetas nutricionales por 100g
+ * asociadas a cada ingrediente y nunca inventa cantidades por defecto.
  */
 export function extractItemsFromText(text: string): WeighedItemInput[] {
   if (!text || !text.trim()) return [];
 
   const items: WeighedItemInput[] = [];
 
-  // 1. Limpiar menciones de macros (ej: "155 kcal", "7.5g proteina", etc.) para que no interfieran
-  // pero conservando los alimentos y sus pesajes
-  let cleanedText = text
+  // 1. Extraer cláusulas nutricionales por 100g y sustituirlas por tokens únicos antes de segmentar
+  const labelPattern = /(?:,\s*|\.\s*|\s+)?(?:que\s+)?(?:por\s+(?:cada\s+)?100\s*(?:g|gr|gramos)?(?:\s*de\s+producto)?|(?:los\s+)?valores\s+por\s+100\s*(?:g|gr|gramos)?)\s*(?:tiene|son|marca|pone|es|de)?\s*([^.]+?)(?=(?:\.(?:\s+|$)|;\s*|\s+(?:y\s+)?(?:después|luego|además)\b|$))/gi;
+
+  const macrosMap = new Map<string, { calories: number; protein_g: number; carbs_g: number; fat_g: number }>();
+  let tokenIdx = 0;
+
+  const processedText = text.replace(labelPattern, (match, content) => {
+    const macros = parseMacros100gFromText(content);
+    if (macros) {
+      const token = `__MACROS_100G_${tokenIdx++}__`;
+      macrosMap.set(token, macros);
+      return ' ' + token;
+    }
+    return match;
+  });
+
+  // 2. Limpiar menciones de macros residuales (pero conservando los tokens __MACROS_100G_X__)
+  let cleanedText = processedText
     .replace(/\b\d+(?:[.,]\d+)?\s*(?:kcal|calorias|calorías|cal)\b/gi, '')
     .replace(/\b\d+(?:[.,]\d+)?\s*(?:gramos|gr|g)?\s*(?:de\s+)?(?:prot|proteina|proteinas|proteína|proteínas|carb|carbs|hidrato|hidratos|ch|grasa|grasas|fat)\b/gi, '')
     // Reemplazar conectores de elaboración que introducen un nuevo alimento
@@ -2466,7 +2539,15 @@ export function extractItemsFromText(text: string): WeighedItemInput[] {
     }
   }
 
-  for (const rawSeg of segments) {
+  for (let rawSeg of segments) {
+    // Si el segmento contiene un token de macros por 100g, extraerlo
+    let segMacros: { calories: number; protein_g: number; carbs_g: number; fat_g: number } | undefined = undefined;
+    const tokenMatch = rawSeg.match(/__MACROS_100G_(\d+)__/);
+    if (tokenMatch) {
+      segMacros = macrosMap.get(tokenMatch[0]);
+      rawSeg = rawSeg.replace(/__MACROS_100G_\d+__/g, '').trim();
+    }
+
     // Quitar verbos y fórmulas conversacionales
     let seg = rawSeg
       .replace(/^(?:he\s+(?:puesto|tomado|comido|bebido|cenado|merendado|añadido)|puse|tomé|tome|comí|comi|añadí|anadi|añadi|le\s+eché|le\s+eche|eché|eche|le\s+puse|llevaba|lleva|metí|meti|para\s+(?:desayunar|comer|cenar|merendar)|de\s+desayuno|de\s+comida|de\s+cena|de\s+merienda)\s+/i, '')
@@ -2481,7 +2562,7 @@ export function extractItemsFromText(text: string): WeighedItemInput[] {
       const amount = parseFloat(gramFrontMatch[1].replace(',', '.'));
       const food = cleanFoodName(gramFrontMatch[2]);
       if (food.length > 1) {
-        items.push({ food, amount, unit: 'g' });
+        items.push({ food, amount, unit: 'g', explicit_macros_100g: segMacros });
         continue;
       }
     }
@@ -2492,7 +2573,7 @@ export function extractItemsFromText(text: string): WeighedItemInput[] {
       const food = cleanFoodName(gramEndMatch[1]);
       const amount = parseFloat(gramEndMatch[2].replace(',', '.'));
       if (food.length > 1) {
-        items.push({ food, amount, unit: 'g' });
+        items.push({ food, amount, unit: 'g', explicit_macros_100g: segMacros });
         continue;
       }
     }
@@ -2503,7 +2584,7 @@ export function extractItemsFromText(text: string): WeighedItemInput[] {
       const amount = parseFloat(gramAnywhereMatch[1].replace(',', '.'));
       const food = cleanFoodName(gramAnywhereMatch[2]);
       if (food.length > 1) {
-        items.push({ food, amount, unit: 'g' });
+        items.push({ food, amount, unit: 'g', explicit_macros_100g: segMacros });
         continue;
       }
     }
@@ -2515,7 +2596,7 @@ export function extractItemsFromText(text: string): WeighedItemInput[] {
       const unit = unitMatch[2].toLowerCase();
       const rest = unitMatch[3]?.trim().replace(/^[;:,.\-\s]+|[;:,.\-\s]+$/g, '');
       const food = rest && rest.length > 1 ? `${unit} de ${rest}` : unit;
-      items.push({ food, amount, unit });
+      items.push({ food, amount, unit, explicit_macros_100g: segMacros });
       continue;
     }
 
@@ -2523,12 +2604,12 @@ export function extractItemsFromText(text: string): WeighedItemInput[] {
     const numOnlyMatch = seg.match(/^(\d+(?:[.,]\d+)?)\s+(?:de\s+)?([a-záéíóúñ\s]+)$/i);
     if (numOnlyMatch) {
       const amount = parseFloat(numOnlyMatch[1].replace(',', '.'));
-      const food = numOnlyMatch[2].trim();
+      const food = cleanFoodName(numOnlyMatch[2]);
       if (amount >= 20 && food.length > 2) {
-        items.push({ food, amount, unit: 'g' });
+        items.push({ food, amount, unit: 'g', explicit_macros_100g: segMacros });
         continue;
       } else if (amount < 20 && food.length > 2) {
-        items.push({ food, amount, unit: 'unidad' });
+        items.push({ food, amount, unit: 'unidad', explicit_macros_100g: segMacros });
         continue;
       }
     }
@@ -2536,8 +2617,8 @@ export function extractItemsFromText(text: string): WeighedItemInput[] {
     // 6. Patrón Artículos ("un platano", "una manzana", "un café")
     const articleMatch = seg.match(/^(?:un|una|1)\s+([a-záéíóúñ\s]+)$/i);
     if (articleMatch) {
-      const food = articleMatch[1].trim();
-      items.push({ food, amount: 1, unit: 'unidad' });
+      const food = cleanFoodName(articleMatch[1]);
+      items.push({ food, amount: 1, unit: 'unidad', explicit_macros_100g: segMacros });
       continue;
     }
 
@@ -2548,9 +2629,9 @@ export function extractItemsFromText(text: string): WeighedItemInput[] {
       if (anyNum) {
         const numVal = parseFloat(anyNum[1].replace(',', '.'));
         const unit = numVal >= 15 ? 'g' : 'unidad';
-        items.push({ food: seg, amount: numVal, unit });
+        items.push({ food: cleanFoodName(seg), amount: numVal, unit, explicit_macros_100g: segMacros });
       } else {
-        items.push({ food: seg, amount: 1, unit: 'unidad' });
+        items.push({ food: cleanFoodName(seg), amount: 1, unit: 'unidad', explicit_macros_100g: segMacros });
       }
     }
   }

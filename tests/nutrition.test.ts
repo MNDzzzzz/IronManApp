@@ -72,3 +72,49 @@ test('TDD: Inmutabilidad del catálogo tras procesar alimentos con menciones cru
   assert.strictEqual(cleanContramuslo.carbs_g, 0, 'Carbohidratos deben ser 0g');
   assert.ok(cleanContramuslo.calories < 200, 'Calorías deben corresponder a contramuslo (~178 kcal), nunca aceite (~824 kcal)');
 });
+
+test('TDD: Desayuno complejo con 5 ingredientes y etiquetas nutricionales por 100g dictadas por voz', async () => {
+  const audioText = 'Finalmente, he usado un huevo que pesaba 54 g, 151 g de claras de huevo pasteurizadas, 20 g de espinacas, 40 g de queso mozzarella gouda rallado, que por 100 g tiene 326 calorías, 25 g de grasas, 3,3 g de hidratos de carbono y 22 g de proteína. Y después, 80 g de pechuga de pavo en finas lonchas, que por 100 g tiene 76 calorías, 0,5 de grasas, 1,3 de hidratos de carbono y 16,5 g de proteína. Todos estos valores antes de cocinar.';
+
+  const items = extractItemsFromText(audioText);
+
+  // Deben extraerse exactamente 5 ingredientes
+  assert.strictEqual(items.length, 5, `Esperados 5 alimentos pero se obtuvieron ${items.length}: ${JSON.stringify(items)}`);
+
+  const huevo = items.find(i => i.food.toLowerCase().includes('huevo') && !i.food.toLowerCase().includes('clara'));
+  const claras = items.find(i => i.food.toLowerCase().includes('clara'));
+  const espinacas = items.find(i => i.food.toLowerCase().includes('espinaca'));
+  const queso = items.find(i => i.food.toLowerCase().includes('queso') || i.food.toLowerCase().includes('gouda') || i.food.toLowerCase().includes('mozzarella'));
+  const pavo = items.find(i => i.food.toLowerCase().includes('pavo'));
+
+  assert.ok(huevo, 'Debe detectar el huevo');
+  assert.strictEqual(huevo?.amount, 54);
+
+  assert.ok(claras, 'Debe detectar las claras');
+  assert.strictEqual(claras?.amount, 151);
+
+  assert.ok(espinacas, 'Debe detectar las espinacas');
+  assert.strictEqual(espinacas?.amount, 20);
+
+  assert.ok(queso, 'Debe detectar el queso con su etiqueta por 100g');
+  assert.strictEqual(queso?.amount, 40);
+  assert.ok(queso?.explicit_macros_100g, 'El queso debe tener explicit_macros_100g');
+  assert.strictEqual(queso?.explicit_macros_100g?.calories, 326);
+  assert.strictEqual(queso?.explicit_macros_100g?.fat_g, 25);
+  assert.strictEqual(queso?.explicit_macros_100g?.protein_g, 22);
+
+  assert.ok(pavo, 'Debe detectar la pechuga de pavo con su etiqueta por 100g');
+  assert.strictEqual(pavo?.amount, 80);
+  assert.ok(pavo?.explicit_macros_100g, 'El pavo debe tener explicit_macros_100g');
+  assert.strictEqual(pavo?.explicit_macros_100g?.calories, 76);
+  assert.strictEqual(pavo?.explicit_macros_100g?.protein_g, 16.5);
+
+  const meal = await calculateMealFromWeighedItems(items);
+
+  // Verificación bromatológica acumulada estricta:
+  // ~345-360 kcal, ~44-48g de proteína real, ~3.5-4.5g carbohidratos, ~15-17g grasas
+  assert.ok(meal.totalCalories >= 330 && meal.totalCalories <= 370, `Calorías esperadas ~349 pero fueron ${meal.totalCalories}`);
+  assert.ok(meal.totalProtein >= 44 && meal.totalProtein <= 48, `Proteína esperada ~46g pero fue ${meal.totalProtein}`);
+  assert.ok(meal.totalFat >= 14 && meal.totalFat <= 18, `Grasa esperada ~16g pero fue ${meal.totalFat}`);
+});
+

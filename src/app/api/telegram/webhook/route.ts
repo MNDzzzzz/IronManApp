@@ -3012,8 +3012,28 @@ ${aiResult.coach_tip ? `💡 *Coach:* _${aiResult.coach_tip}_` : ''}
       let finalFat = Number(nutri.fat_g) || 0;
       let breakdownText = '';
 
-      if (userHasExactMacros) {
-        // PRIORIDAD 1: Si Álvaro dictó números explícitos de macros, RESPETARLOS AL 100%
+      if (itemsToCalculate.length > 0) {
+        // PRIORIDAD 1: Sumatorio aditivo determinista de ingredientes pesados (Mercadona & Despensa)
+        const calc = await calculateMealFromWeighedItems(itemsToCalculate);
+        finalCalories = calc.totalCalories;
+        finalProtein = calc.totalProtein;
+        finalCarbs = calc.totalCarbs;
+        finalFat = calc.totalFat;
+        breakdownText = `\n📦 *Desglose de Alimentos Pesados (Mercadona & Despensa):*\n${calc.formattedBreakdown}\n`;
+
+        // Si es 1 solo alimento con macros dictados por el usuario, memorizarlo para el futuro
+        if (itemsToCalculate.length === 1 && itemsToCalculate[0].explicit_macros_100g) {
+          const m = itemsToCalculate[0].explicit_macros_100g;
+          memorizeUserFood({
+            name: itemsToCalculate[0].food,
+            calories_100g: m.calories,
+            protein_100g: m.protein_g,
+            carbs_100g: m.carbs_g,
+            fat_100g: m.fat_g,
+          }).catch(err => console.warn('Aviso memorizando alimento frecuente:', err));
+        }
+      } else if (userHasExactMacros) {
+        // PRIORIDAD 2: Plato sin desglose con macros globales dictados
         if (explicitMacros.calories !== undefined) finalCalories = explicitMacros.calories;
         if (explicitMacros.protein_g !== undefined) finalProtein = explicitMacros.protein_g;
         if (explicitMacros.carbs_g !== undefined) finalCarbs = explicitMacros.carbs_g;
@@ -3025,28 +3045,6 @@ ${aiResult.coach_tip ? `💡 *Coach:* _${aiResult.coach_tip}_` : ''}
         }
 
         breakdownText = `\n🎯 *Macros Dictados por Álvaro (Exactitud 100% Báscula):*\n• Calorías: *${finalCalories}* kcal\n• Proteína: *${finalProtein}g*\n• Carbohidratos: *${finalCarbs}g*\n• Grasas: *${finalFat}g*\n`;
-
-        // Si además especificó un alimento concreto y sus gramos (ej: "25g de crema de cacahuete"),
-        // memorizarlo/actualizarlo en su despensa frecuente con sus valores por 100g para el futuro
-        if (itemsToCalculate.length === 1 && itemsToCalculate[0].amount > 0 && itemsToCalculate[0].unit === 'g') {
-          const it = itemsToCalculate[0];
-          const factor100 = 100 / it.amount;
-          memorizeUserFood({
-            name: it.food,
-            calories_100g: Math.round(finalCalories * factor100),
-            protein_100g: parseFloat((finalProtein * factor100).toFixed(1)),
-            carbs_100g: parseFloat((finalCarbs * factor100).toFixed(1)),
-            fat_100g: parseFloat((finalFat * factor100).toFixed(1)),
-          }).catch(err => console.warn('Aviso memorizando alimento frecuente:', err));
-        }
-      } else if (itemsToCalculate.length > 0) {
-        // PRIORIDAD 2: Si no dio macros explícitos pero sí alimentos con pesaje en gramos o unidades
-        const calc = await calculateMealFromWeighedItems(itemsToCalculate);
-        finalCalories = calc.totalCalories;
-        finalProtein = calc.totalProtein;
-        finalCarbs = calc.totalCarbs;
-        finalFat = calc.totalFat;
-        breakdownText = `\n📦 *Desglose de Alimentos Pesados (Mercadona & Despensa):*\n${calc.formattedBreakdown}\n`;
       } else {
         // Si no se desglosaron ingredientes específicos, asegurar cuadre estricto de macros
         const mathKcal = Math.round(4 * finalProtein + 4 * finalCarbs + 9 * finalFat);
