@@ -11,6 +11,21 @@ const config: Config = {
     extend: {
       colors: {
         oled: "#000000",
+        // Paleta base Ivory Cream (Claude) y Slate/Obsidian
+        ivory: {
+          50: "#FCFCF9",
+          100: "#FAF9F5",
+          200: "#F3F1EA",
+          300: "#E5E2D9",
+          400: "#C9C5B9",
+          900: "#141413",
+        },
+        obsidian: {
+          950: "#07090E",
+          900: "#0A0D14",
+          850: "#111520",
+          800: "#181E2C",
+        },
         surface: {
           DEFAULT: "#121214",
           card: "#18181b",
@@ -24,7 +39,15 @@ const config: Config = {
           amber: "#F59E0B",
           cyan: "#06B6D4",
           blue: "#3B82F6",
+          clay: "#D97757",    // Acento Claude Hero / Micrófono
+          sage: "#3B7C62",    // Cuidado articular / Z2
         },
+      },
+      boxShadow: {
+        'liquid-light': '0 10px 30px -5px rgba(20, 20, 19, 0.05), 0 2px 8px -2px rgba(20, 20, 19, 0.03)',
+        'liquid-dark': '0 14px 40px -10px rgba(0, 0, 0, 0.50), 0 2px 10px -2px rgba(0, 0, 0, 0.30)',
+        'liquid-bevel-light': 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.95)',
+        'liquid-bevel-dark': 'inset 0 1px 0 0 rgba(255, 255, 255, 0.14)',
       },
       fontFamily: {
         sans: [
