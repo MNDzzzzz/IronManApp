@@ -4,12 +4,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { TopBar } from '@/components/navigation/TopBar';
 import { BottomNav, TabType } from '@/components/navigation/BottomNav';
 import { TodayView } from '@/components/dashboard/TodayView';
-import { CardioView } from '@/components/cardio/CardioView';
-import { GymView } from '@/components/gym/GymView';
+import { AdaptiveWorkoutView } from '@/components/workout/AdaptiveWorkoutView';
 import { NutritionView } from '@/components/nutrition/NutritionView';
 import { HealthView } from '@/components/health/HealthView';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import { WeeklyReportView } from '@/components/reports/WeeklyReportView';
+import { useTheme } from '@/lib/theme/useTheme';
 import {
   DailyHealthMetric,
   StravaActivity,
@@ -26,6 +26,9 @@ export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<StravaActivity | null>(null);
+
+  // Hook de gestión de Modo Claro / Oscuro Liquid Glass
+  const { isDark, toggleTheme } = useTheme();
 
   // Estados de datos
   const [health, setHealth] = useState<DailyHealthMetric | null>(null);
@@ -95,132 +98,64 @@ export default function Home() {
     }
   }, []);
 
-
   useEffect(() => {
     loadAllData();
   }, [loadAllData]);
 
-  // Manejador rápido y optimista para añadir o restar agua
+  // Atajos de teclado en Desktop (1080p, 2K, 4K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      if (e.key === '1') setCurrentTab('hoy');
+      if (e.key === '2') setCurrentTab('entreno');
+      if (e.key === '3') setCurrentTab('dieta');
+      if (e.key === '4') setCurrentTab('salud');
+      if (e.key.toLowerCase() === 't') toggleTheme();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toggleTheme]);
+
+  // Manejadores de mutación en Nutrición
+  const handleAddMeal = async (mealData: Partial<NutritionLog>) => {
+    const res = await fetch('/api/nutrition', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(mealData),
+    });
+    if (res.ok) {
+      await loadAllData();
+    }
+  };
+
+  const handleDeleteMeal = async (mealId: string) => {
+    const res = await fetch(`/api/nutrition?id=${encodeURIComponent(mealId)}&type=meal`, { method: 'DELETE' });
+    if (res.ok) {
+      await loadAllData();
+    }
+  };
+
   const handleQuickAddWater = async (amountMl: number, date?: string) => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const targetDate = date || todayStr;
-    const isToday = targetDate === todayStr;
-
-    if (amountMl > 0) {
-      const tempId = `water-temp-${Date.now()}`;
-      const tempWater: WaterLog = {
-        id: tempId,
-        date: targetDate,
-        timestamp: new Date().toISOString(),
-        amount_ml: amountMl,
-      };
-
-      // 1. Actualización optimista inmediata (0 ms)
-      setWaterLogs((prev) => [tempWater, ...prev]);
-      if (isToday) {
-        setNutritionTotals((prev) => ({
-          ...prev,
-          water_ml: prev.water_ml + amountMl,
-        }));
-      }
-
-      // 2. Persistencia en backend
-      try {
-        const res = await fetch('/api/nutrition', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'water', amount_ml: amountMl, date: targetDate }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.water) {
-            setWaterLogs((prev) => prev.map((w) => (w.id === tempId ? data.water : w)));
-          }
-        } else {
-          // Revertir en caso de error
-          setWaterLogs((prev) => prev.filter((w) => w.id !== tempId));
-          if (isToday) {
-            setNutritionTotals((prev) => ({
-              ...prev,
-              water_ml: Math.max(0, prev.water_ml - amountMl),
-            }));
-          }
-        }
-      } catch (e) {
-        setWaterLogs((prev) => prev.filter((w) => w.id !== tempId));
-        if (isToday) {
-          setNutritionTotals((prev) => ({
-            ...prev,
-            water_ml: Math.max(0, prev.water_ml - amountMl),
-          }));
-        }
-      }
-    } else if (amountMl < 0) {
-      // Restar agua optimista
-      const subAmount = Math.abs(amountMl);
-      let subtractedActual = 0;
-
-      setWaterLogs((prev) => {
-        const dateLogs = prev.filter((w) => w.date === targetDate);
-        if (dateLogs.length === 0) return prev;
-        const latest = dateLogs[0];
-        if (latest.amount_ml <= subAmount) {
-          subtractedActual = latest.amount_ml;
-          return prev.filter((w) => w.id !== latest.id);
-        } else {
-          subtractedActual = subAmount;
-          return prev.map((w) =>
-            w.id === latest.id ? { ...w, amount_ml: w.amount_ml - subAmount } : w
-          );
-        }
-      });
-
-      if (isToday) {
-        setNutritionTotals((prev) => ({
-          ...prev,
-          water_ml: Math.max(0, prev.water_ml - subAmount),
-        }));
-      }
-
-      try {
-        await fetch('/api/nutrition', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'water', amount_ml: amountMl, date: targetDate }),
-        });
-      } catch (e) {
-        console.error('Error restando agua:', e);
-      }
+    const res = await fetch('/api/nutrition', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'add_water', amount_ml: amountMl, date }),
+    });
+    if (res.ok) {
+      await loadAllData();
     }
   };
 
-  // Manejador para eliminar una toma de agua específica
-  const handleDeleteWater = async (waterId: string) => {
-    const target = waterLogs.find((w) => w.id === waterId);
-    if (!target) return;
-
-    const todayStr = new Date().toISOString().split('T')[0];
-    const isToday = target.date === todayStr;
-
-    // Optimista
-    setWaterLogs((prev) => prev.filter((w) => w.id !== waterId));
-    if (isToday) {
-      setNutritionTotals((prev) => ({
-        ...prev,
-        water_ml: Math.max(0, prev.water_ml - target.amount_ml),
-      }));
-    }
-
-    try {
-      await fetch(`/api/nutrition?id=${encodeURIComponent(waterId)}&type=water`, {
-        method: 'DELETE',
-      });
-    } catch (e) {
-      console.error('Error eliminando agua:', e);
+  const handleDeleteWater = async (logId: string) => {
+    const res = await fetch(`/api/nutrition?action=delete_water&id=${encodeURIComponent(logId)}`, { method: 'DELETE' });
+    if (res.ok) {
+      await loadAllData();
     }
   };
 
-  // Manejador optimista para registrar serie de gimnasio
+  // Manejadores de mutación en Gimnasio
   const handleAddGymSet = async (logData: {
     exercise_id: string;
     set_number: number;
@@ -228,215 +163,42 @@ export default function Home() {
     weight_kg: number;
     rpe?: number;
   }) => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const tempId = `log-temp-${Date.now()}`;
-    const tempLog: GymWorkoutLog = {
-      id: tempId,
-      date: todayStr,
-      exercise_id: logData.exercise_id,
-      set_number: logData.set_number,
-      reps: logData.reps,
-      weight_kg: logData.weight_kg,
-      rpe: logData.rpe,
-      created_at: new Date().toISOString(),
-    };
-
-    // Actualización optimista inmediata
-    setGymLogs((prev) => [...prev, tempLog]);
-
-    try {
-      const res = await fetch('/api/gym', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(logData),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.log) {
-          setGymLogs((prev) => prev.map((l) => (l.id === tempId ? data.log : l)));
-        }
-      } else {
-        setGymLogs((prev) => prev.filter((l) => l.id !== tempId));
-      }
-    } catch (e) {
-      setGymLogs((prev) => prev.filter((l) => l.id !== tempId));
+    const res = await fetch('/api/gym', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(logData),
+    });
+    if (res.ok) {
+      await loadAllData();
     }
   };
 
-  // Manejador para eliminar serie de gimnasio
   const handleDeleteGymSet = async (logId: string) => {
-    setGymLogs((prev) => prev.filter((l) => l.id !== logId));
-    try {
-      await fetch(`/api/gym?id=${encodeURIComponent(logId)}`, {
-        method: 'DELETE',
-      });
-    } catch (e) {
-      console.error('Error eliminando serie:', e);
+    const res = await fetch(`/api/gym?id=${encodeURIComponent(logId)}`, { method: 'DELETE' });
+    if (res.ok) {
+      await loadAllData();
     }
   };
 
-  // Manejador optimista para añadir comida manual
-  const handleAddMeal = async (mealData: Partial<NutritionLog>) => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const mealDate = mealData.date || todayStr;
-    const isToday = mealDate === todayStr;
-
-    const tempId = `nutri-temp-${Date.now()}`;
-    const caloriesNum = Number(mealData.calories || 0);
-    const proteinNum = Number(mealData.protein_g || 0);
-    const carbsNum = Number(mealData.carbs_g || 0);
-    const fatNum = Number(mealData.fat_g || 0);
-
-    const tempMeal: NutritionLog = {
-      id: tempId,
-      timestamp: new Date().toISOString(),
-      date: mealDate,
-      meal_type: mealData.meal_type || 'Snack',
-      description: mealData.description || 'Comida',
-      calories: caloriesNum,
-      protein_g: proteinNum,
-      carbs_g: carbsNum,
-      fat_g: fatNum,
-    };
-
-    // 1. Optimista inmediato
-    setNutritionMeals((prev) => [tempMeal, ...prev]);
-    if (isToday) {
-      setNutritionTotals((prev) => ({
-        ...prev,
-        calories: prev.calories + caloriesNum,
-        protein_g: Number((prev.protein_g + proteinNum).toFixed(1)),
-        carbs_g: Number((prev.carbs_g + carbsNum).toFixed(1)),
-        fat_g: Number((prev.fat_g + fatNum).toFixed(1)),
-      }));
-    }
-
-    // 2. Red en background
-    try {
-      const res = await fetch('/api/nutrition', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mealData),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.meal) {
-          setNutritionMeals((prev) => prev.map((m) => (m.id === tempId ? data.meal : m)));
-        }
-      } else {
-        // Rollback
-        setNutritionMeals((prev) => prev.filter((m) => m.id !== tempId));
-        if (isToday) {
-          setNutritionTotals((prev) => ({
-            ...prev,
-            calories: Math.max(0, prev.calories - caloriesNum),
-            protein_g: Math.max(0, Number((prev.protein_g - proteinNum).toFixed(1))),
-            carbs_g: Math.max(0, Number((prev.carbs_g - carbsNum).toFixed(1))),
-            fat_g: Math.max(0, Number((prev.fat_g - fatNum).toFixed(1))),
-          }));
-        }
-      }
-    } catch (e) {
-      setNutritionMeals((prev) => prev.filter((m) => m.id !== tempId));
-      if (isToday) {
-        setNutritionTotals((prev) => ({
-          ...prev,
-          calories: Math.max(0, prev.calories - caloriesNum),
-          protein_g: Math.max(0, Number((prev.protein_g - proteinNum).toFixed(1))),
-          carbs_g: Math.max(0, Number((prev.carbs_g - carbsNum).toFixed(1))),
-          fat_g: Math.max(0, Number((prev.fat_g - fatNum).toFixed(1))),
-        }));
-      }
-    }
-  };
-
-  // Manejador optimista para eliminar comida
-  const handleDeleteMeal = async (mealId: string) => {
-    const targetMeal = nutritionMeals.find((m) => m.id === mealId);
-    if (!targetMeal) return;
-
-    const todayStr = new Date().toISOString().split('T')[0];
-    const isToday = targetMeal.date === todayStr;
-
-    // Optimista inmediato
-    setNutritionMeals((prev) => prev.filter((m) => m.id !== mealId));
-    if (isToday) {
-      setNutritionTotals((prev) => ({
-        ...prev,
-        calories: Math.max(0, prev.calories - targetMeal.calories),
-        protein_g: Math.max(0, Number((prev.protein_g - targetMeal.protein_g).toFixed(1))),
-        carbs_g: Math.max(0, Number((prev.carbs_g - targetMeal.carbs_g).toFixed(1))),
-        fat_g: Math.max(0, Number((prev.fat_g - targetMeal.fat_g).toFixed(1))),
-      }));
-    }
-
-    try {
-      await fetch(`/api/nutrition?id=${encodeURIComponent(mealId)}&type=meal`, {
-        method: 'DELETE',
-      });
-    } catch (e) {
-      console.error('Error eliminando comida:', e);
-    }
-  };
-
-  // Manejador optimista para registrar pesaje
+  // Manejadores de mutación en Peso Corporal
   const handleAddWeight = async (weightKg: number, notes?: string, date?: string) => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const logDate = date || todayStr;
-    const tempId = `weight-temp-${Date.now()}`;
-    const tempLog: WeightLog = {
-      id: tempId,
-      date: logDate,
-      timestamp: new Date().toISOString(),
-      weight_kg: weightKg,
-      notes: notes || 'Antes de cenar, después de entrenar',
-      created_at: new Date().toISOString(),
-    };
-
-    // Optimista
-    setCurrentWeight(weightKg);
-    setWeightLogs((prev) => {
-      const filtered = prev.filter((p) => p.date !== logDate);
-      return [tempLog, ...filtered];
+    const res = await fetch('/api/weight', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ weight_kg: weightKg, notes, date }),
     });
-
-    try {
-      const res = await fetch('/api/weight', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ weight_kg: weightKg, notes, date: logDate }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.log) {
-          setWeightLogs((prev) => prev.map((w) => (w.id === tempId ? data.log : w)));
-        }
-      }
-    } catch (e) {
-      console.error('Error guardando peso:', e);
+    if (res.ok) {
+      await loadAllData();
     }
   };
 
-  // Manejador optimista para eliminar pesaje
-  const handleDeleteWeight = async (weightId: string) => {
-    setWeightLogs((prev) => {
-      const next = prev.filter((w) => w.id !== weightId);
-      if (next.length > 0) {
-        setCurrentWeight(next[0].weight_kg);
-      }
-      return next;
-    });
-
-    try {
-      await fetch(`/api/weight?id=${encodeURIComponent(weightId)}`, {
-        method: 'DELETE',
-      });
-    } catch (e) {
-      console.error('Error eliminando pesaje:', e);
+  const handleDeleteWeight = async (logId: string) => {
+    const res = await fetch(`/api/weight?id=${encodeURIComponent(logId)}`, { method: 'DELETE' });
+    if (res.ok) {
+      await loadAllData();
     }
   };
 
-  // Manejador para resembrar datos de prueba
   const handleReseedMockData = async () => {
     const res = await fetch('/api/mock/seed', { method: 'POST' });
     if (res.ok) {
@@ -445,18 +207,20 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#121211] text-zinc-100 flex flex-col justify-between selection:bg-amber-500/20 selection:text-white">
-      {/* Barra Superior */}
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex flex-col justify-between transition-colors duration-300">
+      {/* Barra Superior con Selector de Tema */}
       <TopBar
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenReport={() => setIsReportOpen((prev) => !prev)}
         onRefresh={loadAllData}
         isRefreshing={isRefreshing}
         lastSyncedText="Galaxy Fit3 Conectada"
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
       />
 
-      {/* Contenido Principal: Si el informe semanal está activo, mostrar WeeklyReportView */}
-      <main className={`flex-1 w-full mx-auto ${isReportOpen ? 'max-w-4xl px-2' : 'max-w-md'}`}>
+      {/* Contenido Principal con Marco Centralizado Responsive (Móvil a 4K) */}
+      <main className={`flex-1 w-full mx-auto ${isReportOpen ? 'max-w-4xl px-2' : 'max-w-md px-2'}`}>
         {isReportOpen ? (
           <WeeklyReportView onClose={() => setIsReportOpen(false)} />
         ) : (
@@ -468,53 +232,52 @@ export default function Home() {
                 latestActivity={activities[0] || null}
                 currentWeight={currentWeight}
                 onQuickAddWater={handleQuickAddWater}
-                onNavigateTab={(tab) => setCurrentTab(tab)}
+                onNavigateTab={(tab) => {
+                  if (tab === 'cardio' || tab === 'fuerza') setCurrentTab('entreno');
+                  else if (tab === 'nutricion') setCurrentTab('dieta');
+                  else setCurrentTab(tab as TabType);
+                }}
                 onSelectActivity={(act) => setSelectedActivity(act)}
                 onOpenReport={() => setIsReportOpen(true)}
                 onReloadData={loadAllData}
               />
             )}
 
-        {currentTab === 'cardio' && (
-          <CardioView
-            activities={activities}
-            selectedActivity={selectedActivity}
-            onSelectActivity={setSelectedActivity}
-            onRefresh={loadAllData}
-          />
-        )}
+            {currentTab === 'entreno' && (
+              <AdaptiveWorkoutView
+                activities={activities}
+                selectedActivity={selectedActivity}
+                onSelectActivity={setSelectedActivity}
+                onRefreshCardio={loadAllData}
+                exercises={gymExercises}
+                gymLogs={gymLogs}
+                onAddSet={handleAddGymSet}
+                onDeleteSet={handleDeleteGymSet}
+              />
+            )}
 
-        {currentTab === 'fuerza' && (
-          <GymView
-            exercises={gymExercises}
-            logs={gymLogs}
-            onAddSet={handleAddGymSet}
-            onDeleteSet={handleDeleteGymSet}
-          />
-        )}
+            {currentTab === 'dieta' && (
+              <NutritionView
+                meals={nutritionMeals}
+                waterLogs={waterLogs}
+                totals={nutritionTotals}
+                onAddWater={handleQuickAddWater}
+                onDeleteWater={handleDeleteWater}
+                onAddMeal={handleAddMeal}
+                onDeleteMeal={handleDeleteMeal}
+              />
+            )}
 
-        {currentTab === 'nutricion' && (
-          <NutritionView
-            meals={nutritionMeals}
-            waterLogs={waterLogs}
-            totals={nutritionTotals}
-            onAddWater={handleQuickAddWater}
-            onDeleteWater={handleDeleteWater}
-            onAddMeal={handleAddMeal}
-            onDeleteMeal={handleDeleteMeal}
-          />
-        )}
-
-        {currentTab === 'salud' && (
-          <HealthView
-            health={health}
-            history={healthHistory}
-            weightLogs={weightLogs}
-            currentWeight={currentWeight}
-            onAddWeight={handleAddWeight}
-            onDeleteWeight={handleDeleteWeight}
-          />
-        )}
+            {currentTab === 'salud' && (
+              <HealthView
+                health={health}
+                history={healthHistory}
+                weightLogs={weightLogs}
+                currentWeight={currentWeight}
+                onAddWeight={handleAddWeight}
+                onDeleteWeight={handleDeleteWeight}
+              />
+            )}
           </>
         )}
       </main>
@@ -526,7 +289,7 @@ export default function Home() {
         onReseedMockData={handleReseedMockData}
       />
 
-      {/* Barra de Navegación Inferior (iPhone 15 Pro) */}
+      {/* Barra de Navegación Inferior Flotante de 4 Pestañas */}
       <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} />
     </div>
   );

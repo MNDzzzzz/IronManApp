@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { RefreshCw, Settings, ShieldCheck, Activity, FileText } from 'lucide-react';
+import { RefreshCw, Settings, FileText, Sun, Moon } from 'lucide-react';
 
 interface TopBarProps {
   onOpenSettings: () => void;
@@ -9,6 +9,8 @@ interface TopBarProps {
   onRefresh: () => void;
   isRefreshing: boolean;
   lastSyncedText?: string;
+  isDark?: boolean;
+  onToggleTheme?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -17,6 +19,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onRefresh,
   isRefreshing,
   lastSyncedText = 'Fit3: Al día',
+  isDark = true,
+  onToggleTheme,
 }) => {
   const todayFormatted = new Intl.DateTimeFormat('es-ES', {
     weekday: 'short',
@@ -25,37 +29,50 @@ export const TopBar: React.FC<TopBarProps> = ({
   }).format(new Date());
 
   return (
-    <header className="sticky top-0 z-40 bg-[#121211]/85 backdrop-blur-2xl border-b border-white/[0.06] pt-[env(safe-area-inset-top,16px)] px-4 pb-3">
+    <header className="sticky top-0 z-40 liquid-glass-nav border-b border-[var(--glass-border)] pt-[env(safe-area-inset-top,16px)] px-4 pb-3 transition-colors duration-300">
       <div className="max-w-md mx-auto flex items-center justify-between">
         {/* Marca y Fecha */}
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-bold tracking-wider text-sm bg-gradient-to-r from-amber-300 to-amber-500 bg-clip-text text-transparent">
+            <span className="font-bold tracking-wider text-sm bg-gradient-to-r from-amber-500 to-[#D97757] dark:from-amber-300 dark:to-amber-500 bg-clip-text text-transparent">
               IRONMAN
             </span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-zinc-400 font-mono">
+            <span className="text-[10px] px-2 py-0.5 rounded-full liquid-glass-pill text-[var(--text-secondary)] font-mono">
               GALAXY FIT3
             </span>
           </div>
-          <p className="text-[11px] text-zinc-400 capitalize mt-0.5">{todayFormatted}</p>
+          <p className="text-[11px] text-[var(--text-secondary)] capitalize mt-0.5 font-medium">
+            {todayFormatted}
+          </p>
         </div>
 
         {/* Acciones Rápidas */}
         <div className="flex items-center gap-2">
           {/* Badge de estado */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px]">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
             <span>{lastSyncedText}</span>
           </div>
+
+          {/* Selector de Modo Claro / Oscuro */}
+          {onToggleTheme && (
+            <button
+              onClick={onToggleTheme}
+              aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              className="p-2 rounded-xl liquid-glass-card text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all"
+            >
+              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
+            </button>
+          )}
 
           {/* Botón Sincronizar Ahora */}
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
-            aria-label="Sincronizar"
-            className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-zinc-300 hover:text-white active:scale-95 transition-all"
+            aria-label="Sincronizar telemetría"
+            className="p-2 rounded-xl liquid-glass-card text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all"
           >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-amber-400' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-amber-500 dark:text-amber-400' : ''}`} />
           </button>
 
           {/* Informe Semanal */}
@@ -64,7 +81,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               onClick={onOpenReport}
               aria-label="Informe Semanal"
               title="Informe y Resumen Semanal"
-              className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:text-amber-300 hover:border-amber-500/50 active:scale-95 transition-all"
+              className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 hover:text-amber-500 active:scale-95 transition-all"
             >
               <FileText className="w-4 h-4" />
             </button>
@@ -73,8 +90,8 @@ export const TopBar: React.FC<TopBarProps> = ({
           {/* Ajustes */}
           <button
             onClick={onOpenSettings}
-            aria-label="Ajustes"
-            className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white active:scale-95 transition-all"
+            aria-label="Ajustes de la aplicación"
+            className="p-2 rounded-xl liquid-glass-card text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all"
           >
             <Settings className="w-4 h-4" />
           </button>
