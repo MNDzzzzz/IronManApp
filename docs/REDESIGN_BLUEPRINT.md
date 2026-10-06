@@ -297,4 +297,46 @@ export function calculateHealthReadiness(
    * Vista ejecutiva de balance semanal imprimible/exportable.
 
 ---
-*Fin del Blueprint de Rediseño Integral de IronManApp*
+
+## 7. 📐 SPEC SHEET DE DISEÑO, RESPONSIVE UNIVERSAL & ACCESIBILIDAD (WCAG 2.2)
+
+> **Documento Detallado de Referencia:** Ver pliego completo en [`docs/UI_UX_SPEC_SHEET.md`](file:///c:/Users/alvar/Desktop/Projects/IronManApp/docs/UI_UX_SPEC_SHEET.md).  
+> **Documento de Backend & APIs:** Ver especificación técnica en [`docs/TRD.md`](file:///c:/Users/alvar/Desktop/Projects/IronManApp/docs/TRD.md).
+
+### 7.1. Tabla de Especificaciones Físicas y Tokens de Componentes
+
+| Componente | Clases Clave | Dimensiones / Radios | Comportamiento Táctil & Ergonómico |
+| :--- | :--- | :--- | :--- |
+| **TopBar (Cabecera)** | `sticky top-0 z-40 liquid-glass-nav h-16 pt-[safe-top]` | Alto: 64px + Inset | Fija, con blur de 30px y bisel superior; compatible con Dynamic Island y notch. |
+| **BottomNav (Navegación)** | `fixed bottom-0 z-50 liquid-glass-nav h-16 pb-[safe-bottom]` | Alto: 64px + Inset | 4 pestañas ergonómicas (`Hoy`, `Entreno`, `Dieta`, `Salud`) en el arco del pulgar. |
+| **HeroVoiceButton** | `w-20 h-20 rounded-full liquid-glass-card` | 80 × 80 px | Botón circular de gran formato para pulsación háptica ciega cocinando o corriendo. |
+| **Tarjetas de Datos** | `liquid-glass-card rounded-3xl p-5` | Radio: 24px (Squircle) | Fondo translúcido (72% en Light / 65% en Dark) con bisel especular cenital de 1px. |
+| **Dynamic Island Coach**| `liquid-glass-pill px-4 py-2 text-xs` | Radio completo 9999px | Cápsula flotante reactiva con feedback en tiempo real sin saturar de chat. |
+
+### 7.2. Matriz Responsive Universal
+
+1. **Móviles Compactos (360px – 390px — iPhone SE, Galaxy A/S, Redmi, Huawei):**
+   - Ancho 100% con `px-3.5`. Títulos escalados de 24px a 20px para evitar desbordes en datos metabólicos.
+   - Respeto riguroso de `safe-area-inset-bottom` para evitar solapamientos con la botonera de Android.
+2. **Móviles Pro / Max (393px – 430px — iPhone 15/16 Pro Max, Galaxy S24 Ultra):**
+   - Contenedor centrado `max-w-md mx-auto`. Altura de cabecera adaptada a la Dynamic Island nativa.
+3. **Tablets & Plegables (768px – 1024px — iPad, Galaxy Fold):**
+   - Layout fluido de 2 columnas: Columna izquierda con Coach Hub (40%) y columna derecha con rutina/nutrición (60%).
+4. **Escritorio Web 1080p (FHD), 2K (QHD) y 4K (UHD):**
+   - Prohibido estirar la app a pantalla completa panorámica.
+   - Se presenta como un **"Command Deck Centralizado"** con marco de cristal líquido de 480px a 540px de ancho (`max-w-lg mx-auto`), rodeado por un fondo ambiental con gradientes radiales difusos.
+   - Atajos de teclado de escritorio: `Espacio` para hablar, números `1-4` para navegar pestañas, tecla `T` para alternar modo claro/oscuro.
+
+### 7.3. Certificación de Accesibilidad (WCAG 2.2 AA / AAA)
+
+- **Ratios de Contraste:** 
+  - Light Mode: `#141413` sobre cristal Ivory = **14.8:1 (Cumple AAA)**.
+  - Dark Mode: `#FAF9F6` sobre cristal Obsidian = **16.2:1 (Cumple AAA)**.
+- **Tamaños Táctiles:** Todos los botones interactivos miden como mínimo 44×44px (iOS) o 48×48px (Android), con el botón de voz heroico a 80×80px.
+- **Modos de Adaptación del Sistema:**
+  - `prefers-contrast: more`: Desactiva desenfoques y refuerza bordes perimetrales a 2px sólidos.
+  - `prefers-reduced-motion`: Desactiva animaciones y ondas de audio, aplicando transiciones inmediatas.
+  - `aria-live="polite"`: Anuncia el feedback del Coach en lectores de pantalla de forma no intrusiva.
+
+---
+*Fin del Blueprint de Rediseño Integral de IronManApp (Liquid Glass Edition)*
