@@ -1,19 +1,19 @@
 'use client';
 
+// ====================================================================
+// COMPONENTE DE CHAT & DICTADO POR VOZ CON COACH: IronManApp
+// Módulo de conversación multimodal con Gemini, notas de voz en directo,
+// sugerencias biomecánicas y chips de acción rápida.
+// Idioma: Español (Strict TypeScript / Clean Architecture / Liquid Glass)
+// ====================================================================
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Mic,
-  Square,
   Send,
   Sparkles,
   Trash2,
-  CheckCircle2,
-  Flame,
-  Droplet,
-  Dumbbell,
-  ArrowLeftRight,
   Loader2,
-  ChevronDown,
   Volume2,
 } from 'lucide-react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
@@ -207,36 +207,36 @@ export const CoachChat: React.FC<CoachChatProps> = ({ onTurnCompleted, className
   ];
 
   return (
-    <div className={`flex flex-col bg-[#141413]/90 backdrop-blur-2xl rounded-3xl border border-white/[0.08] shadow-2xl overflow-hidden ${className}`}>
+    <div className={`flex flex-col liquid-glass-card border border-[var(--glass-border)] shadow-2xl overflow-hidden rounded-3xl ${className}`}>
       {/* 1. CABECERA ELEGANTE DEL COACH */}
-      <div className="px-5 py-3.5 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
+      <div className="px-5 py-3.5 border-b border-[var(--glass-border)] flex items-center justify-between bg-[var(--glass-surface)]">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center text-zinc-950 font-bold shadow-md text-xs">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#D97757] to-amber-500 flex items-center justify-center text-white font-bold shadow-md text-xs">
               ⚡
             </div>
-            <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-zinc-900" />
+            <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[var(--glass-surface)]" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-xs font-semibold text-zinc-100 tracking-tight">AI Coach Deportivo</h3>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/10 text-amber-300 font-mono border border-amber-500/20">
+              <h3 className="text-xs font-semibold text-[var(--text-primary)] tracking-tight">AI Coach Deportivo</h3>
+              <span className="text-[10px] px-2 py-0.2 rounded-full bg-[#D97757]/15 text-[#D97757] font-mono border border-[#D97757]/30">
                 Gemini Multi-Modal
               </span>
             </div>
-            <p className="text-[11px] text-zinc-400">Nutrición de precisión, Fuerza & Media Maratón</p>
+            <p className="text-[11px] text-[var(--text-secondary)]">Nutrición de precisión, Fuerza & Media Maratón</p>
           </div>
         </div>
 
         {recorderError && (
-          <span className="text-[10px] text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
+          <span className="text-[10px] text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
             Micrófono bloqueado
           </span>
         )}
       </div>
 
       {/* 2. HILO DE CONVERSACIÓN */}
-      <div className="p-4 space-y-3.5 overflow-y-auto max-h-[380px] min-h-[220px] scrollbar-thin scrollbar-thumb-zinc-800">
+      <div className="p-4 space-y-3.5 overflow-y-auto max-h-[380px] min-h-[220px] scrollbar-thin">
         {messages.map((msg) => {
           const isUser = msg.sender === 'user';
           return (
@@ -247,13 +247,13 @@ export const CoachChat: React.FC<CoachChatProps> = ({ onTurnCompleted, className
               <div
                 className={`max-w-[88%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed ${
                   isUser
-                    ? 'bg-amber-600/90 text-white rounded-tr-xs shadow-md shadow-amber-600/10'
-                    : 'bg-zinc-900/90 text-zinc-200 border border-white/[0.06] rounded-tl-xs shadow-sm'
+                    ? 'bg-[#D97757] text-white rounded-tr-xs shadow-md shadow-[#D97757]/20 font-medium'
+                    : 'bg-[var(--glass-surface)] text-[var(--text-primary)] border border-[var(--glass-border)] rounded-tl-xs shadow-sm'
                 }`}
               >
                 {/* Badge de nota de voz */}
                 {msg.isVoice && (
-                  <div className="flex items-center gap-1.5 mb-1.5 text-[11px] text-amber-200 font-medium">
+                  <div className={`flex items-center gap-1.5 mb-1.5 text-[11px] font-medium ${isUser ? 'text-white/90' : 'text-[#D97757]'}`}>
                     <Volume2 className="w-3.5 h-3.5" />
                     <span>Nota de voz ({msg.voiceDuration || 0}s)</span>
                   </div>
@@ -263,14 +263,14 @@ export const CoachChat: React.FC<CoachChatProps> = ({ onTurnCompleted, className
 
                 {/* Consejo clínico del Coach si aplica */}
                 {!isUser && msg.coachTip && (
-                  <div className="mt-2.5 pt-2 border-t border-white/[0.08] text-[11px] text-amber-300/90 flex items-start gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-400" />
+                  <div className="mt-2.5 pt-2 border-t border-[var(--glass-border)] text-[11px] text-[#D97757] dark:text-[#E28464] flex items-start gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[#D97757]" />
                     <span>{msg.coachTip}</span>
                   </div>
                 )}
               </div>
 
-              <span className="text-[9px] text-zinc-500 mt-1 px-1">
+              <span className="text-[9px] text-[var(--text-tertiary)] mt-1 px-1 font-mono">
                 {msg.timestamp}
               </span>
             </div>
@@ -279,7 +279,7 @@ export const CoachChat: React.FC<CoachChatProps> = ({ onTurnCompleted, className
 
         {/* Indicador de procesamiento / pensamiento */}
         {isProcessing && (
-          <div className="flex items-center gap-2 text-xs text-amber-400/90 bg-amber-500/10 px-3.5 py-2 rounded-2xl border border-amber-500/20 w-fit animate-pulse">
+          <div className="flex items-center gap-2 text-xs text-[#D97757] bg-[#D97757]/10 px-3.5 py-2 rounded-2xl border border-[#D97757]/20 w-fit animate-pulse">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
             <span>{statusNote || 'Procesando...'}</span>
           </div>
@@ -289,13 +289,13 @@ export const CoachChat: React.FC<CoachChatProps> = ({ onTurnCompleted, className
       </div>
 
       {/* 3. CHIPS DE ACCIÓN RÁPIDA */}
-      <div className="px-3.5 py-2 border-t border-white/[0.04] flex items-center gap-2 overflow-x-auto no-scrollbar bg-black/20">
+      <div className="px-3.5 py-2 border-t border-[var(--glass-border)] flex items-center gap-2 overflow-x-auto no-scrollbar bg-[var(--glass-surface)]">
         {quickChips.map((chip, idx) => (
           <button
             key={idx}
             disabled={isProcessing || isRecording}
             onClick={() => handleSendText(chip.text)}
-            className="text-[11px] px-2.5 py-1 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.06] whitespace-nowrap transition-all active:scale-95 disabled:opacity-40"
+            className="text-[11px] px-2.5 py-1 rounded-full liquid-glass-pill border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] whitespace-nowrap transition-all active:scale-95 disabled:opacity-40"
           >
             {chip.label}
           </button>
@@ -303,7 +303,7 @@ export const CoachChat: React.FC<CoachChatProps> = ({ onTurnCompleted, className
       </div>
 
       {/* 4. BARRA DE INTERACCIÓN (TEXTO Y GRABADORA DE VOZ EN VIVO) */}
-      <div className="p-3 border-t border-white/[0.06] bg-white/[0.01]">
+      <div className="p-3 border-t border-[var(--glass-border)] bg-[var(--glass-surface)]">
         {isRecording ? (
           // Vista de Grabación de Voz Activa con Ondas Sonoras
           <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-2xl bg-rose-500/10 border border-rose-500/30 animate-pulse">
@@ -312,35 +312,37 @@ export const CoachChat: React.FC<CoachChatProps> = ({ onTurnCompleted, className
               <div className="flex items-center gap-1">
                 {/* Visualizador de onda de audio */}
                 <div
-                  className="w-1 bg-rose-400 rounded-full transition-all duration-75"
+                  className="w-1 bg-rose-500 rounded-full transition-all duration-75"
                   style={{ height: `${Math.max(6, audioLevel * 24)}px` }}
                 />
                 <div
-                  className="w-1 bg-rose-400 rounded-full transition-all duration-75"
+                  className="w-1 bg-rose-500 rounded-full transition-all duration-75"
                   style={{ height: `${Math.max(10, audioLevel * 32)}px` }}
                 />
                 <div
-                  className="w-1 bg-rose-400 rounded-full transition-all duration-75"
+                  className="w-1 bg-rose-500 rounded-full transition-all duration-75"
                   style={{ height: `${Math.max(6, audioLevel * 20)}px` }}
                 />
               </div>
-              <span className="text-xs font-mono font-bold text-rose-300">
+              <span className="text-xs font-mono font-bold text-rose-500">
                 0:{duration < 10 ? `0${duration}` : duration}
               </span>
-              <span className="text-[11px] text-zinc-400">Escuchando...</span>
+              <span className="text-[11px] text-[var(--text-secondary)]">Escuchando...</span>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 onClick={cancelRecording}
                 title="Descartar nota"
-                className="p-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+                aria-label="Descartar nota"
+                className="p-1.5 rounded-xl bg-[var(--glass-surface)] hover:bg-[var(--glass-surface-thick)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--glass-border)] transition-colors active:scale-95"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
               <button
                 onClick={handleStopAndSendVoice}
                 title="Enviar nota de voz"
+                aria-label="Enviar nota de voz"
                 className="px-3 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-medium text-xs flex items-center gap-1.5 shadow-lg shadow-rose-500/20 active:scale-95 transition-all"
               >
                 <Send className="w-3.5 h-3.5" />
@@ -355,7 +357,8 @@ export const CoachChat: React.FC<CoachChatProps> = ({ onTurnCompleted, className
               onClick={startRecording}
               disabled={isProcessing}
               title="Grabar nota de voz"
-              className="p-2.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 border border-amber-500/30 transition-all active:scale-95 disabled:opacity-40 shadow-sm"
+              aria-label="Grabar nota de voz"
+              className="p-2.5 rounded-2xl bg-[#D97757]/15 hover:bg-[#D97757]/25 text-[#D97757] border border-[#D97757]/30 transition-all active:scale-95 disabled:opacity-40 shadow-sm"
             >
               <Mic className="w-4 h-4" />
             </button>
@@ -369,14 +372,15 @@ export const CoachChat: React.FC<CoachChatProps> = ({ onTurnCompleted, className
               }}
               placeholder="Habla o escribe al Coach..."
               disabled={isProcessing}
-              className="flex-1 px-3.5 py-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500/50 transition-colors"
+              className="flex-1 px-3.5 py-2.5 rounded-2xl bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[#D97757] transition-colors"
             />
 
             <button
               onClick={() => handleSendText()}
               disabled={!inputText.trim() || isProcessing}
               title="Enviar mensaje"
-              className="p-2.5 rounded-2xl bg-white/[0.08] hover:bg-amber-500 hover:text-zinc-950 text-zinc-300 border border-white/[0.08] transition-all active:scale-95 disabled:opacity-30"
+              aria-label="Enviar mensaje"
+              className="p-2.5 rounded-2xl bg-[var(--glass-surface-thick)] hover:bg-[#D97757] hover:text-white text-[var(--text-secondary)] border border-[var(--glass-border)] transition-all active:scale-95 disabled:opacity-30"
             >
               <Send className="w-4 h-4" />
             </button>

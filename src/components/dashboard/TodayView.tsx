@@ -4,25 +4,36 @@ import React, { useState, useEffect } from 'react';
 import {
   Flame,
   Moon,
-  Heart,
   Footprints,
-  Droplet,
   Plus,
   Minus,
   ArrowUpRight,
-  TrendingDown,
   Sparkles,
-  Scale,
   Dumbbell,
   ArrowLeftRight,
-  Calendar,
   ChevronRight,
   CheckCircle2,
+  MessageSquare,
 } from 'lucide-react';
-import { DailyHealthMetric, NutritionLog, StravaActivity } from '@/types/database';
+import { DailyHealthMetric, StravaActivity } from '@/types/database';
 import { ScheduleManagerModal } from '@/components/schedule/ScheduleManagerModal';
 import { CoachChat } from '@/components/coach/CoachChat';
 import { CoachTurnResult } from '@/lib/coach/coachCore';
+import { HeroVoiceButton } from '@/components/voice/HeroVoiceButton';
+import { DynamicIslandCoach } from '@/components/dashboard/DynamicIslandCoach';
+import { TabType } from '@/components/navigation/BottomNav';
+
+export interface EffectiveRoutineItem {
+  date: string;
+  dayName: string;
+  isOverridden?: boolean;
+  routine: {
+    title: string;
+    description: string;
+    category: string;
+    targetSteps: { min: number; max: number };
+  };
+}
 
 interface TodayViewProps {
   health: DailyHealthMetric | null;
@@ -36,7 +47,7 @@ interface TodayViewProps {
   latestActivity: StravaActivity | null;
   currentWeight?: number;
   onQuickAddWater: (amountMl: number) => void;
-  onNavigateTab: (tab: any) => void;
+  onNavigateTab: (tab: TabType) => void;
   onSelectActivity: (activity: StravaActivity) => void;
   onOpenReport?: () => void;
   onReloadData?: () => void;
@@ -76,14 +87,19 @@ export const TodayView: React.FC<TodayViewProps> = ({
   const sleepScore = health?.sleep_score ? `${health.sleep_score}/100` : '--';
 
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [effectiveRoutine, setEffectiveRoutine] = useState<any>(null);
+  const [effectiveRoutine, setEffectiveRoutine] = useState<EffectiveRoutineItem | null>(null);
+  const [coachStatusMessage, setCoachStatusMessage] = useState<string>(
+    'Head Coach listo. Habla para registrar comidas o mover entrenos.'
+  );
+  const [showFullChatHistory, setShowFullChatHistory] = useState(false);
 
   const fetchSchedule = () => {
     fetch('/api/schedule')
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && data.schedule) {
-          const todaySched = data.schedule.find((s: any) => s.date === data.referenceDate);
+        if (data.success && Array.isArray(data.schedule)) {
+          const scheduleList = data.schedule as EffectiveRoutineItem[];
+          const todaySched = scheduleList.find((s) => s.date === data.referenceDate);
           if (todaySched) setEffectiveRoutine(todaySched);
         }
       })
@@ -96,6 +112,9 @@ export const TodayView: React.FC<TodayViewProps> = ({
 
   const handleCoachTurnCompleted = (result: CoachTurnResult) => {
     fetchSchedule();
+    if (result.replyText) {
+      setCoachStatusMessage(result.replyText);
+    }
     if (onReloadData) onReloadData();
   };
 
@@ -105,78 +124,107 @@ export const TodayView: React.FC<TodayViewProps> = ({
   );
 
   return (
-    <div className="space-y-4 pb-24 px-3.5 pt-2 font-sans selection:bg-amber-500/20">
+    <div className="w-full max-w-md mx-auto space-y-4 pb-24 px-3.5 pt-1 font-sans animate-in fade-in duration-300">
       {/* ================================================================ */}
-      {/* 1. HERO DEL DÍA: SESIÓN PRINCIPAL & OBJETIVO (ESTILO APPLE)       */}
+      {/* 1. DYNAMIC ISLAND DEL COACH (FEEDBACK FLOTANTE EN TIEMPO REAL)     */}
+      {/* ================================================================ */}
+      <DynamicIslandCoach
+        message={coachStatusMessage}
+        subtext={`Meta: 21K Feb-2027 · ${currentWeight.toFixed(1)} kg`}
+      />
+
+      {/* ================================================================ */}
+      {/* 2. HERO DEL DÍA: SESIÓN PRINCIPAL DE HOY (LIQUID GLASS)          */}
       {/* ================================================================ */}
       {effectiveRoutine && (
-        <section className="relative overflow-hidden rounded-3xl bg-[#171716] border border-white/[0.08] p-5 shadow-xl transition-all">
+        <section className="relative overflow-hidden p-5 rounded-3xl liquid-glass-card border border-[var(--glass-border)] transition-all">
           <div className="flex items-start justify-between gap-3">
-            <div>
+            <div className="cursor-pointer" onClick={() => onNavigateTab('entreno')}>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold tracking-wider uppercase text-amber-400">
+                <span className="text-[11px] font-semibold tracking-wider uppercase text-[#D97757] dark:text-[#E28464]">
                   {effectiveRoutine.dayName} • Sesión de Hoy
                 </span>
                 {effectiveRoutine.isOverridden && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-medium border border-amber-500/30">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-300 font-medium border border-amber-500/30">
                     Adaptada ⚡
                   </span>
                 )}
               </div>
-              <h1 className="text-lg font-bold text-zinc-100 tracking-tight mt-1">
+              <h1 className="text-lg font-bold text-[var(--text-primary)] tracking-tight mt-1">
                 {effectiveRoutine.routine.title}
               </h1>
-              <p className="text-xs text-zinc-400 mt-1 leading-relaxed line-clamp-2">
+              <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed line-clamp-2">
                 {effectiveRoutine.routine.description}
               </p>
             </div>
 
             <button
               onClick={() => setIsScheduleModalOpen(true)}
-              className="shrink-0 px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-xs font-medium text-zinc-200 hover:text-white transition-all flex items-center gap-1.5 active:scale-95"
+              aria-label="Cambiar o mover sesión de hoy"
+              className="shrink-0 px-3 py-1.5 rounded-xl liquid-glass-pill text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex items-center gap-1.5 active:scale-95"
             >
-              <ArrowLeftRight className="w-3.5 h-3.5 text-amber-400" />
+              <ArrowLeftRight className="w-3.5 h-3.5 text-[#D97757]" />
               <span>Cambiar</span>
             </button>
           </div>
 
-          <div className="flex items-center justify-between pt-3.5 mt-3.5 border-t border-white/[0.06] text-xs text-zinc-400">
+          <div className="flex items-center justify-between pt-3.5 mt-3.5 border-t border-[var(--glass-border)] text-xs text-[var(--text-secondary)]">
             <div className="flex items-center gap-1.5">
-              <Footprints className="w-3.5 h-3.5 text-zinc-500" />
+              <Footprints className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
               <span>
                 Meta pasos:{' '}
-                <strong className="text-zinc-200 font-mono">
+                <strong className="text-[var(--text-primary)] font-mono">
                   {effectiveRoutine.routine.targetSteps.min.toLocaleString()} – {effectiveRoutine.routine.targetSteps.max.toLocaleString()}
                 </strong>
               </span>
             </div>
-            <span className="text-[11px] px-2 py-0.5 rounded-md bg-white/[0.04] text-zinc-300 capitalize">
-              {effectiveRoutine.routine.category}
-            </span>
+            <button
+              onClick={() => onNavigateTab('entreno')}
+              className="text-[11px] font-semibold text-[#D97757] dark:text-[#E28464] flex items-center gap-0.5 hover:underline"
+            >
+              <span>Ver entreno</span>
+              <ChevronRight className="w-3 h-3" />
+            </button>
           </div>
         </section>
       )}
 
       {/* ================================================================ */}
-      {/* 2. ANILLOS DE BALANCE DIARIO (CALORÍAS, PROTEÍNA, AGUA, SUEÑO)   */}
+      {/* 3. HERO VOICE BUTTON (VOICE-FIRST INTERACTION PROTAGÓNICA)       */}
+      {/* ================================================================ */}
+      <section className="py-2">
+        <HeroVoiceButton
+          onStatusChange={(status) => setCoachStatusMessage(status)}
+          onSuccessResult={handleCoachTurnCompleted}
+        />
+      </section>
+
+      {/* ================================================================ */}
+      {/* 4. ANILLOS & TARJETAS DE PROGRESO EN CRISTAL LÍQUIDO              */}
       {/* ================================================================ */}
       <section className="grid grid-cols-2 gap-3">
-        {/* Calorías & Déficit */}
-        <div className="p-4 rounded-3xl bg-[#171716] border border-white/[0.08] flex flex-col justify-between shadow-sm">
+        {/* Calorías Restantes */}
+        <div
+          onClick={() => onNavigateTab('dieta')}
+          className="p-4 rounded-3xl liquid-glass-card cursor-pointer hover:border-[#D97757]/40 active:scale-[0.98] transition-all flex flex-col justify-between"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">Calorías</span>
-            <div className="w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400">
+            <span className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+              Calorías
+            </span>
+            <div className="w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
               <Flame className="w-3.5 h-3.5" />
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-xl font-bold text-zinc-100 flex items-baseline gap-1">
-              {caloriesConsumed} <span className="text-xs font-normal text-zinc-400">/ {caloriesTarget}</span>
+            <div className="text-xl font-bold text-[var(--text-primary)] font-mono flex items-baseline gap-1">
+              {caloriesConsumed}{' '}
+              <span className="text-xs font-normal text-[var(--text-secondary)]">/ {caloriesTarget}</span>
             </div>
-            <p className="text-[11px] text-amber-400/90 font-medium mt-0.5">
-              {caloriesRemaining > 0 ? `${caloriesRemaining} kcal restantes` : 'Objetivo cumplido'}
+            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
+              {caloriesRemaining > 0 ? `${caloriesRemaining} kcal restantes` : 'Límite completado'}
             </p>
-            <div className="w-full bg-white/[0.06] h-1.5 rounded-full mt-2.5 overflow-hidden">
+            <div className="w-full bg-[var(--glass-border-subtle)] h-1.5 rounded-full mt-2.5 overflow-hidden">
               <div
                 className="bg-amber-500 h-full rounded-full transition-all duration-500"
                 style={{ width: `${caloriesPercent}%` }}
@@ -186,59 +234,69 @@ export const TodayView: React.FC<TodayViewProps> = ({
         </div>
 
         {/* Proteína Real */}
-        <div className="p-4 rounded-3xl bg-[#171716] border border-white/[0.08] flex flex-col justify-between shadow-sm">
+        <div
+          onClick={() => onNavigateTab('dieta')}
+          className="p-4 rounded-3xl liquid-glass-card cursor-pointer hover:border-emerald-500/40 active:scale-[0.98] transition-all flex flex-col justify-between"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">Proteína</span>
-            <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-              <Dumbbell className="w-3.5 h-3.5" />
-            </div>
+            <span className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+              Proteína
+            </span>
+            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+              {proteinPercent}%
+            </span>
           </div>
           <div className="mt-3">
-            <div className="text-xl font-bold text-zinc-100 flex items-baseline gap-1">
-              {proteinConsumed} <span className="text-xs font-normal text-zinc-400">/ {proteinTarget}g</span>
+            <div className="text-xl font-bold text-[var(--text-primary)] font-mono flex items-baseline gap-1">
+              {proteinConsumed.toFixed(0)}{' '}
+              <span className="text-xs font-normal text-[var(--text-secondary)]">/ {proteinTarget}g</span>
             </div>
-            <p className="text-[11px] text-emerald-400/90 font-medium mt-0.5">
-              {proteinConsumed >= proteinTarget ? 'Meta cubierta' : `${(proteinTarget - proteinConsumed).toFixed(1)}g restantes`}
+            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">
+              {proteinConsumed >= proteinTarget
+                ? 'Meta cubierta'
+                : `${(proteinTarget - proteinConsumed).toFixed(1)}g restantes`}
             </p>
-            <div className="w-full bg-white/[0.06] h-1.5 rounded-full mt-2.5 overflow-hidden">
+            <div className="w-full bg-[var(--glass-border-subtle)] h-1.5 rounded-full mt-2.5 overflow-hidden">
               <div
-                className="bg-emerald-400 h-full rounded-full transition-all duration-500"
+                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
                 style={{ width: `${proteinPercent}%` }}
               />
             </div>
           </div>
         </div>
 
-        {/* Hidratación con Botones Rápidos */}
-        <div className="p-4 rounded-3xl bg-[#171716] border border-white/[0.08] flex flex-col justify-between shadow-sm">
+        {/* Hidratación Rápida */}
+        <div className="p-4 rounded-3xl liquid-glass-card flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">Agua</span>
+            <span className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+              Agua
+            </span>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => onQuickAddWater(-250)}
-                aria-label="Restar 250ml"
-                className="p-1 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-all active:scale-90"
+                aria-label="Restar 250ml de agua"
+                className="p-1 rounded-full liquid-glass-pill text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all active:scale-90"
               >
                 <Minus className="w-3 h-3" />
               </button>
               <button
                 onClick={() => onQuickAddWater(250)}
-                aria-label="Añadir 250ml"
-                className="p-1 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-all active:scale-90"
+                aria-label="Añadir 250ml de agua"
+                className="p-1 rounded-full bg-blue-500/15 text-blue-500 hover:bg-blue-500/25 transition-all active:scale-90"
               >
                 <Plus className="w-3 h-3" />
               </button>
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-xl font-bold text-zinc-100 flex items-baseline gap-1">
+            <div className="text-xl font-bold text-[var(--text-primary)] font-mono flex items-baseline gap-1">
               {((nutritionTotals.water_ml || 0) / 1000).toFixed(1)}{' '}
-              <span className="text-xs font-normal text-zinc-400">/ 3.0 L</span>
+              <span className="text-xs font-normal text-[var(--text-secondary)]">/ 3.0 L</span>
             </div>
-            <p className="text-[11px] text-blue-400/90 font-medium mt-0.5">
+            <p className="text-[11px] text-blue-500 font-medium mt-0.5">
               {nutritionTotals.water_ml} ml hoy
             </p>
-            <div className="w-full bg-white/[0.06] h-1.5 rounded-full mt-2.5 overflow-hidden">
+            <div className="w-full bg-[var(--glass-border-subtle)] h-1.5 rounded-full mt-2.5 overflow-hidden">
               <div
                 className="bg-blue-500 h-full rounded-full transition-all duration-500"
                 style={{ width: `${waterPercent}%` }}
@@ -250,68 +308,85 @@ export const TodayView: React.FC<TodayViewProps> = ({
         {/* Sueño / Fit3 */}
         <div
           onClick={() => onNavigateTab('salud')}
-          className="p-4 rounded-3xl bg-[#171716] border border-white/[0.08] flex flex-col justify-between shadow-sm cursor-pointer hover:border-white/[0.15] active:scale-[0.98] transition-all"
+          className="p-4 rounded-3xl liquid-glass-card cursor-pointer hover:border-indigo-500/40 active:scale-[0.98] transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">Sueño</span>
-            <div className="w-6 h-6 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+            <span className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+              Sueño
+            </span>
+            <div className="w-6 h-6 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500">
               <Moon className="w-3.5 h-3.5" />
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-xl font-bold text-zinc-100 flex items-baseline gap-1">
-              {sleepHours} <span className="text-xs font-normal text-zinc-400">horas</span>
+            <div className="text-xl font-bold text-[var(--text-primary)] font-mono flex items-baseline gap-1">
+              {sleepHours} <span className="text-xs font-normal text-[var(--text-secondary)]">horas</span>
             </div>
-            <p className="text-[11px] text-indigo-300 font-medium mt-0.5">
+            <p className="text-[11px] text-indigo-500 font-medium mt-0.5">
               Score: {sleepScore}
             </p>
-            <div className="text-[10px] text-zinc-500 mt-2 flex items-center justify-between">
+            <div className="text-[10px] text-[var(--text-tertiary)] mt-2 flex items-center justify-between">
               <span>FC: {restingHr} bpm</span>
-              <span className="text-indigo-400">Fit3 &rarr;</span>
+              <span className="text-indigo-500">Fit3 &rarr;</span>
             </div>
           </div>
         </div>
       </section>
 
       {/* ================================================================ */}
-      {/* 3. AI COACH HUB: CHAT Y NOTAS DE VOZ EN VIVO                    */}
+      {/* 5. HISTORIAL EXTENDIDO DEL CHAT (PLEGABLE / A DEMANDA)           */}
       {/* ================================================================ */}
       <section className="pt-1">
-        <CoachChat onTurnCompleted={handleCoachTurnCompleted} />
+        <button
+          onClick={() => setShowFullChatHistory(!showFullChatHistory)}
+          className="w-full py-2.5 px-4 rounded-2xl liquid-glass-pill flex items-center justify-between text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all active:scale-98"
+        >
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-[#D97757]" />
+            <span>{showFullChatHistory ? 'Ocultar diálogo del Coach' : 'Ver historial de conversación'}</span>
+          </div>
+          <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${showFullChatHistory ? 'rotate-90' : ''}`} />
+        </button>
+
+        {showFullChatHistory && (
+          <div className="mt-3 animate-in fade-in duration-200">
+            <CoachChat onTurnCompleted={handleCoachTurnCompleted} />
+          </div>
+        )}
       </section>
 
       {/* ================================================================ */}
-      {/* 4. ACCESO AL INFORME SEMANAL & CUENTA ATRÁS 21K                  */}
+      {/* 6. ACCESO AL INFORME SEMANAL & CUENTA ATRÁS 21K                  */}
       {/* ================================================================ */}
       <section className="space-y-3 pt-1">
         {onOpenReport && (
           <button
             onClick={onOpenReport}
-            className="w-full p-4 rounded-3xl bg-gradient-to-r from-amber-500/[0.08] via-amber-500/[0.03] to-transparent border border-amber-500/20 hover:border-amber-500/40 flex items-center justify-between text-left active:scale-[0.99] transition-all group shadow-sm"
+            className="w-full p-4 rounded-3xl liquid-glass-card hover:border-amber-500/40 flex items-center justify-between text-left active:scale-[0.99] transition-all group"
           >
             <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/15 flex items-center justify-center text-amber-500 group-hover:scale-105 transition-transform">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-zinc-100 group-hover:text-amber-300 transition-colors">
+                <p className="text-xs font-bold text-[var(--text-primary)] group-hover:text-amber-500 transition-colors">
                   Informe Semanal de Rendimiento
                 </p>
-                <p className="text-[11px] text-zinc-400 mt-0.5">
+                <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                   Telemetría real auditada, diagnóstico de rodilla y PDF
                 </p>
               </div>
             </div>
-            <ArrowUpRight className="w-4 h-4 text-amber-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            <ArrowUpRight className="w-4 h-4 text-amber-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
           </button>
         )}
 
-        <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between text-xs text-zinc-400">
+        <div className="p-3.5 rounded-2xl liquid-glass-pill flex items-center justify-between text-xs text-[var(--text-secondary)] font-medium">
           <div className="flex items-center gap-2">
             <span>🏁</span>
             <span>Media Maratón 28 Feb 2027</span>
           </div>
-          <span className="font-mono text-zinc-300 font-bold">
+          <span className="font-mono text-[var(--text-primary)] font-bold">
             Faltan {daysToMarathon} días
           </span>
         </div>

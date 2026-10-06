@@ -4,7 +4,7 @@
 // MODAL DE GESTIÓN Y PERSONALIZACIÓN DE EJERCICIOS: IronManApp
 // Permite añadir ejercicios a un día de entrenamiento (especialmente Full Body),
 // editar pesos objetivo, series y repeticiones, o eliminar ejercicios.
-// Idioma: Español (Strict TypeScript / Clean Architecture)
+// Idioma: Español (Strict TypeScript / Clean Architecture / Liquid Glass)
 // ====================================================================
 
 import React, { useState } from 'react';
@@ -16,7 +16,6 @@ import {
   AlertCircle,
   Trash2,
   Edit2,
-  Sparkles,
 } from 'lucide-react';
 import { GymExercise } from '@/types/database';
 
@@ -76,6 +75,7 @@ export const ExerciseManagerModal: React.FC<ExerciseManagerModalProps> = ({
   const startEditMode = (ex: GymExercise) => {
     setEditingEx(ex);
     setName(ex.name);
+    setCategory(ex.category as any || 'Fuerza');
     setTargetSets(ex.target_sets ?? 3);
     setTargetReps(ex.target_reps ?? '8-10 reps');
     setCurrentWeightKg(ex.current_weight_kg ?? 0);
@@ -162,22 +162,23 @@ export const ExerciseManagerModal: React.FC<ExerciseManagerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-zinc-950 border border-zinc-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
+      <div className="liquid-glass-card bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Cabecera */}
-        <div className="p-5 border-b border-zinc-800/80 flex items-center justify-between bg-zinc-900/40">
+        <div className="p-5 border-b border-[var(--glass-border)] flex items-center justify-between bg-[var(--glass-surface)]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <div className="w-10 h-10 rounded-2xl bg-[#2D68C4]/15 border border-[#2D68C4]/30 flex items-center justify-center text-[#2D68C4]">
               <Dumbbell className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Ejercicios: {day}</h2>
-              <p className="text-xs text-zinc-400">Personaliza y adapta los movimientos de tu microciclo</p>
+              <h2 className="text-base font-bold text-[var(--text-primary)]">Ejercicios: {day}</h2>
+              <p className="text-xs text-[var(--text-secondary)]">Personaliza y adapta los movimientos de tu microciclo</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors active:scale-95"
+            aria-label="Cerrar modal"
           >
             <X className="w-4 h-4" />
           </button>
@@ -188,14 +189,14 @@ export const ExerciseManagerModal: React.FC<ExerciseManagerModalProps> = ({
           <div
             className={`m-4 p-3 rounded-2xl border text-xs flex items-center gap-2.5 ${
               feedback.type === 'success'
-                ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300'
-                : 'bg-rose-950/40 border-rose-800/60 text-rose-300'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                : 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400'
             }`}
           >
             {feedback.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
             ) : (
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
             )}
             <span>{feedback.message}</span>
           </div>
@@ -205,12 +206,12 @@ export const ExerciseManagerModal: React.FC<ExerciseManagerModalProps> = ({
         {activeMode === 'list' && (
           <div className="p-5 space-y-4 overflow-y-auto flex-1">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-zinc-400">
+              <p className="text-xs font-semibold text-[var(--text-secondary)]">
                 {dayExercises.length} ejercicio{dayExercises.length !== 1 ? 's' : ''} configurado{dayExercises.length !== 1 ? 's' : ''}
               </p>
               <button
                 onClick={startAddMode}
-                className="py-1.5 px-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-md shadow-orange-500/20"
+                className="py-1.5 px-3 rounded-xl bg-[#2D68C4] hover:bg-[#1E4E96] text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-md shadow-blue-500/20 active:scale-95"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Añadir Ejercicio
@@ -221,33 +222,35 @@ export const ExerciseManagerModal: React.FC<ExerciseManagerModalProps> = ({
               {dayExercises.map((ex) => (
                 <div
                   key={ex.id}
-                  className="p-3.5 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 flex items-center justify-between hover:border-zinc-700 transition-colors"
+                  className="p-3.5 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] flex items-center justify-between hover:border-[#2D68C4]/40 transition-colors"
                 >
                   <div className="flex-1 pr-3">
                     <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-white">{ex.name}</p>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-zinc-800 text-zinc-400 font-medium">
+                      <p className="text-xs font-bold text-[var(--text-primary)]">{ex.name}</p>
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] text-[var(--text-secondary)] font-medium">
                         {ex.category}
                       </span>
                     </div>
-                    <p className="text-[11px] text-zinc-400 mt-0.5 font-mono">
+                    <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 font-mono">
                       {ex.target_sets ?? 3} series × {ex.target_reps ?? '8-10'} • {ex.current_weight_kg && ex.current_weight_kg > 0 ? `${ex.current_weight_kg} kg` : 'Peso corporal'}
                     </p>
-                    {ex.notes && <p className="text-[10px] text-zinc-500 mt-0.5 italic">{ex.notes}</p>}
+                    {ex.notes && <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5 italic">{ex.notes}</p>}
                   </div>
 
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => startEditMode(ex)}
-                      className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors"
+                      className="w-8 h-8 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors active:scale-95"
                       title="Editar ejercicio"
+                      aria-label="Editar ejercicio"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => handleDeleteExercise(ex.id, ex.name)}
-                      className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-rose-400 flex items-center justify-center transition-colors"
+                      className="w-8 h-8 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-rose-500 flex items-center justify-center transition-colors active:scale-95"
                       title="Eliminar ejercicio"
+                      aria-label="Eliminar ejercicio"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -262,35 +265,35 @@ export const ExerciseManagerModal: React.FC<ExerciseManagerModalProps> = ({
         {(activeMode === 'add' || activeMode === 'edit') && (
           <div className="p-5 space-y-4 overflow-y-auto flex-1">
             <div className="flex items-center justify-between mb-1">
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+              <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
                 {activeMode === 'add' ? 'Nuevo Ejercicio' : 'Modificar Ejercicio'}
               </h3>
               <button
                 onClick={() => setActiveMode('list')}
-                className="text-xs text-zinc-400 hover:text-white"
+                className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline"
               >
                 Volver a la lista
               </button>
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-zinc-400 mb-1 block">Nombre del ejercicio</label>
+              <label className="text-[11px] font-semibold text-[var(--text-secondary)] mb-1 block">Nombre del ejercicio</label>
               <input
                 type="text"
                 placeholder="Ej: Peso Muerto Rumano con Mancuernas"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
+                className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[#2D68C4]"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] font-semibold text-zinc-400 mb-1 block">Categoría muscular</label>
+                <label className="text-[11px] font-semibold text-[var(--text-secondary)] mb-1 block">Categoría muscular</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as any)}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
+                  className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[#2D68C4]"
                 >
                   <option value="Pecho">Pecho</option>
                   <option value="Espalda">Espalda</option>
@@ -303,7 +306,7 @@ export const ExerciseManagerModal: React.FC<ExerciseManagerModalProps> = ({
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-zinc-400 mb-1 block">Peso de referencia (kg)</label>
+                <label className="text-[11px] font-semibold text-[var(--text-secondary)] mb-1 block">Peso de referencia (kg)</label>
                 <input
                   type="number"
                   min="0"
@@ -311,44 +314,44 @@ export const ExerciseManagerModal: React.FC<ExerciseManagerModalProps> = ({
                   value={currentWeightKg || ''}
                   onChange={(e) => setCurrentWeightKg(Number(e.target.value))}
                   placeholder="0 para corporal"
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500 font-mono"
+                  className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[#2D68C4] font-mono"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] font-semibold text-zinc-400 mb-1 block">Series objetivo</label>
+                <label className="text-[11px] font-semibold text-[var(--text-secondary)] mb-1 block">Series objetivo</label>
                 <input
                   type="number"
                   min="1"
                   max="10"
                   value={targetSets}
                   onChange={(e) => setTargetSets(Number(e.target.value))}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500 font-mono"
+                  className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[#2D68C4] font-mono"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-zinc-400 mb-1 block">Repeticiones objetivo</label>
+                <label className="text-[11px] font-semibold text-[var(--text-secondary)] mb-1 block">Repeticiones objetivo</label>
                 <input
                   type="text"
                   placeholder="Ej: 8-10 reps (RIR 1-2)"
                   value={targetReps}
                   onChange={(e) => setTargetReps(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500 font-mono"
+                  className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[#2D68C4] font-mono"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-zinc-400 mb-1 block">Instrucciones o notas biomecánicas</label>
+              <label className="text-[11px] font-semibold text-[var(--text-secondary)] mb-1 block">Instrucciones o notas biomecánicas</label>
               <input
                 type="text"
                 placeholder="Ej: Cadera atrás, espalda neutra, pausa isométrica abajo"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
+                className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[#2D68C4]"
               />
             </div>
 
@@ -356,7 +359,7 @@ export const ExerciseManagerModal: React.FC<ExerciseManagerModalProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveMode('list')}
-                className="flex-1 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 font-semibold text-xs hover:bg-zinc-800 transition-colors"
+                className="flex-1 py-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-semibold text-xs transition-colors active:scale-95"
               >
                 Cancelar
               </button>
@@ -364,7 +367,7 @@ export const ExerciseManagerModal: React.FC<ExerciseManagerModalProps> = ({
                 type="button"
                 onClick={handleSaveExercise}
                 disabled={isSubmitting}
-                className="flex-1 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-orange-500/20 disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-xl bg-[#2D68C4] hover:bg-[#1E4E96] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50 active:scale-95"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 {isSubmitting ? 'Guardando...' : activeMode === 'add' ? 'Añadir al Plan' : 'Guardar Cambios'}

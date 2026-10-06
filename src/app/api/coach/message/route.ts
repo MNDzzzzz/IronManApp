@@ -13,6 +13,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // Validaciones de seguridad de payload
+    if (text && (typeof text !== 'string' || text.length > 4000)) {
+      return NextResponse.json(
+        { success: false, error: 'El mensaje de texto no puede exceder los 4.000 caracteres' },
+        { status: 400 }
+      );
+    }
+
+    if (audioBase64) {
+      if (typeof audioBase64 !== 'string' || audioBase64.length > 10 * 1024 * 1024) {
+        return NextResponse.json(
+          { success: false, error: 'El archivo de audio supera el límite permitido (10MB)' },
+          { status: 400 }
+        );
+      }
+      const allowedMimes = ['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav', 'audio/m4a', 'audio/mp3', 'audio/x-m4a', 'audio/aac'];
+      if (mimeType && !allowedMimes.some((m) => mimeType.toLowerCase().startsWith(m))) {
+        return NextResponse.json(
+          { success: false, error: 'Formato de audio no compatible' },
+          { status: 400 }
+        );
+      }
+    }
+
     const result = await executeCoachTurn({
       text,
       audioBase64,

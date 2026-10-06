@@ -4,27 +4,20 @@
 // VISTA DE INFORME Y RESUMEN SEMANAL: IronManApp
 // 100% Datos Reales de Samsung Galaxy Fit3, Strava, Gym, Nutrición y Báscula
 // Con diagnóstico biomecánico, fisioterapia y descarga de PDF oficial.
+// Idioma: Español (Strict TypeScript / Clean Architecture / Liquid Glass)
 // ====================================================================
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Download,
-  Calendar,
   ChevronLeft,
   ChevronRight,
-  TrendingDown,
-  TrendingUp,
-  Activity,
-  Dumbbell,
-  Utensils,
-  Footprints,
-  ShieldAlert,
   CheckCircle2,
   AlertTriangle,
-  HeartPulse,
+  ShieldAlert,
+  Utensils,
   Printer,
   Sparkles,
-  ArrowRight,
 } from 'lucide-react';
 import {
   BarChart,
@@ -136,30 +129,31 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
   })) || [];
 
   return (
-    <div className="pb-24 pt-2 text-zinc-100 max-w-4xl mx-auto px-4">
+    <div className="pb-24 pt-2 text-[var(--text-primary)] max-w-4xl mx-auto px-4">
       {/* Barra de Navegación Semanal */}
-      <div className="bg-zinc-950/80 backdrop-blur-xl border border-zinc-800/80 rounded-2xl p-4 mb-5 shadow-xl">
+      <div className="liquid-glass-card bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] rounded-2xl p-4 mb-5 shadow-xl">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Controles de Semana */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => setWeekOffset((prev) => prev - 1)}
-              className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 transition-colors"
+              className="p-2 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] hover:bg-[var(--glass-surface-thick)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors active:scale-95"
               title="Semana anterior"
+              aria-label="Semana anterior"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
 
             <div className="text-center sm:text-left px-2">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-base text-white">
+                <span className="font-bold text-base text-[var(--text-primary)] font-mono">
                   Semana {dataset?.weekNumber || '--'}
                 </span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20 font-medium">
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#D97757]/15 text-[#D97757] border border-[#D97757]/30 font-medium">
                   {weekOffset === 0 ? 'Esta Semana' : weekOffset === -1 ? 'Semana Pasada' : `${Math.abs(weekOffset)} sem. atrás`}
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 mt-0.5">
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5 font-mono">
                 {dataset ? `${dataset.startDate}  al  ${dataset.endDate}` : 'Cargando fechas...'}
               </p>
             </div>
@@ -167,10 +161,11 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
             <button
               onClick={() => setWeekOffset((prev) => prev + 1)}
               disabled={weekOffset >= 0}
-              className={`p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 transition-colors ${
-                weekOffset >= 0 ? 'opacity-40 cursor-not-allowed' : 'hover:bg-zinc-800'
+              className={`p-2 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] transition-colors ${
+                weekOffset >= 0 ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[var(--glass-surface-thick)] hover:text-[var(--text-primary)] active:scale-95'
               }`}
               title="Semana siguiente"
+              aria-label="Semana siguiente"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -181,7 +176,7 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
             <button
               onClick={handleDownloadPdf}
               disabled={isLoading || isDownloadingPdf}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-semibold text-xs tracking-wide shadow-lg shadow-orange-500/20 active:scale-95 transition-all disabled:opacity-50"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#D97757] to-[#C26243] hover:opacity-90 text-white font-semibold text-xs tracking-wide shadow-lg shadow-orange-500/20 active:scale-95 transition-all disabled:opacity-50"
             >
               <Download className={`w-4 h-4 ${isDownloadingPdf ? 'animate-bounce' : ''}`} />
               <span>{isDownloadingPdf ? 'Generando PDF...' : 'Descargar Informe (PDF)'}</span>
@@ -189,8 +184,9 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
 
             <button
               onClick={() => window.print()}
-              className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors hidden sm:block"
+              className="p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-surface-thick)] transition-colors hidden sm:block active:scale-95"
               title="Imprimir versión A4"
+              aria-label="Imprimir versión A4"
             >
               <Printer className="w-4 h-4" />
             </button>
@@ -198,7 +194,7 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
             {onClose && (
               <button
                 onClick={onClose}
-                className="px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white text-xs"
+                className="px-3 py-2 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs active:scale-95"
               >
                 Cerrar
               </button>
@@ -208,43 +204,41 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
       </div>
 
       {isLoading ? (
-        <div className="py-20 flex flex-col items-center justify-center gap-3 text-zinc-500">
-          <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <div className="py-20 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)]">
+          <div className="w-8 h-8 border-2 border-[#D97757] border-t-transparent rounded-full animate-spin" />
           <p className="text-xs">Auditando telemetrías reales y generando informe clínico...</p>
         </div>
       ) : dataset && assessment ? (
         <div className="space-y-5">
           {/* Tarjeta de Resumen Ejecutivo y Puntuación Semanal */}
-          <div className="bg-gradient-to-br from-zinc-900 via-zinc-950 to-black border border-zinc-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl pointer-events-none" />
-
+          <div className="liquid-glass-card border border-[var(--glass-border)] rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono font-bold text-orange-400 tracking-wider uppercase">
+                  <span className="text-xs font-mono font-bold text-[#D97757] dark:text-[#E28464] tracking-wider uppercase">
                     Informe de Alto Rendimiento
                   </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full liquid-glass-pill border border-[var(--glass-border)] text-[var(--text-secondary)]">
                     Fase {dataset.progressionPlan.phase}: {dataset.progressionPlan.phaseName}
                   </span>
                 </div>
-                <h1 className="text-xl sm:text-2xl font-black text-white mt-1">
+                <h1 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] mt-1 tracking-tight">
                   {assessment.executiveHeadline}
                 </h1>
-                <p className="text-xs text-zinc-400 mt-1 max-w-xl">
+                <p className="text-xs text-[var(--text-secondary)] mt-1 max-w-xl leading-relaxed">
                   Evaluación basada en 100% de datos reales registrados. Cuenta atrás: {dataset.countdown.daysRemaining} días ({dataset.countdown.weeksRemaining} semanas) para la Media Maratón del 28 de Febrero de 2027.
                 </p>
               </div>
 
               {/* Puntuación de Adherencia */}
-              <div className="flex items-center gap-3 bg-zinc-900/90 border border-zinc-800 px-4 py-3 rounded-2xl">
+              <div className="flex items-center gap-3 bg-[var(--glass-surface)] border border-[var(--glass-border)] px-4 py-3 rounded-2xl shadow-sm">
                 <div className="text-right">
-                  <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold">Puntuación</p>
-                  <p className="text-2xl font-black text-white leading-none mt-0.5">
-                    {assessment.overallScore}<span className="text-xs text-orange-400">/100</span>
+                  <p className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wider font-semibold">Puntuación</p>
+                  <p className="text-2xl font-black text-[var(--text-primary)] leading-none mt-0.5 font-mono">
+                    {assessment.overallScore}<span className="text-xs text-[#D97757]">/100</span>
                   </p>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400">
+                <div className="w-10 h-10 rounded-xl bg-[#D97757]/15 border border-[#D97757]/30 flex items-center justify-center text-[#D97757]">
                   <Sparkles className="w-5 h-5" />
                 </div>
               </div>
@@ -254,71 +248,71 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
           {/* Cuadrícula de KPIs Clave */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {/* KPI 1: Variación de Peso */}
-            <div className="bg-zinc-950/80 border border-zinc-900 rounded-2xl p-4">
-              <span className="text-[10px] text-zinc-500 uppercase font-semibold">Variación Peso</span>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-xl font-black text-white">
+            <div className="liquid-glass-card border border-[var(--glass-border)] rounded-2xl p-4">
+              <span className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Variación Peso</span>
+              <div className="flex items-baseline gap-1 mt-1 font-mono">
+                <span className="text-xl font-black text-[var(--text-primary)]">
                   {dataset.summary.weightDeltaKg !== null
                     ? `${dataset.summary.weightDeltaKg > 0 ? '+' : ''}${dataset.summary.weightDeltaKg} kg`
                     : 'Sin cambio'}
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 mt-0.5">
-                Actual: <strong className="text-zinc-200">{dataset.summary.latestWeightKg} kg</strong>
+              <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                Actual: <strong className="text-[var(--text-primary)]">{dataset.summary.latestWeightKg} kg</strong>
               </p>
             </div>
 
             {/* KPI 2: Pasos Diarios */}
-            <div className="bg-zinc-950/80 border border-zinc-900 rounded-2xl p-4">
-              <span className="text-[10px] text-zinc-500 uppercase font-semibold">Pasos Fit3 Media</span>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-xl font-black text-blue-400">
+            <div className="liquid-glass-card border border-[var(--glass-border)] rounded-2xl p-4">
+              <span className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Pasos Fit3 Media</span>
+              <div className="flex items-baseline gap-1 mt-1 font-mono">
+                <span className="text-xl font-black text-[#2D68C4] dark:text-[#5B95E0]">
                   {dataset.summary.avgDailySteps.toLocaleString()}
                 </span>
-                <span className="text-[10px] text-zinc-500">/día</span>
+                <span className="text-[10px] text-[var(--text-secondary)]">/día</span>
               </div>
-              <p className="text-[11px] text-zinc-400 mt-0.5">
+              <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                 Descanso: {dataset.summary.restDaysAvgSteps.toLocaleString()}
               </p>
             </div>
 
             {/* KPI 3: Cardio / Rodajes */}
-            <div className="bg-zinc-950/80 border border-zinc-900 rounded-2xl p-4">
-              <span className="text-[10px] text-zinc-500 uppercase font-semibold">Volumen Running</span>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-xl font-black text-orange-400">
+            <div className="liquid-glass-card border border-[var(--glass-border)] rounded-2xl p-4">
+              <span className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Volumen Running</span>
+              <div className="flex items-baseline gap-1 mt-1 font-mono">
+                <span className="text-xl font-black text-[#FC5200]">
                   {dataset.summary.totalCardioKm} km
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 mt-0.5">
+              <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                 Ritmo: {dataset.summary.avgCardioPaceStr || 'N/A'}
               </p>
             </div>
 
             {/* KPI 4: Gimnasio & Cargas */}
-            <div className="bg-zinc-950/80 border border-zinc-900 rounded-2xl p-4">
-              <span className="text-[10px] text-zinc-500 uppercase font-semibold">Fuerza & Blindaje</span>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-xl font-black text-emerald-400">
+            <div className="liquid-glass-card border border-[var(--glass-border)] rounded-2xl p-4">
+              <span className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Fuerza & Blindaje</span>
+              <div className="flex items-baseline gap-1 mt-1 font-mono">
+                <span className="text-xl font-black text-emerald-500">
                   {(dataset.summary.totalGymVolumeKg / 1000).toFixed(1)} tn
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 mt-0.5">
+              <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                 {dataset.summary.gymSessionsCount} sesiones ({dataset.summary.kneeProtectorSetsCount} sets rodilla)
               </p>
             </div>
           </div>
 
           {/* Gráfica de Pasos Diarios vs Línea de Descanso */}
-          <div className="bg-zinc-950/80 border border-zinc-800/80 rounded-2xl p-5 shadow-xl">
+          <div className="liquid-glass-card border border-[var(--glass-border)] rounded-3xl p-5 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="font-bold text-sm text-white">Telemetría de Pasos Diarios (Fit3)</h3>
-                <p className="text-xs text-zinc-400">
+                <h3 className="font-bold text-sm text-[var(--text-primary)]">Telemetría de Pasos Diarios (Fit3)</h3>
+                <p className="text-xs text-[var(--text-secondary)]">
                   Línea de advertencia en 9.000 pasos para permitir la desinflamación tendinosa en días de descanso.
                 </p>
               </div>
-              <span className="text-xs px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 font-mono">
+              <span className="text-xs px-2.5 py-1 rounded-full liquid-glass-pill border border-[var(--glass-border)] text-[var(--text-secondary)] font-mono">
                 {dataset.summary.daysWithHealthCount}/7 días registrados
               </span>
             </div>
@@ -326,10 +320,17 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
             <div className="h-44 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartStepsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="name" stroke="#71717a" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#71717a" fontSize={11} tickLine={false} />
+                  <XAxis dataKey="name" stroke="var(--text-tertiary)" fontSize={11} tickLine={false} />
+                  <YAxis stroke="var(--text-tertiary)" fontSize={11} tickLine={false} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '12px', fontSize: '12px' }}
+                    contentStyle={{
+                      backgroundColor: 'var(--glass-surface-thick)',
+                      borderColor: 'var(--glass-border)',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      color: 'var(--text-primary)',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                    }}
                     formatter={(value: any) => [`${Number(value).toLocaleString()} pasos`, 'Total Pasos']}
                   />
                   <ReferenceLine y={9000} stroke="#f59e0b" strokeDasharray="3 3" label={{ value: 'Tope Descanso (9k)', fill: '#f59e0b', fontSize: 10, position: 'insideTopRight' }} />
@@ -337,7 +338,7 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
                     {chartStepsData.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={entry.overstepped ? '#f43f5e' : entry.isRest ? '#f59e0b' : '#0284c7'}
+                        fill={entry.overstepped ? '#f43f5e' : entry.isRest ? '#f59e0b' : '#2D68C4'}
                       />
                     ))}
                   </Bar>
@@ -349,32 +350,32 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
           {/* Diagnóstico Clínico del Coach: Fortalezas y Áreas de Mejora */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Columna: Lo que fue bien */}
-            <div className="bg-zinc-950/80 border border-emerald-950/40 rounded-2xl p-5">
+            <div className="liquid-glass-card border border-emerald-500/30 rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-bold text-sm text-emerald-400">Lo Que Ha Ido Bien (Fortalezas)</h3>
+                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                <h3 className="font-bold text-sm text-emerald-600 dark:text-emerald-400">Lo Que Ha Ido Bien (Fortalezas)</h3>
               </div>
               <div className="space-y-3">
                 {assessment.strengths.map((str, idx) => (
-                  <div key={idx} className="bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-3">
-                    <h4 className="text-xs font-bold text-white">{str.title}</h4>
-                    <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">{str.detail}</p>
+                  <div key={idx} className="bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl p-3">
+                    <h4 className="text-xs font-bold text-[var(--text-primary)]">{str.title}</h4>
+                    <p className="text-[11px] text-[var(--text-secondary)] mt-1 leading-relaxed">{str.detail}</p>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Columna: Puntos a mejorar */}
-            <div className="bg-zinc-950/80 border border-amber-950/40 rounded-2xl p-5">
+            <div className="liquid-glass-card border border-amber-500/30 rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle className="w-5 h-5 text-amber-400" />
-                <h3 className="font-bold text-sm text-amber-400">Puntos a Mejorar para la Próxima Semana</h3>
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+                <h3 className="font-bold text-sm text-amber-600 dark:text-amber-400">Puntos a Mejorar para la Próxima Semana</h3>
               </div>
               <div className="space-y-3">
                 {assessment.improvements.map((imp, idx) => (
-                  <div key={idx} className="bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-3">
-                    <h4 className="text-xs font-bold text-white">{imp.title}</h4>
-                    <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">{imp.detail}</p>
+                  <div key={idx} className="bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl p-3">
+                    <h4 className="text-xs font-bold text-[var(--text-primary)]">{imp.title}</h4>
+                    <p className="text-[11px] text-[var(--text-secondary)] mt-1 leading-relaxed">{imp.detail}</p>
                   </div>
                 ))}
               </div>
@@ -382,25 +383,25 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
           </div>
 
           {/* Semáforo Articular y Prescripción de Fisioterapia */}
-          <div className="bg-zinc-950/80 border border-zinc-800 rounded-2xl p-5">
+          <div className="liquid-glass-card border border-[var(--glass-border)] rounded-2xl p-5">
             <div className="flex items-center gap-2 mb-3">
-              <ShieldAlert className="w-5 h-5 text-orange-400" />
-              <h3 className="font-bold text-sm text-white">Semáforo Articular: Rodillas & Tendones</h3>
+              <ShieldAlert className="w-5 h-5 text-[#D97757]" />
+              <h3 className="font-bold text-sm text-[var(--text-primary)]">Semáforo Articular: Rodillas & Tendones</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-              <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/60">
-                <span className="text-[10px] text-zinc-500 uppercase font-semibold">Tendón Cuadricipital (Rodilla Izq.)</span>
-                <p className="text-xs font-medium text-zinc-200 mt-1">{assessment.articularDiagnosis.tendonCuadricipitalStatus}</p>
+              <div className="p-3 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+                <span className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Tendón Cuadricipital (Rodilla Izq.)</span>
+                <p className="text-xs font-medium text-[var(--text-primary)] mt-1">{assessment.articularDiagnosis.tendonCuadricipitalStatus}</p>
               </div>
-              <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/60">
-                <span className="text-[10px] text-zinc-500 uppercase font-semibold">Tubérculo de Gerdy & Fascia Lata</span>
-                <p className="text-xs font-medium text-zinc-200 mt-1">{assessment.articularDiagnosis.gerdyTubercleStatus}</p>
+              <div className="p-3 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+                <span className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Tubérculo de Gerdy & Fascia Lata</span>
+                <p className="text-xs font-medium text-[var(--text-primary)] mt-1">{assessment.articularDiagnosis.gerdyTubercleStatus}</p>
               </div>
             </div>
 
-            <div className="bg-orange-500/5 border border-orange-500/20 rounded-xl p-3">
-              <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Protocolo de Descarga Activa:</span>
-              <ul className="text-xs text-zinc-300 mt-1 space-y-1 list-disc list-inside">
+            <div className="bg-[#D97757]/10 border border-[#D97757]/20 rounded-xl p-3">
+              <span className="text-[10px] font-bold text-[#D97757] uppercase tracking-wider">Protocolo de Descarga Activa:</span>
+              <ul className="text-xs text-[var(--text-primary)] mt-1 space-y-1 list-disc list-inside">
                 {assessment.articularDiagnosis.recommendedProtocols.map((p, idx) => (
                   <li key={idx} className="leading-relaxed">{p}</li>
                 ))}
@@ -409,61 +410,61 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
           </div>
 
           {/* Prescripción de la Semana N+1 (Plan de Acción) */}
-          <div className="bg-gradient-to-br from-zinc-900 to-black border border-blue-900/40 rounded-2xl p-5 shadow-xl">
+          <div className="liquid-glass-card border border-[#2D68C4]/30 rounded-2xl p-5 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <span className="text-[10px] font-mono text-blue-400 uppercase tracking-wider font-bold">
+                <span className="text-[10px] font-mono text-[#2D68C4] uppercase tracking-wider font-bold">
                   Planificación Prescrita
                 </span>
-                <h3 className="font-bold text-base text-white mt-0.5">
+                <h3 className="font-bold text-base text-[var(--text-primary)] mt-0.5">
                   Microciclo de la Semana {assessment.nextWeekPrescription.targetWeekNumber} ({assessment.nextWeekPrescription.phaseName})
                 </h3>
               </div>
-              <div className="px-3 py-1 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold">
+              <div className="px-3 py-1 rounded-xl bg-[#2D68C4]/15 border border-[#2D68C4]/30 text-[#2D68C4] text-xs font-semibold font-mono">
                 Objetivo: {assessment.nextWeekPrescription.calorieTarget} kcal / {assessment.nextWeekPrescription.proteinTargetG}g P
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800">
-                <p className="font-bold text-orange-400 mb-1">🏃‍♂️ Jueves: Rodaje Base</p>
-                <p className="text-zinc-300">{assessment.nextWeekPrescription.runningSessions.thursday.session}</p>
-                <p className="text-zinc-500 text-[11px] mt-1">Ritmo: {assessment.nextWeekPrescription.runningSessions.thursday.targetPace}</p>
+              <div className="p-3 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+                <p className="font-bold text-[#FC5200] mb-1">🏃‍♂️ Jueves: Rodaje Base</p>
+                <p className="text-[var(--text-primary)]">{assessment.nextWeekPrescription.runningSessions.thursday.session}</p>
+                <p className="text-[var(--text-secondary)] text-[11px] mt-1 font-mono">Ritmo: {assessment.nextWeekPrescription.runningSessions.thursday.targetPace}</p>
               </div>
 
-              <div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800">
-                <p className="font-bold text-orange-400 mb-1">🏃‍♂️ Domingo: Tirada Larga CaCo</p>
-                <p className="text-zinc-300">{assessment.nextWeekPrescription.runningSessions.sunday.session}</p>
-                <p className="text-zinc-500 text-[11px] mt-1">{assessment.nextWeekPrescription.runningSessions.sunday.cacoProtocol}</p>
+              <div className="p-3 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+                <p className="font-bold text-[#FC5200] mb-1">🏃‍♂️ Domingo: Tirada Larga CaCo</p>
+                <p className="text-[var(--text-primary)]">{assessment.nextWeekPrescription.runningSessions.sunday.session}</p>
+                <p className="text-[var(--text-secondary)] text-[11px] mt-1 font-mono">{assessment.nextWeekPrescription.runningSessions.sunday.cacoProtocol}</p>
               </div>
 
-              <div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800">
-                <p className="font-bold text-emerald-400 mb-1">🏋️‍♂️ Fuerza & Blindaje Articular</p>
-                <p className="text-zinc-300">{assessment.nextWeekPrescription.gymAdjustments.legShieldFocus}</p>
-                <p className="text-emerald-400 text-[11px] mt-1">{assessment.nextWeekPrescription.gymAdjustments.isometricsPrescribed}</p>
+              <div className="p-3 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+                <p className="font-bold text-emerald-500 mb-1">🏋️‍♂️ Fuerza & Blindaje Articular</p>
+                <p className="text-[var(--text-primary)]">{assessment.nextWeekPrescription.gymAdjustments.legShieldFocus}</p>
+                <p className="text-emerald-500 text-[11px] mt-1">{assessment.nextWeekPrescription.gymAdjustments.isometricsPrescribed}</p>
               </div>
 
-              <div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800">
-                <p className="font-bold text-amber-400 mb-1">🛑 Regla de Oro de Descanso</p>
-                <p className="text-zinc-300">{assessment.nextWeekPrescription.restDaysRule}</p>
-                <p className="text-zinc-500 text-[11px] mt-1">{assessment.nextWeekPrescription.targetWeightRecommendation}</p>
+              <div className="p-3 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+                <p className="font-bold text-amber-500 mb-1">🛑 Regla de Oro de Descanso</p>
+                <p className="text-[var(--text-primary)]">{assessment.nextWeekPrescription.restDaysRule}</p>
+                <p className="text-[var(--text-secondary)] text-[11px] mt-1">{assessment.nextWeekPrescription.targetWeightRecommendation}</p>
               </div>
             </div>
           </div>
 
           {/* Tarjeta de Adaptación Dinámica de Dieta y Macros */}
           {assessment.dietPlan && (
-            <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border border-emerald-500/30 rounded-2xl p-5 space-y-4 shadow-xl">
+            <div className="liquid-glass-card border border-emerald-500/30 rounded-2xl p-5 space-y-4 shadow-xl">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-500">
                     <Utensils className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold tracking-wider uppercase text-emerald-400">
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-emerald-500">
                       Adaptación Dinámica Semanal (100% Datos Reales)
                     </span>
-                    <h3 className="text-sm font-bold text-white">
+                    <h3 className="text-sm font-bold text-[var(--text-primary)]">
                       Prescripción de Dieta para la Semana {assessment.nextWeekPrescription.targetWeekNumber}
                     </h3>
                   </div>
@@ -480,45 +481,45 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
               </div>
 
               {dietAppliedMessage && (
-                <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-800 text-xs text-emerald-300 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                   <span>{dietAppliedMessage}</span>
                 </div>
               )}
 
               {/* Grid de Macros Adaptados */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
-                <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800">
-                  <span className="text-[10px] text-zinc-500 block">Calorías</span>
-                  <p className="text-base font-black text-white">{assessment.dietPlan.adaptation.calories} <span className="text-[10px] text-zinc-500 font-normal">kcal</span></p>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center font-mono">
+                <div className="p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+                  <span className="text-[10px] text-[var(--text-secondary)] block">Calorías</span>
+                  <p className="text-base font-black text-[var(--text-primary)]">{assessment.dietPlan.adaptation.calories} <span className="text-[10px] text-[var(--text-secondary)] font-normal">kcal</span></p>
                 </div>
-                <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800">
-                  <span className="text-[10px] text-zinc-500 block">Proteína</span>
-                  <p className="text-base font-black text-emerald-400">{assessment.dietPlan.adaptation.protein_g}g <span className="text-[10px] text-zinc-500 font-normal">2.0g/kg</span></p>
+                <div className="p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+                  <span className="text-[10px] text-[var(--text-secondary)] block">Proteína</span>
+                  <p className="text-base font-black text-emerald-500">{assessment.dietPlan.adaptation.protein_g}g <span className="text-[10px] text-[var(--text-secondary)] font-normal">2.0g/kg</span></p>
                 </div>
-                <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800">
-                  <span className="text-[10px] text-zinc-500 block">Carbohidratos</span>
-                  <p className="text-base font-black text-amber-400">{assessment.dietPlan.adaptation.carbs_g}g <span className="text-[10px] text-zinc-500 font-normal">Glucógeno</span></p>
+                <div className="p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+                  <span className="text-[10px] text-[var(--text-secondary)] block">Carbohidratos</span>
+                  <p className="text-base font-black text-amber-500">{assessment.dietPlan.adaptation.carbs_g}g <span className="text-[10px] text-[var(--text-secondary)] font-normal">Glucógeno</span></p>
                 </div>
-                <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800">
-                  <span className="text-[10px] text-zinc-500 block">Grasas</span>
-                  <p className="text-base font-black text-blue-400">{assessment.dietPlan.adaptation.fat_g}g <span className="text-[10px] text-zinc-500 font-normal">Hormonal</span></p>
+                <div className="p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+                  <span className="text-[10px] text-[var(--text-secondary)] block">Grasas</span>
+                  <p className="text-base font-black text-[#2D68C4] dark:text-[#5B95E0]">{assessment.dietPlan.adaptation.fat_g}g <span className="text-[10px] text-[var(--text-secondary)] font-normal">Hormonal</span></p>
                 </div>
-                <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 col-span-2 sm:col-span-1">
-                  <span className="text-[10px] text-zinc-500 block">Hidratación</span>
-                  <p className="text-base font-black text-cyan-400">{(assessment.dietPlan.adaptation.water_ml / 1000).toFixed(1)}L <span className="text-[10px] text-zinc-500 font-normal">Agua</span></p>
+                <div className="p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] col-span-2 sm:col-span-1">
+                  <span className="text-[10px] text-[var(--text-secondary)] block">Hidratación</span>
+                  <p className="text-base font-black text-cyan-500">{(assessment.dietPlan.adaptation.water_ml / 1000).toFixed(1)}L <span className="text-[10px] text-[var(--text-secondary)] font-normal">Agua</span></p>
                 </div>
               </div>
 
               {/* Justificación y Tips */}
-              <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 text-xs space-y-2">
-                <p className="text-zinc-300 leading-relaxed">
-                  <strong className="text-emerald-400">Razón Biomecánica:</strong> {assessment.dietPlan.adaptation.reason}
+              <div className="p-3 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs space-y-2">
+                <p className="text-[var(--text-primary)] leading-relaxed">
+                  <strong className="text-emerald-500">Razón Biomecánica:</strong> {assessment.dietPlan.adaptation.reason}
                 </p>
-                <div className="pt-2 border-t border-zinc-800 text-[11px] text-zinc-400 space-y-1">
+                <div className="pt-2 border-t border-[var(--glass-border)] text-[11px] text-[var(--text-secondary)] space-y-1">
                   {assessment.dietPlan.recommendations.map((rec, i) => (
                     <p key={i} className="flex items-start gap-1.5">
-                      <span className="text-emerald-400">•</span>
+                      <span className="text-emerald-500">•</span>
                       <span>{rec}</span>
                     </p>
                   ))}
@@ -528,11 +529,11 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
           )}
 
           {/* Tabla de Telemetría Detallada Día a Día */}
-          <div className="bg-zinc-950/80 border border-zinc-800 rounded-2xl p-5 overflow-x-auto">
-            <h3 className="font-bold text-sm text-white mb-3">Desglose Diario Auditado (100% Datos Reales)</h3>
+          <div className="liquid-glass-card border border-[var(--glass-border)] rounded-2xl p-5 overflow-x-auto">
+            <h3 className="font-bold text-sm text-[var(--text-primary)] mb-3">Desglose Diario Auditado (100% Datos Reales)</h3>
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-zinc-800 text-zinc-500 text-[10px] uppercase font-semibold">
+                <tr className="border-b border-[var(--glass-border)] text-[var(--text-secondary)] text-[10px] uppercase font-semibold">
                   <th className="py-2 pr-3">Día</th>
                   <th className="py-2 px-3">Pasos</th>
                   <th className="py-2 px-3">FC Reposo</th>
@@ -542,40 +543,40 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
                   <th className="py-2 pl-3">Actividad</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-900">
+              <tbody className="divide-y divide-[var(--glass-border)]">
                 {dataset.days.map((day, idx) => (
-                  <tr key={idx} className="hover:bg-zinc-900/40 transition-colors">
-                    <td className="py-2.5 pr-3 font-semibold text-white">
-                      {day.dayName} <span className="text-[10px] text-zinc-500 font-normal">{day.date.substring(5)}</span>
+                  <tr key={idx} className="hover:bg-[var(--glass-surface)] transition-colors">
+                    <td className="py-2.5 pr-3 font-semibold text-[var(--text-primary)]">
+                      {day.dayName} <span className="text-[10px] text-[var(--text-secondary)] font-normal">{day.date.substring(5)}</span>
                     </td>
-                    <td className={`py-2.5 px-3 font-mono ${day.isRestDay && day.health.steps > 9500 ? 'text-rose-400 font-bold' : 'text-zinc-300'}`}>
+                    <td className={`py-2.5 px-3 font-mono ${day.isRestDay && day.health.steps > 9500 ? 'text-rose-500 font-bold' : 'text-[var(--text-secondary)]'}`}>
                       {day.health.steps > 0 ? day.health.steps.toLocaleString() : 'Sin reg.'}
                     </td>
-                    <td className="py-2.5 px-3 text-zinc-400">
+                    <td className="py-2.5 px-3 text-[var(--text-secondary)] font-mono">
                       {day.health.restingHr ? `${day.health.restingHr} bpm` : '--'}
                     </td>
-                    <td className="py-2.5 px-3 text-zinc-400">
+                    <td className="py-2.5 px-3 text-[var(--text-secondary)] font-mono">
                       {day.health.sleepMinutes ? `${(day.health.sleepMinutes / 60).toFixed(1)} h` : '--'}
                     </td>
-                    <td className="py-2.5 px-3 text-zinc-300">
+                    <td className="py-2.5 px-3 text-[var(--text-secondary)] font-mono">
                       {day.nutrition.hasData ? `${day.nutrition.totalCalories}` : '0'}
                     </td>
-                    <td className="py-2.5 px-3 text-zinc-300">
+                    <td className="py-2.5 px-3 text-[var(--text-secondary)] font-mono">
                       {day.nutrition.hasData ? `${day.nutrition.totalProteinG} g` : '--'}
                     </td>
                     <td className="py-2.5 pl-3">
                       {day.cardio.hasActivity ? (
-                        <span className="px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20 text-[10px]">
+                        <span className="px-2 py-0.5 rounded-full bg-[#FC5200]/15 text-[#FC5200] border border-[#FC5200]/30 text-[10px] font-mono">
                           Run {day.cardio.totalDistanceKm}k @ {day.cardio.avgPaceStr || ''}
                         </span>
                       ) : day.gym.hasWorkout ? (
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px]">
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-mono">
                           Gym ({day.gym.totalSets} series)
                         </span>
                       ) : day.isRestDay ? (
-                        <span className="text-zinc-500 text-[11px]">Descanso</span>
+                        <span className="text-[var(--text-secondary)] text-[11px]">Descanso</span>
                       ) : (
-                        <span className="text-zinc-600 text-[11px]">Sin registros</span>
+                        <span className="text-[var(--text-tertiary)] text-[11px]">Sin registros</span>
                       )}
                     </td>
                   </tr>
