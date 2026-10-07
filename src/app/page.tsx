@@ -19,6 +19,8 @@ const WeeklyReportView = dynamic(
   () => import('@/components/reports/WeeklyReportView').then((m) => m.WeeklyReportView),
   { ssr: false }
 );
+import { useOfflineSync } from '@/lib/offline/useOfflineSync';
+import { getCachedTelemetry, setCachedTelemetry } from '@/lib/offline/offlineStore';
 import {
   DailyHealthMetric,
   StravaActivity,
@@ -39,6 +41,9 @@ export default function Home() {
   // Hook de gestión de Modo Claro / Oscuro Liquid Glass
   const { isDark, toggleTheme } = useTheme();
 
+  // Hook de sincronización y mutaciones optimistas Offline-First
+  const { executeOptimisticMutation } = useOfflineSync();
+
   // Estados de datos
   const [health, setHealth] = useState<DailyHealthMetric | null>(null);
   const [healthHistory, setHealthHistory] = useState<DailyHealthMetric[]>([]);
@@ -57,7 +62,7 @@ export default function Home() {
     water_ml: 0,
   });
 
-  // Carga global de todos los módulos
+  // Carga global de todos los módulos con persistencia local
   const loadAllData = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -72,32 +77,44 @@ export default function Home() {
 
       if (resHealth.ok) {
         const data = await resHealth.json();
-        setHealth(data.today || (data.history && data.history.length > 0 ? data.history[0] : null));
+        const curHealth = data.today || (data.history && data.history.length > 0 ? data.history[0] : null);
+        setHealth(curHealth);
         setHealthHistory(data.history || []);
+        setCachedTelemetry('health', { today: curHealth, history: data.history || [] });
       }
 
       if (resAct.ok) {
         const data = await resAct.json();
-        setActivities(data.activities || []);
+        const acts = data.activities || [];
+        setActivities(acts);
+        setCachedTelemetry('activities', acts);
       }
 
       if (resGym.ok) {
         const data = await resGym.json();
-        setGymExercises(data.exercises || []);
-        setGymLogs(data.logs || []);
+        const ex = data.exercises || [];
+        const lg = data.logs || [];
+        setGymExercises(ex);
+        setGymLogs(lg);
+        setCachedTelemetry('gym', { exercises: ex, logs: lg });
       }
 
       if (resNutri.ok) {
         const data = await resNutri.json();
-        setNutritionMeals(data.all_meals || data.allMeals || data.meals || []);
-        setWaterLogs(data.all_water || data.allWater || data.water_logs || data.waterLogs || []);
+        const meals = data.all_meals || data.allMeals || data.meals || [];
+        const water = data.all_water || data.allWater || data.water_logs || data.waterLogs || [];
+        setNutritionMeals(meals);
+        setWaterLogs(water);
         if (data.totals) setNutritionTotals(data.totals);
+        setCachedTelemetry('nutrition', { meals, water, totals: data.totals });
       }
 
       if (resWeight.ok) {
         const data = await resWeight.json();
-        setWeightLogs(data.logs || []);
+        const wLogs = data.logs || [];
+        setWeightLogs(wLogs);
         if (data.current_weight) setCurrentWeight(data.current_weight);
+        setCachedTelemetry('weight', { logs: wLogs, current_weight: data.current_weight });
       }
     } catch (e) {
       console.error('Error cargando datos de IronManApp:', e);
@@ -106,7 +123,35 @@ export default function Home() {
     }
   }, []);
 
+  // 1. Carga instantánea desde IndexedDB (0 ms) + 2. Sincronización fresca
   useEffect(() => {
+    Promise.all([
+      getCachedTelemetry('health'),
+      getCachedTelemetry('activities'),
+      getCachedTelemetry('gym'),
+      getCachedTelemetry('nutrition'),
+      getCachedTelemetry('weight'),
+    ]).then(([cHealth, cAct, cGym, cNutri, cWeight]) => {
+      if (cHealth) {
+        setHealth(cHealth.today);
+        setHealthHistory(cHealth.history || []);
+      }
+      if (cAct) setActivities(cAct);
+      if (cGym) {
+        setGymExercises(cGym.exercises || []);
+        setGymLogs(cGym.logs || []);
+      }
+      if (cNutri) {
+        setNutritionMeals(cNutri.meals || []);
+        setWaterLogs(cNutri.water || []);
+        if (cNutri.totals) setNutritionTotals(cNutri.totals);
+      }
+      if (cWeight) {
+        setWeightLogs(cWeight.logs || []);
+        if (cWeight.current_weight) setCurrentWeight(cWeight.current_weight);
+      }
+    });
+
     loadAllData();
   }, [loadAllData]);
 
@@ -146,13 +191,19 @@ export default function Home() {
   };
 
   const handleQuickAddWater = async (amountMl: number, date?: string) => {
-    const res = await fetch('/api/nutrition', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'add_water', amount_ml: amountMl, date }),
-    });
-    if (res.ok) {
-      await loadAllData();
+    await executeOptimisticMutation(
+      '/api/nutrition',
+      'POST',
+      { action: 'add_water', amount_ml: amountMl, date },
+      () => {
+        setNutritionTotals((prev) => ({
+          ...prev,
+          water_ml: prev.water_ml + amountMl,
+        }));
+      }
+    );
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      loadAllData();
     }
   };
 
@@ -163,7 +214,7 @@ export default function Home() {
     }
   };
 
-  // Manejadores de mutación en Gimnasio
+  // Manejadores de mutación en Gimnasio con mutación optimista Offline-First
   const handleAddGymSet = async (logData: {
     exercise_id: string;
     set_number: number;
@@ -171,13 +222,26 @@ export default function Home() {
     weight_kg: number;
     rpe?: number;
   }) => {
-    const res = await fetch('/api/gym', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(logData),
-    });
-    if (res.ok) {
-      await loadAllData();
+    await executeOptimisticMutation(
+      '/api/gym',
+      'POST',
+      logData,
+      () => {
+        const optimisticLog: GymWorkoutLog = {
+          id: `opt-${Date.now()}`,
+          exercise_id: logData.exercise_id,
+          date: new Date().toISOString().split('T')[0],
+          set_number: logData.set_number,
+          reps: logData.reps,
+          weight_kg: logData.weight_kg,
+          rpe: logData.rpe,
+          created_at: new Date().toISOString(),
+        };
+        setGymLogs((prev) => [optimisticLog, ...prev]);
+      }
+    );
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      loadAllData();
     }
   };
 
@@ -188,15 +252,26 @@ export default function Home() {
     }
   };
 
-  // Manejadores de mutación en Peso Corporal
+  // Manejadores de mutación en Peso Corporal con mutación optimista Offline-First
   const handleAddWeight = async (weightKg: number, notes?: string, date?: string) => {
-    const res = await fetch('/api/weight', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ weight_kg: weightKg, notes, date }),
-    });
-    if (res.ok) {
-      await loadAllData();
+    await executeOptimisticMutation(
+      '/api/weight',
+      'POST',
+      { weight_kg: weightKg, notes, date },
+      () => {
+        setCurrentWeight(weightKg);
+        const optimisticWeight: WeightLog = {
+          id: `opt-w-${Date.now()}`,
+          date: date || new Date().toISOString().split('T')[0],
+          timestamp: new Date().toISOString(),
+          weight_kg: weightKg,
+          notes,
+        };
+        setWeightLogs((prev) => [optimisticWeight, ...prev]);
+      }
+    );
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      loadAllData();
     }
   };
 

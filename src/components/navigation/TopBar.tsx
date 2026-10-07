@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { RefreshCw, Settings, FileText, Sun, Moon } from 'lucide-react';
+import { SyncStatusPill } from '@/components/common/SyncStatusPill';
 
 interface TopBarProps {
   onOpenSettings: () => void;
@@ -48,11 +49,8 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         {/* Acciones Rápidas */}
         <div className="flex items-center gap-2">
-          {/* Badge de estado */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
-            <span>{lastSyncedText}</span>
-          </div>
+          {/* Badge de conectividad y sincronización offline-first */}
+          <SyncStatusPill />
 
           {/* Selector de Modo Claro / Oscuro */}
           {onToggleTheme && (

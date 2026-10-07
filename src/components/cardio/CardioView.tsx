@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Gauge,
+  Camera,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -23,6 +24,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { CardioActivity } from '@/types/database';
+import { StravaUploadModal } from '@/components/workout/StravaUploadModal';
 
 interface CardioViewProps {
   activities: CardioActivity[];
@@ -39,6 +41,7 @@ export const CardioView: React.FC<CardioViewProps> = ({
 }) => {
   const [activeMetric, setActiveMetric] = useState<'all' | 'hr' | 'alt'>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isStravaModalOpen, setIsStravaModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Formulario para registrar rodaje Fit3
@@ -103,13 +106,23 @@ export const CardioView: React.FC<CardioViewProps> = ({
           </div>
           <p className="text-xs text-[var(--text-secondary)] font-medium">Preparación Media Maratón 28 Feb 2027</p>
         </div>
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-[#FC5200] text-white font-bold text-xs shadow-md shadow-[#FC5200]/25 active:scale-95 transition-all"
-        >
-          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-          <span>Registrar Rodaje</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsStravaModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl liquid-glass-pill text-[#FC5200] border border-[#FC5200]/30 font-bold text-xs hover:bg-[#FC5200]/10 active:scale-95 transition-all"
+            title="Escanear captura de Strava o Garmin con IA"
+          >
+            <Camera className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Escanear Strava</span>
+          </button>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-[#FC5200] text-white font-bold text-xs shadow-md shadow-[#FC5200]/25 active:scale-95 transition-all"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Manual</span>
+          </button>
+        </div>
       </div>
 
       {/* TARJETA BIOMECÁNICA: OBJETIVO ZONA 2 (101 KG) */}
@@ -159,8 +172,24 @@ export const CardioView: React.FC<CardioViewProps> = ({
           <div className="space-y-1.5">
             <h3 className="text-base font-bold text-[var(--text-primary)]">Sin rodajes registrados</h3>
             <p className="text-xs text-[var(--text-secondary)] max-w-sm mx-auto leading-relaxed">
-              Tus rodajes y sesiones CaCo aparecerán aquí al sincronizar la Galaxy Fit3 por Health Connect o registrándolos manualmente con el botón superior.
+              Tus rodajes y sesiones CaCo aparecerán aquí al escanear capturas de Strava con la IA, sincronizar tu pulsera o registrarlos manualmente.
             </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+            <button
+              onClick={() => setIsStravaModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#FC5200] text-white font-bold text-xs shadow-md shadow-[#FC5200]/25 active:scale-95 transition-all"
+            >
+              <Camera className="w-4 h-4" />
+              <span>Escanear Captura Strava</span>
+            </button>
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl liquid-glass-pill text-[var(--text-primary)] font-semibold text-xs border border-[var(--glass-border)] active:scale-95 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Registro Manual</span>
+            </button>
           </div>
         </div>
       ) : (
@@ -470,6 +499,16 @@ export const CardioView: React.FC<CardioViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal para Subir y Analizar Capturas de Strava con IA */}
+      <StravaUploadModal
+        isOpen={isStravaModalOpen}
+        onClose={() => setIsStravaModalOpen(false)}
+        onActivitySaved={() => {
+          setIsStravaModalOpen(false);
+          if (onRefresh) onRefresh();
+        }}
+      />
     </div>
   );
 };
