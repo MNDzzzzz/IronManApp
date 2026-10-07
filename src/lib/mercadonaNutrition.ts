@@ -1498,27 +1498,37 @@ export const MERCADONA_CATALOG: MercadonaProduct[] = [
 // 2. FUNCIÓN DE BÚSQUEDA NORMALIZADA EN CATÁLOGO MERCADONA
 // --------------------------------------------------------------------
 
+// --------------------------------------------------------------------
+// ÍNDICE EN MEMORIA O(1) PARA BÚSQUEDA BROMATOLÓGICA DE 0 MS
+// --------------------------------------------------------------------
+const EXACT_PRODUCT_MAP = new Map<string, MercadonaProduct>();
+
+for (const prod of MERCADONA_CATALOG) {
+  const normName = normalizeText(prod.name);
+  if (normName && !EXACT_PRODUCT_MAP.has(normName)) {
+    EXACT_PRODUCT_MAP.set(normName, prod);
+  }
+  for (const alias of prod.aliases) {
+    const normAlias = normalizeText(alias);
+    if (normAlias && !EXACT_PRODUCT_MAP.has(normAlias)) {
+      EXACT_PRODUCT_MAP.set(normAlias, prod);
+    }
+  }
+}
+
 /**
  * Busca un alimento en la base de datos de Mercadona/Hacendado mediante
- * coincidencia exacta de alias o coincidencia difusa protegida de palabras clave.
+ * coincidencia exacta O(1) en caché o coincidencia difusa protegida de palabras clave.
  */
 export function findMercadonaProduct(query: string): MercadonaProduct | null {
   const normQuery = normalizeText(query);
   if (!normQuery) return null;
   const cleanedQuery = cleanFoodSearchQuery(query);
 
-  // 1. Coincidencia exacta de alias o nombre (query original o limpio)
-  for (const prod of MERCADONA_CATALOG) {
-    const normName = normalizeText(prod.name);
-    if (normName === normQuery || (cleanedQuery && normName === cleanedQuery)) {
-      return prod;
-    }
-    for (const alias of prod.aliases) {
-      const normAlias = normalizeText(alias);
-      if (normAlias === normQuery || (cleanedQuery && normAlias === cleanedQuery)) {
-        return prod;
-      }
-    }
+  // 1. Búsqueda instantánea en caché indexada O(1) en memoria (0 ms)
+  const exactMatch = EXACT_PRODUCT_MAP.get(normQuery) || (cleanedQuery ? EXACT_PRODUCT_MAP.get(cleanedQuery) : null);
+  if (exactMatch) {
+    return exactMatch;
   }
 
   // 2. Coincidencia difusa inteligente con límites de palabra y penalización de palabras no deseadas

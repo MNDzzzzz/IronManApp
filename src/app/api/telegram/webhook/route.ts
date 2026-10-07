@@ -77,7 +77,7 @@ import {
   getLatestNutritionAdaptation,
 } from '@/lib/reports/nutritionAdapter';
 import { RoutineKey } from '@/types/database';
-import { recalculateDayNutrition } from '@/lib/coach/coachCore';
+import { recalculateDayNutrition, tryDeterministicBypass } from '@/lib/coach/coachCore';
 
 // --------------------------------------------------------------------
 // 1. UTILIDAD: DESCARGA DE AUDIO DE TELEGRAM
@@ -298,51 +298,22 @@ Si la imagen NO es de deporte o carrera (por ejemplo, si es una foto de comida o
 
 /**
  * Transcribe un audio recibido de Telegram de forma ultrarrápida y precisa utilizando
- * el modelo especializado gemini-3.5-transcribe (latencia ~1.2s), con respaldo en gemini-flash-lite.
+ * gemini-2.0-flash (subsegundo) con respaldo en gemini-1.5-flash y gemini-1.5-flash-8b.
  */
 async function transcribeAudioWithGemini(
   audioData: { base64: string; mimeType: string },
   apiKey: string
 ): Promise<string | null> {
-  // 1. Modelo dedicado especializado en transcripción de audio (ultra-baja latencia y máxima fidelidad)
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              inline_data: {
-                mime_type: audioData.mimeType,
-                data: audioData.base64,
-              },
-            }],
-          }],
-        }),
-      }
-    );
-    if (res.ok) {
-      const data = await res.json();
-      const text =
-        data.candidates?.[0]?.content?.parts?.[0]?.audioTranscription?.text ||
-        data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text && text.trim()) return text.trim();
-    }
-  } catch (err) {
-    console.warn('Error en transcripción con gemini-3.5-transcribe:', err);
-  }
+  const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
 
-  // 2. Fallback a modelos ligeros de generación multimodal
-  const fallbackModels = ['gemini-flash-lite-latest', 'gemini-3.1-flash-lite'];
-  for (const model of fallbackModels) {
+  for (const model of models) {
     try {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(3500),
           body: JSON.stringify({
             contents: [{
               parts: [
@@ -358,17 +329,38 @@ async function transcribeAudioWithGemini(
           }),
         }
       );
+
       if (res.ok) {
         const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        const text =
+          data.candidates?.[0]?.content?.parts?.[0]?.audioTranscription?.text ||
+          data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text && text.trim()) return text.trim();
       }
     } catch (err) {
-      console.warn(`Error en fallback de audio con ${model}:`, err);
+      console.warn(`Aviso de latencia/fallo transcribiendo audio con ${model}:`, err);
     }
   }
 
   return null;
+}
+
+/**
+ * Dispara de forma no bloqueante la acción visual de Telegram (typing / record_voice)
+ * para proporcionar acuse de recibo visual inmediato (< 100 ms) al atleta.
+ */
+function sendTelegramChatAction(
+  chatId: number,
+  action: 'typing' | 'record_voice' | 'upload_photo' | 'upload_document',
+  botToken: string
+): void {
+  try {
+    fetch(`https://api.telegram.org/bot${botToken}/sendChatAction`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, action }),
+    }).catch(() => {});
+  } catch {}
 }
 
 // --------------------------------------------------------------------
@@ -1176,15 +1168,8 @@ DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin mark
 }
 `;
 
-  // Modelos estables y prioritarios de Gemini Flash
-  const models = [
-    'gemini-flash-latest',
-    'gemini-flash-lite-latest',
-    'gemini-3.1-flash-lite',
-    'gemini-3.7-flash',
-    'gemini-3.8-flash',
-    'gemini-3.5-flash',
-  ];
+  // Modelos oficiales de ultra-baja latencia (prioridad Flash 2.0 y 1.5)
+  const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
 
   for (const model of models) {
     try {
@@ -1204,7 +1189,13 @@ DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin mark
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts }] }),
+          signal: AbortSignal.timeout(4000),
+          body: JSON.stringify({
+            contents: [{ parts }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+            },
+          }),
         }
       );
 
@@ -1215,7 +1206,7 @@ DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin mark
         return JSON.parse(cleanJson);
       }
     } catch (err) {
-      console.warn(`Error llamando a Gemini ${model}:`, err);
+      console.warn(`Aviso de latencia/fallo llamando a Gemini ${model}:`, err);
     }
   }
 
@@ -1849,6 +1840,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     let spokenText = message.text || message.caption || '';
     let audioData: { base64: string; mimeType: string } | null = null;
     let isVoiceNote = false;
+
+    // Disparar acción visual inmediata en Telegram (< 50ms) para que el atleta perciba respuesta instantánea
+    if (botToken && message.chat?.id) {
+      if (message.voice || message.audio) {
+        sendTelegramChatAction(chatId, 'record_voice', botToken);
+      } else if (message.photo) {
+        sendTelegramChatAction(chatId, 'upload_photo', botToken);
+      } else {
+        sendTelegramChatAction(chatId, 'typing', botToken);
+      }
+    }
 
     // Detectar, descargar y transcribir nota de voz / audio de forma ultrarrápida
     if ((message.voice || message.audio) && botToken) {
@@ -2814,7 +2816,9 @@ _${s.note}_
     // PROCESADO INTELIGENTE MULTIMODAL CON GEMINI FLASH
     // (Entrenamiento Fuerza, Cardio, Nutrición o Consultas)
     // ================================================================
-    const aiResult = await processWithGemini(spokenText, geminiKey, snapshot, audioData);
+    // Comprobar Atajo Determinista de 0 ms (Bypass de IA)
+    const deterministicResult = await tryDeterministicBypass(spokenText, todayStr);
+    const aiResult = deterministicResult || (await processWithGemini(spokenText, geminiKey, snapshot, audioData));
     const transcriptionHeader = isVoiceNote && aiResult.transcription
       ? `🎙️ _"${aiResult.transcription}"_\n\n`
       : '';
@@ -3175,7 +3179,7 @@ ${resSwap.message}
     // CASO G: REASIGNACIÓN DE LA SESIÓN DE UN DÍA (SCHEDULE REASSIGN)
     if (aiResult.action === 'schedule_reassign' && aiResult.schedule_reassign) {
       const targetDate = parseRelativeDate(aiResult.schedule_reassign.date, todayStr);
-      const rKey = aiResult.schedule_reassign.routine_key;
+      const rKey = (aiResult.schedule_reassign.routine_key as RoutineKey) || 'custom';
       const canonical = CANONICAL_ROUTINES[rKey] || CANONICAL_ROUTINES.custom;
       const reason = aiResult.schedule_reassign.reason || 'Reasignación solicitada por el atleta';
 

@@ -23,8 +23,16 @@ import {
 } from 'lucide-react';
 import { GymExercise, GymWorkoutLog } from '@/types/database';
 import { getSpainDate } from '@/lib/weeklyRoutine';
-import { ScheduleManagerModal } from '@/components/schedule/ScheduleManagerModal';
-import { ExerciseManagerModal } from '@/components/gym/ExerciseManagerModal';
+import dynamic from 'next/dynamic';
+
+const ScheduleManagerModal = dynamic(
+  () => import('@/components/schedule/ScheduleManagerModal').then((m) => m.ScheduleManagerModal),
+  { ssr: false }
+);
+const ExerciseManagerModal = dynamic(
+  () => import('@/components/gym/ExerciseManagerModal').then((m) => m.ExerciseManagerModal),
+  { ssr: false }
+);
 
 interface GymViewProps {
   exercises: GymExercise[];

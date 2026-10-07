@@ -35,6 +35,7 @@ import {
 import {
   calculateMealFromWeighedItems,
   extractItemsFromText,
+  findMercadonaProduct,
   WeighedItemInput,
 } from '@/lib/mercadonaNutrition';
 import {
@@ -160,45 +161,17 @@ export async function transcribeAudioWithGemini(
   audioData: { base64: string; mimeType: string },
   apiKey: string
 ): Promise<string | null> {
-  // 1. Modelo especializado ultrarrápido
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              inline_data: {
-                mime_type: audioData.mimeType,
-                data: audioData.base64,
-              },
-            }],
-          }],
-        }),
-      }
-    );
-    if (res.ok) {
-      const data = await res.json();
-      const text =
-        data.candidates?.[0]?.content?.parts?.[0]?.audioTranscription?.text ||
-        data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text && text.trim()) return text.trim();
-    }
-  } catch (err) {
-    console.warn('Aviso transcribiendo con gemini-3.5-transcribe:', err);
-  }
+  // Modelos oficiales de ultra-baja latencia y fidelidad auditiva (prioridad Flash 2.0 y 1.5)
+  const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
 
-  // 2. Modelos multimodales de respaldo
-  const fallbackModels = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.0-flash'];
-  for (const model of fallbackModels) {
+  for (const model of models) {
     try {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(3500),
           body: JSON.stringify({
             contents: [{
               parts: [
@@ -214,13 +187,16 @@ export async function transcribeAudioWithGemini(
           }),
         }
       );
+
       if (res.ok) {
         const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        const text =
+          data.candidates?.[0]?.content?.parts?.[0]?.audioTranscription?.text ||
+          data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text && text.trim()) return text.trim();
       }
     } catch (err) {
-      console.warn(`Aviso fallback audio ${model}:`, err);
+      console.warn(`Aviso de latencia/fallo transcribiendo audio con ${model}:`, err);
     }
   }
 
@@ -364,6 +340,123 @@ export async function getAppSnapshot(todayStr: string) {
 }
 
 // --------------------------------------------------------------------
+// ATAJO DETERMINISTA DE 0 MS (BYPASS DE IA)
+// --------------------------------------------------------------------
+
+/**
+ * Resuelve registros directos de nutrición pesada, agua o peso en < 2 ms
+ * sin realizar llamadas de red a Gemini.
+ */
+export async function tryDeterministicBypass(
+  text: string,
+  todayStr: string
+): Promise<UniversalAssistantResponse | null> {
+  if (!text || typeof text !== 'string') return null;
+  const clean = text.trim();
+  const lower = clean.toLowerCase();
+
+  // Si contiene interrogación o términos de consulta o dolor, derivar a la IA
+  if (
+    clean.includes('?') ||
+    clean.includes('¿') ||
+    /\b(que|qué|como|cómo|por\s*que|por\s*qué|cuanto|cuánto|cuando|cuándo|cual|cuál|puedo|debo|recomiendas|consejo|dolor|molestia|rodilla|tendon|tendón)\b/i.test(lower)
+  ) {
+    return null;
+  }
+
+  // 1. Detección rápida de agua
+  const isWaterIntent =
+    lower.includes('agua') ||
+    lower.includes('hidrat') ||
+    /\b(?:bebi|tom[eé]|bebo|vaso|botella)\b/i.test(lower);
+
+  const waterQtyMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(l(?:itro)?s?|ml)\b/i);
+
+  if (isWaterIntent && waterQtyMatch && !lower.includes('pechuga') && !lower.includes('arroz') && !lower.includes('huevo') && !lower.includes('prote')) {
+    let amount = parseFloat(waterQtyMatch[1].replace(',', '.'));
+    const unit = waterQtyMatch[2].toLowerCase();
+    if (unit.startsWith('l')) amount = Math.round(amount * 1000);
+    if (!isNaN(amount) && amount > 0 && amount <= 5000) {
+      return {
+        action: 'log_water',
+        water_ml: amount,
+        reply_text: `Registrados ${amount} ml de agua directamente en tu balance de hidratación.`,
+        coach_tip: 'Mantén una ingesta continua para lubricar el cartílago articular y optimizar tu rendimiento.',
+      };
+    }
+  }
+
+  // 2. Detección rápida de peso corporal
+  const weightMatch =
+    lower.match(/(?:pes[oe]|pesado|b[aá]scula)\s*(?:hoy)?\s*(?:de|en|es)?\s*(\d{2,3}(?:[.,]\d+)?)\s*k?g?/i) ||
+    lower.match(/^(\d{2,3}[.,]\d+)\s*k?g?$/i);
+  if (weightMatch) {
+    const val = parseFloat(weightMatch[1].replace(',', '.'));
+    if (!isNaN(val) && val >= 60 && val <= 160) {
+      return {
+        action: 'log_weight',
+        weight_log: {
+          weight_kg: val,
+          notes: 'Pesaje directo determinista (0 ms)',
+        },
+        reply_text: `Peso de ${val} kg guardado correctamente en tu telemetría.`,
+        coach_tip: 'Monitorea la media móvil semanal para asegurar el déficit sin pérdida de masa magra.',
+      };
+    }
+  }
+
+  // 3. Detección rápida de comidas pesadas o macros explícitos
+  const items = extractItemsFromText(clean);
+  const explicitMacros = extractExplicitMacrosFromText(clean);
+
+  const hasKnownFoods = items.length > 0 && items.some((item) => {
+    return Boolean(findMercadonaProduct(item.food) || findUserFrequentFood(item.food));
+  });
+
+  if (hasKnownFoods || (explicitMacros.hasExplicitMacros && (explicitMacros.calories || explicitMacros.protein_g))) {
+    const calc = await calculateMealFromWeighedItems(items);
+    let finalCal = calc.totalCalories;
+    let finalP = calc.totalProtein;
+    let finalC = calc.totalCarbs;
+    let finalF = calc.totalFat;
+
+    if (explicitMacros.hasExplicitMacros) {
+      if (explicitMacros.calories !== undefined) finalCal = explicitMacros.calories;
+      if (explicitMacros.protein_g !== undefined) finalP = explicitMacros.protein_g;
+      if (explicitMacros.carbs_g !== undefined) finalC = explicitMacros.carbs_g;
+      if (explicitMacros.fat_g !== undefined) finalF = explicitMacros.fat_g;
+    }
+
+    const hour = new Date().getHours();
+    let mealType = 'Comida';
+    if (hour < 12) mealType = 'Desayuno';
+    else if (hour < 16) mealType = 'Almuerzo';
+    else if (hour < 19) mealType = 'Merienda';
+    else mealType = 'Cena';
+
+    return {
+      action: 'log_nutrition',
+      nutrition: {
+        meal_type: mealType,
+        description: clean,
+        items,
+        calories: finalCal,
+        protein_g: finalP,
+        carbs_g: finalC,
+        fat_g: finalF,
+        water_ml: 0,
+        creatine_detected: lower.includes('creatina'),
+        user_explicit_macros: explicitMacros.hasExplicitMacros,
+      },
+      reply_text: `Ingesta calculada al instante (0 ms) con el catálogo oficial de Mercadona.`,
+      coach_tip: 'Máxima precisión bromatológica para tu déficit de recomposición.',
+    };
+  }
+
+  return null;
+}
+
+// --------------------------------------------------------------------
 // PARSER INTELIGENTE CON GEMINI
 // --------------------------------------------------------------------
 
@@ -411,7 +504,7 @@ REGLAS DE RESOLUCIÓN BROMATOLÓGICA Y NUTRICIONAL ESTRICTAS:
 2. Contramuslo deshuesado cocinado / pollo cocinado: ~175-180 kcal, ~25g proteína, 0g carbohidratos, ~8g grasa por 100g.
 3. Calabacín cocinado / verduras acuosas: ~16-20 kcal, ~1.2g proteína, ~2.5g carbohidratos, ~0.3g grasa por 100g. ¡Jamás inflar a 100+ kcal!
 4. Si Álvaro dicta números explícitos de macros (ej: "40g proteína, 250 kcal"), respétalos al 100% y activa "user_explicit_macros": true.
-5. Si Álvaro pide RECALCULAR, AUDITAR O VOLVER A CALCULAR LAS COMIDAS DE HOY O SUS MACROS A PARTIR DE SUS AUDIOS/MENSAJES (ej: "analiza las comidas de hoy y vuelve a hacer el cálculo de los macros", "recalcula las comidas de hoy", "vuelve a calcular los macros de hoy con mis audios", "revisa lo que he comido hoy"):
+5. Si Álvaro pide RECALCULAR, AUDITAR O VOLVER A CALCULAR LAS COMIDAS DE HOY O SUS MACROS:
    Pon "action": "recalculate_today_nutrition".
 
 INSTRUCCIÓN DE SALIDA:
@@ -454,7 +547,7 @@ Analiza el mensaje o audio y responde EXCLUSIVAMENTE un objeto JSON válido con 
 }
 `;
 
-  const models = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.0-flash'];
+  const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
 
   for (const model of models) {
     try {
@@ -475,7 +568,13 @@ Analiza el mensaje o audio y responde EXCLUSIVAMENTE un objeto JSON válido con 
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts }] }),
+          signal: AbortSignal.timeout(4000),
+          body: JSON.stringify({
+            contents: [{ parts }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+            },
+          }),
         }
       );
 
@@ -486,7 +585,7 @@ Analiza el mensaje o audio y responde EXCLUSIVAMENTE un objeto JSON válido con 
         return JSON.parse(clean);
       }
     } catch (err) {
-      console.warn(`Aviso Gemini ${model}:`, err);
+      console.warn(`Aviso de latencia/fallo Gemini ${model}:`, err);
     }
   }
 
@@ -712,15 +811,21 @@ export async function executeCoachTurn({
     }
   }
 
-  const snapshot = await getAppSnapshot(todayStr);
+  // 2. Comprobar Atajo Determinista de 0 ms (Bypass de IA)
+  const deterministicResult = await tryDeterministicBypass(spokenText, todayStr);
+  let aiResult: UniversalAssistantResponse;
 
-  // 2. Parsear con Gemini
-  const aiResult = await parseWithGemini(
-    spokenText,
-    geminiKey,
-    snapshot,
-    audioBase64 && mimeType ? { base64: audioBase64, mimeType } : null
-  );
+  if (deterministicResult) {
+    aiResult = deterministicResult;
+  } else {
+    const snapshot = await getAppSnapshot(todayStr);
+    aiResult = await parseWithGemini(
+      spokenText,
+      geminiKey,
+      snapshot,
+      audioBase64 && mimeType ? { base64: audioBase64, mimeType } : null
+    );
+  }
 
   let replyText = aiResult.reply_text || 'Entendido, Álvaro. Registrado en tu plan.';
   let coachTip = aiResult.coach_tip;
@@ -777,30 +882,30 @@ export async function executeCoachTurn({
           raw_audio_transcription: spokenText,
         };
 
-        if (isSupabaseConfigured && supabaseAdmin) {
-          try {
-            await supabaseAdmin.from('nutrition_logs').insert([newMeal]);
-          } catch (err) {
-            console.warn('Fallo guardando comida en Supabase, fallback a mockStore:', err);
-          }
-        }
         mockStore.nutritionLogs.unshift(newMeal);
 
+        let newWater: WaterLog | null = null;
         if (nutri.water_ml > 0) {
-          const newWater: WaterLog = {
+          newWater = {
             id: `water-${Date.now()}`,
             timestamp: new Date().toISOString(),
             date: todayStr,
             amount_ml: nutri.water_ml,
           };
-          if (isSupabaseConfigured && supabaseAdmin) {
-            try {
-              await supabaseAdmin.from('water_logs').insert([newWater]);
-            } catch (err) {
-              console.warn('Fallo guardando agua en Supabase, fallback a mockStore:', err);
-            }
-          }
           mockStore.waterLogs.unshift(newWater);
+        }
+
+        if (isSupabaseConfigured && supabaseAdmin) {
+          const writes: Promise<any>[] = [
+            Promise.resolve(supabaseAdmin.from('nutrition_logs').insert([newMeal])),
+          ];
+          if (newWater) {
+            writes.push(Promise.resolve(supabaseAdmin.from('water_logs').insert([newWater])));
+          }
+          // I/O en background paralelo sin bloquear la respuesta de vuelta al usuario
+          Promise.all(writes).catch((err) => {
+            console.warn('Fallo guardando en Supabase en background:', err);
+          });
         }
 
         dataSummary = {

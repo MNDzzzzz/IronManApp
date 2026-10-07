@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Flame,
   Moon,
@@ -16,12 +17,20 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { DailyHealthMetric, StravaActivity } from '@/types/database';
-import { ScheduleManagerModal } from '@/components/schedule/ScheduleManagerModal';
-import { CoachChat } from '@/components/coach/CoachChat';
 import { CoachTurnResult } from '@/lib/coach/coachCore';
 import { HeroVoiceButton } from '@/components/voice/HeroVoiceButton';
 import { DynamicIslandCoach } from '@/components/dashboard/DynamicIslandCoach';
 import { TabType } from '@/components/navigation/BottomNav';
+
+// Carga diferida de modales pesados bajo demanda (reducción de bundle JS)
+const ScheduleManagerModal = dynamic(
+  () => import('@/components/schedule/ScheduleManagerModal').then((m) => m.ScheduleManagerModal),
+  { ssr: false }
+);
+const CoachChat = dynamic(
+  () => import('@/components/coach/CoachChat').then((m) => m.CoachChat),
+  { ssr: false }
+);
 
 export interface EffectiveRoutineItem {
   date: string;
@@ -53,7 +62,7 @@ interface TodayViewProps {
   onReloadData?: () => void;
 }
 
-export const TodayView: React.FC<TodayViewProps> = ({
+const TodayViewComponent: React.FC<TodayViewProps> = ({
   health,
   nutritionTotals,
   latestActivity,
@@ -64,21 +73,45 @@ export const TodayView: React.FC<TodayViewProps> = ({
   onOpenReport,
   onReloadData,
 }) => {
-  const stepsGoal = 10000;
-  const steps = health?.total_steps || 0;
-  const stepsPercent = Math.min(100, Math.round((steps / stepsGoal) * 100));
+  const { stepsGoal, steps, stepsPercent } = useMemo(() => {
+    const goal = 10000;
+    const currentSteps = health?.total_steps || 0;
+    return {
+      stepsGoal: goal,
+      steps: currentSteps,
+      stepsPercent: Math.min(100, Math.round((currentSteps / goal) * 100)),
+    };
+  }, [health?.total_steps]);
 
-  const caloriesTarget = 2400;
-  const caloriesConsumed = nutritionTotals.calories || 0;
-  const caloriesRemaining = Math.max(0, caloriesTarget - caloriesConsumed);
-  const caloriesPercent = Math.min(100, Math.round((caloriesConsumed / caloriesTarget) * 100));
+  const {
+    caloriesTarget,
+    caloriesConsumed,
+    caloriesRemaining,
+    caloriesPercent,
+    proteinTarget,
+    proteinConsumed,
+    proteinPercent,
+    waterGoal,
+    waterPercent,
+  } = useMemo(() => {
+    const calTarget = 2400;
+    const calConsumed = nutritionTotals.calories || 0;
+    const pTarget = 202;
+    const pConsumed = nutritionTotals.protein_g || 0;
+    const wGoal = 3000;
 
-  const proteinTarget = 202;
-  const proteinConsumed = nutritionTotals.protein_g || 0;
-  const proteinPercent = Math.min(100, Math.round((proteinConsumed / proteinTarget) * 100));
-
-  const waterGoal = 3000;
-  const waterPercent = Math.min(100, Math.round((nutritionTotals.water_ml / waterGoal) * 100));
+    return {
+      caloriesTarget: calTarget,
+      caloriesConsumed: calConsumed,
+      caloriesRemaining: Math.max(0, calTarget - calConsumed),
+      caloriesPercent: Math.min(100, Math.round((calConsumed / calTarget) * 100)),
+      proteinTarget: pTarget,
+      proteinConsumed: pConsumed,
+      proteinPercent: Math.min(100, Math.round((pConsumed / pTarget) * 100)),
+      waterGoal: wGoal,
+      waterPercent: Math.min(100, Math.round((nutritionTotals.water_ml / wGoal) * 100)),
+    };
+  }, [nutritionTotals.calories, nutritionTotals.protein_g, nutritionTotals.water_ml]);
 
   const restingHr = health?.resting_hr ? `${health.resting_hr}` : '--';
   const sleepHours = health?.sleep_duration_minutes
@@ -401,3 +434,5 @@ export const TodayView: React.FC<TodayViewProps> = ({
     </div>
   );
 };
+
+export const TodayView = memo(TodayViewComponent);

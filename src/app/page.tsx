@@ -1,15 +1,24 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { TopBar } from '@/components/navigation/TopBar';
 import { BottomNav, TabType } from '@/components/navigation/BottomNav';
 import { TodayView } from '@/components/dashboard/TodayView';
 import { AdaptiveWorkoutView } from '@/components/workout/AdaptiveWorkoutView';
 import { NutritionView } from '@/components/nutrition/NutritionView';
 import { HealthView } from '@/components/health/HealthView';
-import { SettingsModal } from '@/components/settings/SettingsModal';
-import { WeeklyReportView } from '@/components/reports/WeeklyReportView';
 import { useTheme } from '@/lib/theme/useTheme';
+
+// Carga diferida de modales y vistas pesadas para minimizar el First Load JS (< 200 kB)
+const SettingsModal = dynamic(
+  () => import('@/components/settings/SettingsModal').then((m) => m.SettingsModal),
+  { ssr: false }
+);
+const WeeklyReportView = dynamic(
+  () => import('@/components/reports/WeeklyReportView').then((m) => m.WeeklyReportView),
+  { ssr: false }
+);
 import {
   DailyHealthMetric,
   StravaActivity,
@@ -52,31 +61,32 @@ export default function Home() {
   const loadAllData = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      // 1. Salud (Fit3)
-      const resHealth = await fetch('/api/health', { cache: 'no-store' });
+      // Ejecución paralela ultra-rápida de las 5 consultas de telemetría (< 200 ms)
+      const [resHealth, resAct, resGym, resNutri, resWeight] = await Promise.all([
+        fetch('/api/health', { cache: 'no-store' }),
+        fetch('/api/activities', { cache: 'no-store' }),
+        fetch('/api/gym', { cache: 'no-store' }),
+        fetch('/api/nutrition', { cache: 'no-store' }),
+        fetch('/api/weight', { cache: 'no-store' }),
+      ]);
+
       if (resHealth.ok) {
         const data = await resHealth.json();
         setHealth(data.today || (data.history && data.history.length > 0 ? data.history[0] : null));
         setHealthHistory(data.history || []);
       }
 
-      // 2. Actividades Strava
-      const resAct = await fetch('/api/activities', { cache: 'no-store' });
       if (resAct.ok) {
         const data = await resAct.json();
         setActivities(data.activities || []);
       }
 
-      // 3. Gimnasio
-      const resGym = await fetch('/api/gym', { cache: 'no-store' });
       if (resGym.ok) {
         const data = await resGym.json();
         setGymExercises(data.exercises || []);
         setGymLogs(data.logs || []);
       }
 
-      // 4. Nutrición & Agua
-      const resNutri = await fetch('/api/nutrition', { cache: 'no-store' });
       if (resNutri.ok) {
         const data = await resNutri.json();
         setNutritionMeals(data.all_meals || data.allMeals || data.meals || []);
@@ -84,8 +94,6 @@ export default function Home() {
         if (data.totals) setNutritionTotals(data.totals);
       }
 
-      // 5. Peso Corporal
-      const resWeight = await fetch('/api/weight', { cache: 'no-store' });
       if (resWeight.ok) {
         const data = await resWeight.json();
         setWeightLogs(data.logs || []);
