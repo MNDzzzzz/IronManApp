@@ -14,6 +14,7 @@ import {
   NutritionAdaptation,
   UserFrequentFood,
 } from '@/types/database';
+import { DiscomfortReport } from './discomfortManager';
 import { mergeStravaWithFit3HeartRate } from './merging/temporalAligner';
 
 const today = new Date().toISOString().split('T')[0];
@@ -756,6 +757,8 @@ declare global {
     routineDayOverrides: RoutineDayOverride[];
     nutritionAdaptations: NutritionAdaptation[];
     userFrequentFoods: UserFrequentFood[];
+    discomfortReports: DiscomfortReport[];
+    activeDiscomfort: DiscomfortReport | null;
   } | undefined;
 }
 
@@ -772,7 +775,16 @@ if (!global.__ironman_store) {
     routineDayOverrides: [],
     nutritionAdaptations: [],
     userFrequentFoods: [],
+    discomfortReports: [],
+    activeDiscomfort: null,
   };
+}
+
+if (!global.__ironman_store.discomfortReports) {
+  global.__ironman_store.discomfortReports = [];
+}
+if (global.__ironman_store.activeDiscomfort === undefined) {
+  global.__ironman_store.activeDiscomfort = null;
 }
 
 export const mockStore = global.__ironman_store;

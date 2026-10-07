@@ -344,6 +344,7 @@ export default function Home() {
                 onDeleteWater={handleDeleteWater}
                 onAddMeal={handleAddMeal}
                 onDeleteMeal={handleDeleteMeal}
+                onRefreshData={loadAllData}
               />
             )}
 

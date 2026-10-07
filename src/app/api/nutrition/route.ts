@@ -142,6 +142,76 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, water: newWater });
     }
 
+    // Inserción por lotes (Plantillas o Día Típico Cumplido)
+    const isBatch =
+      body.action === 'batch_insert' ||
+      Array.isArray(body.meals) ||
+      Array.isArray(body.batch) ||
+      Array.isArray(body);
+
+    if (isBatch) {
+      const rawMeals: any[] = Array.isArray(body)
+        ? body
+        : Array.isArray(body.meals)
+        ? body.meals
+        : Array.isArray(body.batch)
+        ? body.batch
+        : [];
+      const targetDate = body.date || logDate;
+
+      const createdMeals: NutritionLog[] = rawMeals.map((m: any, idx: number) => ({
+        id: m.id || `nutri-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}`,
+        timestamp: m.timestamp || new Date(Date.now() + idx * 1000).toISOString(),
+        date: m.date || targetDate,
+        meal_type: m.meal_type || 'Snack',
+        description: m.description || 'Comida en bloque',
+        calories: Math.round(Number(m.calories) || 0),
+        protein_g: Number((Number(m.protein_g) || 0).toFixed(1)),
+        carbs_g: Number((Number(m.carbs_g) || 0).toFixed(1)),
+        fat_g: Number((Number(m.fat_g) || 0).toFixed(1)),
+        raw_audio_transcription: m.raw_audio_transcription,
+      }));
+
+      if (isSupabaseConfigured && supabaseAdmin && createdMeals.length > 0) {
+        await supabaseAdmin.from('nutrition_logs').insert(createdMeals);
+      }
+      if (createdMeals.length > 0) {
+        mockStore.nutritionLogs.unshift(...createdMeals);
+      }
+
+      // Recalcular totales diarios para la fecha de registro
+      let dayMeals: NutritionLog[] = [];
+      if (isSupabaseConfigured && supabaseAdmin) {
+        const { data: dbMeals } = await supabaseAdmin
+          .from('nutrition_logs')
+          .select('*')
+          .eq('date', targetDate);
+        dayMeals = (dbMeals || []).filter((m) => m.meal_type !== 'PESO_CORPORAL');
+      } else {
+        dayMeals = (mockStore.nutritionLogs || []).filter(
+          (m) => m.date === targetDate && m.meal_type !== 'PESO_CORPORAL'
+        );
+      }
+
+      const totalCalories = dayMeals.reduce((sum, m) => sum + m.calories, 0);
+      const totalProtein = dayMeals.reduce((sum, m) => sum + m.protein_g, 0);
+      const totalCarbs = dayMeals.reduce((sum, m) => sum + m.carbs_g, 0);
+      const totalFat = dayMeals.reduce((sum, m) => sum + m.fat_g, 0);
+
+      return NextResponse.json({
+        success: true,
+        action: 'batch_insert',
+        count: createdMeals.length,
+        meals: createdMeals,
+        totals: {
+          calories: totalCalories,
+          protein_g: Number(totalProtein.toFixed(1)),
+          carbs_g: Number(totalCarbs.toFixed(1)),
+          fat_g: Number(totalFat.toFixed(1)),
+        },
+      });
+    }
+
     // Registro de comida manual
     const newMeal: NutritionLog = {
       id: `nutri-${Date.now()}`,

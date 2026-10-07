@@ -21,6 +21,7 @@ import { CoachTurnResult } from '@/lib/coach/coachCore';
 import { HeroVoiceButton } from '@/components/voice/HeroVoiceButton';
 import { DynamicIslandCoach } from '@/components/dashboard/DynamicIslandCoach';
 import { TabType } from '@/components/navigation/BottomNav';
+import { DiscomfortLevel, DiscomfortManager, AdaptationStrategy } from '@/lib/discomfortManager';
 
 // Carga diferida de modales pesados bajo demanda (reducción de bundle JS)
 const ScheduleManagerModal = dynamic(
@@ -125,6 +126,18 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
     'Head Coach listo. Habla para registrar comidas o mover entrenos.'
   );
   const [showFullChatHistory, setShowFullChatHistory] = useState(false);
+  const [selectedDiscomfortLevel, setSelectedDiscomfortLevel] = useState<DiscomfortLevel | null>(null);
+
+  const discomfortStrategy: AdaptationStrategy | null = useMemo(() => {
+    if (!selectedDiscomfortLevel) return null;
+    return DiscomfortManager.evaluate({
+      id: `disc-${Date.now()}`,
+      userId: 'alvaro',
+      bodyPartId: 'rodilla',
+      level: selectedDiscomfortLevel,
+      reportedAt: new Date(),
+    });
+  }, [selectedDiscomfortLevel]);
 
   const fetchSchedule = () => {
     fetch('/api/schedule')
@@ -148,6 +161,9 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
     if (result.replyText) {
       setCoachStatusMessage(result.replyText);
     }
+    if (result.action === 'discomfort_report' && result.dataSummary?.report) {
+      setSelectedDiscomfortLevel(result.dataSummary.report.level);
+    }
     if (onReloadData) onReloadData();
   };
 
@@ -164,6 +180,8 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
       <DynamicIslandCoach
         message={coachStatusMessage}
         subtext={`Meta: 21K Feb-2027 · ${currentWeight.toFixed(1)} kg`}
+        discomfortLevel={selectedDiscomfortLevel}
+        activeAdaptation={discomfortStrategy?.recommendationsMarkdown || discomfortStrategy?.training.warmupNote}
       />
 
       {/* ================================================================ */}
@@ -180,6 +198,17 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
                 {effectiveRoutine.isOverridden && (
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-300 font-medium border border-amber-500/30">
                     Adaptada ⚡
+                  </span>
+                )}
+                {selectedDiscomfortLevel && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${
+                    selectedDiscomfortLevel === 6
+                      ? 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/40 animate-pulse'
+                      : selectedDiscomfortLevel >= 4
+                      ? 'bg-orange-500/20 text-orange-600 dark:text-orange-400 border-orange-500/30'
+                      : 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                  }`}>
+                    Molestia Nivel {selectedDiscomfortLevel}
                   </span>
                 )}
               </div>
@@ -221,6 +250,153 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
           </div>
         </section>
       )}
+
+      {/* ================================================================ */}
+      {/* 2.1 CHECK-IN DE SENSACIONES Y GRADUACIÓN DE MOLESTIAS (P1.1)      */}
+      {/* Escala 1 a 6 sin hiperfoco ni dramatismo                         */}
+      {/* ================================================================ */}
+      <section className="p-3.5 rounded-3xl liquid-glass-card border border-[var(--glass-border)] space-y-2.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-xl bg-[#D97757]/15 text-[#D97757] flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-[var(--text-primary)]">
+                Check-in de Sensaciones
+              </span>
+              <span className="text-[10px] text-[var(--text-secondary)] ml-1.5 font-normal">
+                {selectedDiscomfortLevel ? `Nivel ${selectedDiscomfortLevel}` : 'Normal / Sin molestias'}
+              </span>
+            </div>
+          </div>
+          {selectedDiscomfortLevel && (
+            <button
+              onClick={async () => {
+                setSelectedDiscomfortLevel(null);
+                try {
+                  await fetch('/api/schedule', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      action: 'reset_day',
+                      date: effectiveRoutine?.date || new Date().toISOString().split('T')[0],
+                    }),
+                  });
+                  fetchSchedule();
+                  setCoachStatusMessage('Molestia resuelta. Sesión restablecida al 100%.');
+                } catch (err) {
+                  console.warn('Aviso restableciendo rutina:', err);
+                }
+              }}
+              className="text-[10px] text-[var(--text-tertiary)] hover:text-rose-500 font-medium transition-colors"
+            >
+              Restablecer
+            </button>
+          )}
+        </div>
+
+        {/* Fila de 6 botones numéricos graduados */}
+        <div className="grid grid-cols-6 gap-1.5 pt-0.5">
+          {[
+            { lvl: DiscomfortLevel.VERY_LIGHT, label: '1. Muy Leve', color: 'hover:border-emerald-500 text-emerald-600 dark:text-emerald-400' },
+            { lvl: DiscomfortLevel.LIGHT, label: '2. Leve', color: 'hover:border-lime-500 text-lime-600 dark:text-lime-400' },
+            { lvl: DiscomfortLevel.MODERATE, label: '3. Media', color: 'hover:border-amber-500 text-amber-600 dark:text-amber-400' },
+            { lvl: DiscomfortLevel.MODERATE_HIGH, label: '4. Media-Alta', color: 'hover:border-orange-500 text-orange-600 dark:text-orange-400' },
+            { lvl: DiscomfortLevel.HIGH, label: '5. Alta', color: 'hover:border-rose-500 text-rose-600 dark:text-rose-400' },
+            { lvl: DiscomfortLevel.INJURY, label: '6. Lesión', color: 'hover:border-red-600 text-red-600 dark:text-red-400' },
+          ].map(({ lvl, label, color }) => {
+            const isSelected = selectedDiscomfortLevel === lvl;
+            return (
+              <button
+                key={lvl}
+                onClick={async () => {
+                  const nextLvl = isSelected ? null : lvl;
+                  setSelectedDiscomfortLevel(nextLvl);
+                  if (nextLvl) {
+                    const strategy = DiscomfortManager.evaluate({
+                      id: `disc-${Date.now()}`,
+                      userId: 'alvaro-main',
+                      bodyPartId: 'rodilla',
+                      level: nextLvl,
+                      reportedAt: new Date(),
+                    });
+                    setCoachStatusMessage(strategy.recommendationsMarkdown);
+
+                    try {
+                      const res = await fetch('/api/coach/message', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          text: `tengo molestia nivel ${nextLvl} en la rodilla`,
+                        }),
+                      });
+                      const data = await res.json();
+                      if (data.success) {
+                        fetchSchedule();
+                        if (data.replyText) setCoachStatusMessage(data.replyText);
+                      }
+                    } catch (err) {
+                      console.warn('Aviso sincronizando molestia:', err);
+                    }
+                  } else {
+                    try {
+                      await fetch('/api/schedule', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          action: 'reset_day',
+                          date: effectiveRoutine?.date || new Date().toISOString().split('T')[0],
+                        }),
+                      });
+                      fetchSchedule();
+                      setCoachStatusMessage('Molestia resuelta. Sesión restablecida al 100%.');
+                    } catch (err) {
+                      console.warn('Aviso restableciendo rutina:', err);
+                    }
+                  }
+                }}
+                className={`py-1.5 px-1 rounded-xl text-center text-xs font-mono font-bold transition-all active:scale-95 border ${
+                  isSelected
+                    ? 'bg-[#D97757] text-white border-[#D97757] shadow-sm'
+                    : `liquid-glass-pill text-[var(--text-secondary)] border-[var(--glass-border)] ${color}`
+                }`}
+                title={label}
+              >
+                {lvl}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Explicación sutil y proporcional según nivel */}
+        {discomfortStrategy ? (
+          <div className="p-2.5 rounded-2xl liquid-glass-pill text-[11px] space-y-1 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-[var(--text-primary)]">
+                {(selectedDiscomfortLevel ?? 0) <= 2 ? '⚡ Sin restricciones' : '⚡ Adaptación Proporcional'}
+              </span>
+              <span className="text-[10px] font-mono text-[var(--text-secondary)]">
+                {discomfortStrategy.training.volumeReductionPercent > 0
+                  ? `-${discomfortStrategy.training.volumeReductionPercent}% vol`
+                  : '100% volumen'}
+              </span>
+            </div>
+            <p className="text-[var(--text-secondary)] leading-relaxed text-[10.5px]">
+              {discomfortStrategy.recommendationsMarkdown}
+            </p>
+            {discomfortStrategy.training.warmupNote && (
+              <p className="text-[10px] text-[var(--text-tertiary)] italic pt-0.5">
+                Tip: {discomfortStrategy.training.warmupNote}
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-[10px] text-[var(--text-tertiary)] px-0.5">
+            Selecciona un nivel del 1 al 6 solo si notas alguna incomodidad para adaptar el entreno sin alarmismos.
+          </p>
+        )}
+      </section>
 
       {/* ================================================================ */}
       {/* 3. HERO VOICE BUTTON (VOICE-FIRST INTERACTION PROTAGÓNICA)       */}

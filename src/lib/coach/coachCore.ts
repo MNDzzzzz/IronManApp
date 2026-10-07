@@ -50,6 +50,8 @@ import {
   resetDayRoutineOverride,
   getWeekSchedule,
 } from '@/lib/scheduleManager';
+import { DiscomfortManager, DiscomfortLevel, DiscomfortReport } from '@/lib/discomfortManager';
+import { TYPICAL_DAY_PRESETS, applyTypicalDayBatch } from '@/lib/nutrition/presetsManager';
 
 // --------------------------------------------------------------------
 // TIPOS DEL MOTOR DEL COACH
@@ -71,6 +73,8 @@ export interface UniversalAssistantResponse {
     | 'adjust_value'
     | 'set_value'
     | 'save_food_preference'
+    | 'discomfort_report'
+    | 'log_typical_day'
     | 'unknown';
   transcription?: string;
   workout?: any;
@@ -85,6 +89,7 @@ export interface UniversalAssistantResponse {
   adjust?: any;
   set_value?: any;
   save_food_preference?: any;
+  discomfort_report?: any;
   reply_text?: string;
   coach_tip?: string;
 }
@@ -336,6 +341,7 @@ export async function getAppSnapshot(todayStr: string) {
       protein_g: activeProtocol.targets.proteinMax,
       water_ml: activeProtocol.targets.waterMl || 3000,
     },
+    active_discomfort: mockStore.activeDiscomfort || null,
   };
 }
 
@@ -355,12 +361,31 @@ export async function tryDeterministicBypass(
   const clean = text.trim();
   const lower = clean.toLowerCase();
 
-  // Si contiene interrogación o términos de consulta o dolor, derivar a la IA
+  // Si contiene interrogación o términos de consulta o duda clínica, derivar a la IA
   if (
     clean.includes('?') ||
     clean.includes('¿') ||
-    /\b(que|qué|como|cómo|por\s*que|por\s*qué|cuanto|cuánto|cuando|cuándo|cual|cuál|puedo|debo|recomiendas|consejo|dolor|molestia|rodilla|tendon|tendón)\b/i.test(lower)
+    /\b(que|qué|como|cómo|por\s*que|por\s*qué|cuanto|cuánto|cuando|cuándo|cual|cuál|puedo|debo|recomiendas|consejo)\b/i.test(lower)
   ) {
+    return null;
+  }
+
+  // Triage determinista de reporte directo de molestia (sin dudas clínicas)
+  if (/\b(nivel|molestia|dolor|lesion|lesión|pinchazo|rigidez)\b/i.test(lower)) {
+    const triagedDiscomfort = DiscomfortManager.triageMessage(clean);
+    if (triagedDiscomfort) {
+      const strategy = DiscomfortManager.evaluate(triagedDiscomfort);
+      return {
+        action: 'discomfort_report',
+        discomfort_report: { ...triagedDiscomfort, strategy },
+        reply_text: `🛡️ **Molestia Registrada: Nivel ${triagedDiscomfort.level} (${triagedDiscomfort.bodyPartId})**\n\n• **Recomendación:** ${strategy.recommendationsMarkdown}\n\n• **Ajuste:** ${strategy.training.warmupNote || 'Entrenamiento regular con calentamiento'}`,
+        coach_tip: 'Graduamos la carga con proporcionalidad para que sigas entrenando con seguridad y sin dramatismo.',
+      };
+    }
+  }
+
+  // Si contiene menciones clínicas no estructuradas sin nivel (ej: dolor difuso), derivar a la IA
+  if (/\b(dolor|molestia|rodilla|tendon|tendón)\b/i.test(lower)) {
     return null;
   }
 
@@ -403,6 +428,22 @@ export async function tryDeterministicBypass(
         coach_tip: 'Monitorea la media móvil semanal para asegurar el déficit sin pérdida de masa magra.',
       };
     }
+  }
+
+  // 2.5. Detección rápida de "Día típico cumplido"
+  if (
+    lower.includes('dia tipico') ||
+    lower.includes('día típico') ||
+    lower.includes('dia estandar') ||
+    lower.includes('día estándar') ||
+    lower.includes('comida estandar') ||
+    lower.includes('comida estándar')
+  ) {
+    return {
+      action: 'log_typical_day',
+      reply_text: 'Aplicando tu día típico de nutrición (2.400 kcal / 202g Proteína) en un solo toque.',
+      coach_tip: 'Deduplicación activa: solo se registran las comidas restantes de hoy sin duplicados.',
+    };
   }
 
   // 3. Detección rápida de comidas pesadas o macros explícitos
@@ -828,6 +869,21 @@ export async function executeCoachTurn({
 
   if (deterministicResult) {
     aiResult = deterministicResult;
+  } else if (
+    spokenText &&
+    !spokenText.includes('?') &&
+    !spokenText.includes('¿') &&
+    !/\b(recomiendas|consejo|puedo|debo)\b/i.test(spokenText) &&
+    DiscomfortManager.triageMessage(spokenText)
+  ) {
+    const report = DiscomfortManager.triageMessage(spokenText)!;
+    const strategy = DiscomfortManager.evaluate(report);
+    aiResult = {
+      action: 'discomfort_report',
+      discomfort_report: { ...report, strategy },
+      reply_text: `🛡️ **Molestia Registrada: Nivel ${report.level} (${report.bodyPartId})**\n\n• **Recomendación:** ${strategy.recommendationsMarkdown}\n\n• **Ajuste:** ${strategy.training.warmupNote || 'Entrenamiento regular con calentamiento'}`,
+      coach_tip: 'Graduamos la carga con proporcionalidad para que sigas entrenando con seguridad y sin dramatismo.',
+    };
   } else {
     const snapshot = await getAppSnapshot(todayStr);
     aiResult = await parseWithGemini(
@@ -1001,6 +1057,100 @@ export async function executeCoachTurn({
       const auditResult = await recalculateDayNutrition(todayStr);
       replyText = auditResult.summaryMessage;
       dataSummary = { audit: auditResult };
+      break;
+    }
+
+    case 'discomfort_report': {
+      const reportData = aiResult.discomfort_report;
+      if (reportData) {
+        const level = reportData.level || DiscomfortLevel.VERY_LIGHT;
+        const bodyPartId = reportData.bodyPartId || 'articular';
+        const notes = reportData.notes || spokenText;
+        const strategy = reportData.strategy || DiscomfortManager.evaluate({
+          id: `disc-${Date.now()}`,
+          userId: 'alvaro-main',
+          bodyPartId,
+          level,
+          notes,
+          reportedAt: new Date(),
+        });
+
+        const newReport: DiscomfortReport = {
+          id: `disc-${Date.now()}`,
+          userId: 'alvaro-main',
+          bodyPartId,
+          level,
+          notes,
+          reportedAt: new Date(),
+        };
+
+        if (!mockStore.discomfortReports) {
+          mockStore.discomfortReports = [];
+        }
+        mockStore.discomfortReports.unshift(newReport);
+        mockStore.activeDiscomfort = newReport;
+
+        if (isSupabaseConfigured && supabaseAdmin) {
+          try {
+            await supabaseAdmin.from('discomfort_reports').insert([{
+              id: newReport.id,
+              user_id: newReport.userId,
+              body_part_id: newReport.bodyPartId,
+              level: newReport.level,
+              notes: newReport.notes,
+              reported_at: (newReport.reportedAt || new Date()).toISOString(),
+              strategy,
+            }]);
+          } catch (err) {
+            console.warn('Fallo guardando molestia en Supabase, fallback a mockStore:', err);
+          }
+        }
+
+        // Adaptación automática del calendario para hoy si nivel >= 2
+        if (level === DiscomfortLevel.LIGHT) {
+          await setDayRoutineOverride(todayStr, 'running_base', { notes: `Adaptado por molestia nivel 2 en ${bodyPartId}: CaCo conservador` });
+        } else if (level === DiscomfortLevel.MODERATE) {
+          await setDayRoutineOverride(todayStr, 'custom', { notes: `Adaptado por molestia nivel 3 en ${bodyPartId}: Isométricos Wall-sit y prensa` });
+        } else if (level === DiscomfortLevel.MODERATE_HIGH) {
+          await setDayRoutineOverride(todayStr, 'running_base', { notes: `Adaptado por molestia nivel 4 en ${bodyPartId}: Sin impacto (bici estática / elíptica)` });
+        } else if (level >= DiscomfortLevel.HIGH) {
+          await setDayRoutineOverride(todayStr, 'rest', { notes: `Reposo articular por molestia nivel ${level} en ${bodyPartId}` });
+        }
+
+        dataSummary = {
+          report: newReport,
+          strategy,
+        };
+      }
+      replyText = aiResult.reply_text || replyText;
+      break;
+    }
+
+    case 'log_typical_day': {
+      const preset = TYPICAL_DAY_PRESETS[0];
+      const existingToday = (mockStore.nutritionLogs || []).filter((m) => m.date === todayStr);
+      const batchResult = await applyTypicalDayBatch(preset, existingToday, todayStr);
+
+      if (batchResult.insertedMeals.length > 0) {
+        mockStore.nutritionLogs.unshift(...batchResult.insertedMeals);
+        if (isSupabaseConfigured && supabaseAdmin) {
+          try {
+            await supabaseAdmin.from('nutrition_logs').insert(batchResult.insertedMeals);
+          } catch (err) {
+            console.warn('Fallo guardando batch de comidas en Supabase:', err);
+          }
+        }
+      }
+
+      dataSummary = {
+        batch: batchResult,
+      };
+
+      const skippedNote = batchResult.skippedMeals.length > 0
+        ? `\n\n*(Omitidas por registro previo hoy: ${batchResult.skippedMeals.join(', ')})*`
+        : '';
+
+      replyText = `⚡ **Día Típico Cumplido Aplicado**\n\n• Insertadas **${batchResult.insertedMeals.length} comidas** del protocolo estándar (2.400 kcal / 202g Proteína).${skippedNote}`;
       break;
     }
 

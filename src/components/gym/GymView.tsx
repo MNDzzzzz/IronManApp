@@ -20,9 +20,19 @@ import {
   Trash2,
   ArrowLeftRight,
   Sliders,
+  Zap,
 } from 'lucide-react';
 import { GymExercise, GymWorkoutLog } from '@/types/database';
 import { getSpainDate } from '@/lib/weeklyRoutine';
+import { ProgressionEngine } from '@/lib/training/progressionEngine';
+import {
+  getExerciseReferenceSet,
+  calculateOverloadOptions,
+  RPE_SCALE,
+  getRpeScaleItem,
+  getRpeClinicalNote,
+  OverloadActionType,
+} from '@/lib/gymOverload';
 import dynamic from 'next/dynamic';
 
 const ScheduleManagerModal = dynamic(
@@ -93,6 +103,32 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
   const [weightKg, setWeightKg] = useState<number>(selectedExercise?.current_weight_kg ?? 0);
   const [rpe, setRpe] = useState<number>(8);
   const [isSaving, setIsSaving] = useState(false);
+  const [activeOverloadPreset, setActiveOverloadPreset] = useState<OverloadActionType | null>('same');
+
+  // Resolución de serie de referencia pura usando getExerciseReferenceSet
+  const referenceSet = useMemo(() => {
+    return getExerciseReferenceSet(logs, selectedExercise, todayStr);
+  }, [logs, selectedExercise, todayStr]);
+
+  // Opciones de sobrecarga progresiva deterministas (= Serie previa, +2.5 kg, +1 rep)
+  const overloadOptions = useMemo(() => {
+    return calculateOverloadOptions(referenceSet);
+  }, [referenceSet]);
+
+  // Información del RPE seleccionado actualmente
+  const currentRpeItem = useMemo(() => {
+    return getRpeScaleItem(rpe);
+  }, [rpe]);
+
+  // Aplicar acción de sobrecarga a 1-tap pre-llenando instantáneamente el formulario
+  const handleApplyOverload = (type: OverloadActionType) => {
+    const opt = overloadOptions[type];
+    if (!opt) return;
+    setWeightKg(opt.weight_kg);
+    setReps(opt.reps);
+    setRpe(opt.rpe);
+    setActiveOverloadPreset(type);
+  };
 
   // Registro de la última sesión completada para el ejercicio seleccionado (Sobrecarga Progresiva)
   const previousExerciseLogs = useMemo(() => {
@@ -111,40 +147,14 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
     return [...sessionSets].sort((a, b) => b.weight_kg - a.weight_kg || b.reps - a.reps)[0] || null;
   }, [previousExerciseLogs, lastSessionDate]);
 
-  // Función para precargar exactamente el peso y repeticiones realizados en el entrenamiento anterior
+  // Función para precargar exactamente el peso y repeticiones del ejercicio usando el gestor puro
   const preloadExerciseValues = (exId: string) => {
-    const prevLogs = logs
-      .filter((l) => l.exercise_id === exId && l.date !== todayStr)
-      .sort((a, b) => b.date.localeCompare(a.date) || b.set_number - a.set_number);
-
-    if (prevLogs.length > 0) {
-      const latestDate = prevLogs[0].date;
-      const sessionSets = prevLogs.filter((l) => l.date === latestDate);
-      const bestSet = [...sessionSets].sort((a, b) => b.weight_kg - a.weight_kg || b.reps - a.reps)[0];
-      if (bestSet) {
-        setWeightKg(bestSet.weight_kg);
-        setReps(bestSet.reps);
-        if (bestSet.rpe) setRpe(bestSet.rpe);
-        return;
-      }
-    }
-
-    const todaySets = logs.filter((l) => l.exercise_id === exId && l.date === todayStr);
-    if (todaySets.length > 0) {
-      const lastToday = todaySets[todaySets.length - 1];
-      setWeightKg(lastToday.weight_kg);
-      setReps(lastToday.reps);
-      if (lastToday.rpe) setRpe(lastToday.rpe);
-      return;
-    }
-
     const ex = exercises.find((e) => e.id === exId);
-    if (ex) {
-      setWeightKg(ex.current_weight_kg ?? 0);
-      const parsedReps = ex.target_reps ? parseInt(ex.target_reps) : 8;
-      setReps(!isNaN(parsedReps) ? parsedReps : 8);
-      setRpe(8);
-    }
+    const ref = getExerciseReferenceSet(logs, ex, todayStr);
+    setWeightKg(ref.weight_kg);
+    setReps(ref.reps);
+    setRpe(ref.rpe);
+    setActiveOverloadPreset('same');
   };
 
   // Sincronizar el ejercicio seleccionado cuando cambia el filtro de día
@@ -168,6 +178,27 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
     [logs, selectedExerciseId, todayStr]
   );
   const nextSetNumber = currentExerciseLogs.length + 1;
+
+
+
+  const handleQuickSave = async (quickWeight: number, quickReps: number, quickRpe: number = 8) => {
+    if (!selectedExerciseId) return;
+    setIsSaving(true);
+    try {
+      await onAddSet({
+        exercise_id: selectedExerciseId,
+        set_number: nextSetNumber,
+        reps: quickReps,
+        weight_kg: quickWeight,
+        rpe: quickRpe,
+      });
+      setWeightKg(quickWeight);
+      setReps(quickReps);
+      setRpe(quickRpe);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleSaveSet = async () => {
     if (!selectedExerciseId) return;
@@ -336,8 +367,34 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
               </div>
             )}
 
-            {/* Banner de Referencia de Sesión Anterior (Sobrecarga Progresiva) */}
-            {lastSessionBenchmark ? (
+            {/* Banner de Referencia de Sobrecarga Progresiva */}
+            {referenceSet.source === 'today_previous_set' ? (
+              <div className="p-3 rounded-2xl bg-[#2D68C4]/10 border border-[#2D68C4]/20 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#2D68C4]/20 text-[#2D68C4] dark:text-[#5B95E0] flex items-center justify-center shrink-0">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-[#2D68C4] dark:text-[#5B95E0] font-bold uppercase tracking-wider">
+                      {referenceSet.label}
+                    </div>
+                    <div className="text-[var(--text-primary)] font-black text-sm">
+                      {referenceSet.reps} reps @{' '}
+                      {referenceSet.weight_kg > 0 ? `${referenceSet.weight_kg} kg` : 'Peso Corporal'}
+                      <span className="text-[10px] font-normal text-[var(--text-tertiary)] ml-1.5 font-mono">
+                        (RPE {referenceSet.rpe})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#2D68C4]/20 text-[#2D68C4] dark:text-[#5B95E0] font-bold border border-[#2D68C4]/30">
+                    Hoy
+                  </span>
+                  <p className="text-[9px] text-[var(--text-tertiary)] mt-0.5">Serie previa</p>
+                </div>
+              </div>
+            ) : referenceSet.source === 'last_session_benchmark' ? (
               <div className="p-3 rounded-2xl bg-[#D97757]/10 border border-[#D97757]/20 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-[#D97757]/20 text-[#D97757] flex items-center justify-center shrink-0">
@@ -345,16 +402,14 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                   </div>
                   <div>
                     <div className="text-[10px] text-[#D97757] font-bold uppercase tracking-wider">
-                      Sesión Anterior ({lastSessionDate})
+                      {referenceSet.label}
                     </div>
                     <div className="text-[var(--text-primary)] font-black text-sm">
-                      {lastSessionBenchmark.reps} reps @{' '}
-                      {lastSessionBenchmark.weight_kg > 0 ? `${lastSessionBenchmark.weight_kg} kg` : 'Peso Corporal'}
-                      {lastSessionBenchmark.rpe && (
-                        <span className="text-[10px] font-normal text-[var(--text-tertiary)] ml-1.5 font-mono">
-                          (RPE {lastSessionBenchmark.rpe})
-                        </span>
-                      )}
+                      {referenceSet.reps} reps @{' '}
+                      {referenceSet.weight_kg > 0 ? `${referenceSet.weight_kg} kg` : 'Peso Corporal'}
+                      <span className="text-[10px] font-normal text-[var(--text-tertiary)] ml-1.5 font-mono">
+                        (RPE {referenceSet.rpe})
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -365,6 +420,14 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                   <p className="text-[9px] text-[var(--text-tertiary)] mt-0.5">Preestablecido</p>
                 </div>
               </div>
+            ) : referenceSet.source === 'exercise_target' ? (
+              <div className="p-2.5 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs text-[var(--text-secondary)] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Info className="w-4 h-4 text-[#2D68C4] shrink-0" />
+                  <span>Objetivo inicial: {referenceSet.reps} reps @ {referenceSet.weight_kg > 0 ? `${referenceSet.weight_kg} kg` : 'Peso Corporal'}</span>
+                </div>
+                <span className="text-[9px] text-[var(--text-tertiary)]">Catálogo</span>
+              </div>
             ) : (
               <div className="p-2.5 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs text-[var(--text-secondary)] flex items-center gap-2">
                 <Info className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" />
@@ -372,21 +435,109 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
               </div>
             )}
 
-            {/* Controles de Carga (kg) y Repeticiones */}
+            {/* Botones de Acción de Sobrecarga Progresiva a 1-Tap */}
+            <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-[#D97757]" /> Sobrecarga Progresiva a 1-Tap
+                </span>
+                <span className="text-[9px] text-[var(--text-tertiary)]">Pre-llena al instante</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {/* 1. = Serie previa */}
+                <button
+                  type="button"
+                  onClick={() => handleApplyOverload('same')}
+                  className={`p-2.5 rounded-xl border text-center transition-all active:scale-95 flex flex-col items-center justify-between ${
+                    activeOverloadPreset === 'same' ||
+                    (weightKg === overloadOptions.same.weight_kg && reps === overloadOptions.same.reps)
+                      ? 'bg-[#2D68C4]/20 border-[#2D68C4] ring-1 ring-[#2D68C4] text-[var(--text-primary)] shadow-sm'
+                      : 'bg-[var(--glass-surface-thick)] border-[var(--glass-border)] text-[var(--text-primary)] hover:border-[#2D68C4]/50'
+                  }`}
+                  title="Pre-llenar con la misma carga y repeticiones"
+                >
+                  <span className="text-[8px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                    {overloadOptions.same.badgeText}
+                  </span>
+                  <span className="text-xs font-black my-0.5 text-[var(--text-primary)]">
+                    {overloadOptions.same.label}
+                  </span>
+                  <span className="text-[10px] font-mono text-[#2D68C4] dark:text-[#5B95E0] font-bold">
+                    {overloadOptions.same.displayText}
+                  </span>
+                </button>
+
+                {/* 2. +2.5 kg */}
+                <button
+                  type="button"
+                  onClick={() => handleApplyOverload('weight_plus')}
+                  className={`p-2.5 rounded-xl border text-center transition-all active:scale-95 flex flex-col items-center justify-between ${
+                    activeOverloadPreset === 'weight_plus' ||
+                    (weightKg === overloadOptions.weight_plus.weight_kg && reps === overloadOptions.weight_plus.reps)
+                      ? 'bg-[#D97757]/20 border-[#D97757] ring-1 ring-[#D97757] text-[var(--text-primary)] shadow-sm'
+                      : 'bg-[var(--glass-surface-thick)] border-[var(--glass-border)] text-[var(--text-primary)] hover:border-[#D97757]/50'
+                  }`}
+                  title="Incrementar 2.5 kg sobre la serie de referencia"
+                >
+                  <span className="text-[8px] font-bold uppercase tracking-wider text-[#D97757]">
+                    {overloadOptions.weight_plus.badgeText}
+                  </span>
+                  <span className="text-xs font-black my-0.5 text-[var(--text-primary)]">
+                    {overloadOptions.weight_plus.label}
+                  </span>
+                  <span className="text-[10px] font-mono text-[#D97757] font-bold">
+                    {overloadOptions.weight_plus.displayText}
+                  </span>
+                </button>
+
+                {/* 3. +1 rep */}
+                <button
+                  type="button"
+                  onClick={() => handleApplyOverload('rep_plus')}
+                  className={`p-2.5 rounded-xl border text-center transition-all active:scale-95 flex flex-col items-center justify-between ${
+                    activeOverloadPreset === 'rep_plus' ||
+                    (weightKg === overloadOptions.rep_plus.weight_kg && reps === overloadOptions.rep_plus.reps)
+                      ? 'bg-emerald-500/20 border-emerald-500 ring-1 ring-emerald-500 text-[var(--text-primary)] shadow-sm'
+                      : 'bg-[var(--glass-surface-thick)] border-[var(--glass-border)] text-[var(--text-primary)] hover:border-emerald-500/50'
+                  }`}
+                  title="Incrementar 1 repetición conservando la carga"
+                >
+                  <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-400">
+                    {overloadOptions.rep_plus.badgeText}
+                  </span>
+                  <span className="text-xs font-black my-0.5 text-[var(--text-primary)]">
+                    {overloadOptions.rep_plus.label}
+                  </span>
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                    {overloadOptions.rep_plus.displayText}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Controles Manuales de Carga (kg) y Repeticiones */}
             <div className="grid grid-cols-2 gap-3">
               {/* Carga en kg */}
               <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
                 <span className="text-[10px] text-[var(--text-secondary)] block font-medium">Carga (kg)</span>
                 <div className="flex items-center justify-between mt-1">
                   <button
-                    onClick={() => setWeightKg((w) => Math.max(0, w - 2.5))}
+                    type="button"
+                    onClick={() => {
+                      setWeightKg((w) => Math.max(0, Math.round((w - 2.5) * 10) / 10));
+                      setActiveOverloadPreset(null);
+                    }}
                     className="w-8 h-8 rounded-xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold active:scale-95 transition-all flex items-center justify-center border border-[var(--glass-border)]"
                   >
                     -
                   </button>
                   <span className="text-xl font-black text-[var(--text-primary)] font-mono">{weightKg}</span>
                   <button
-                    onClick={() => setWeightKg((w) => w + 2.5)}
+                    type="button"
+                    onClick={() => {
+                      setWeightKg((w) => Math.round((w + 2.5) * 10) / 10);
+                      setActiveOverloadPreset(null);
+                    }}
                     className="w-8 h-8 rounded-xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold active:scale-95 transition-all flex items-center justify-center border border-[var(--glass-border)]"
                   >
                     +
@@ -396,7 +547,11 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                   {[-5, 2.5, 5, 10].map((inc) => (
                     <button
                       key={inc}
-                      onClick={() => setWeightKg((w) => Math.max(0, w + inc))}
+                      type="button"
+                      onClick={() => {
+                        setWeightKg((w) => Math.max(0, Math.round((w + inc) * 10) / 10));
+                        setActiveOverloadPreset(null);
+                      }}
                       className="text-[9px] px-1.5 py-0.5 rounded-lg bg-[var(--glass-surface-thick)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--glass-border)] active:scale-95 transition-all"
                     >
                       {inc > 0 ? `+${inc}` : inc}
@@ -410,48 +565,105 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                 <span className="text-[10px] text-[var(--text-secondary)] block font-medium">Repeticiones</span>
                 <div className="flex items-center justify-between mt-1">
                   <button
-                    onClick={() => setReps((r) => Math.max(1, r - 1))}
+                    type="button"
+                    onClick={() => {
+                      setReps((r) => Math.max(1, r - 1));
+                      setActiveOverloadPreset(null);
+                    }}
                     className="w-8 h-8 rounded-xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold active:scale-95 transition-all flex items-center justify-center border border-[var(--glass-border)]"
                   >
                     -
                   </button>
                   <span className="text-xl font-black text-[var(--text-primary)] font-mono">{reps}</span>
                   <button
-                    onClick={() => setReps((r) => r + 1)}
+                    type="button"
+                    onClick={() => {
+                      setReps((r) => r + 1);
+                      setActiveOverloadPreset(null);
+                    }}
                     className="w-8 h-8 rounded-xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold active:scale-95 transition-all flex items-center justify-center border border-[var(--glass-border)]"
                   >
                     +
                   </button>
                 </div>
-                <div className="flex items-center justify-between mt-2 text-[9px] text-[var(--text-secondary)]">
-                  <span>RPE: {rpe}/10</span>
-                  <div className="flex gap-1">
-                    {[7, 8, 9].map((val) => (
-                      <button
-                        key={val}
-                        onClick={() => setRpe(val)}
-                        className={`px-1.5 py-0.5 rounded-lg transition-all ${
-                          rpe === val
-                            ? 'bg-[#2D68C4] text-white font-bold'
-                            : 'bg-[var(--glass-surface-thick)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
-                        }`}
-                      >
-                        {val}
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex items-center justify-center mt-2 text-[10px] text-[var(--text-secondary)] font-mono">
+                  <span>Objetivo: {selectedExercise?.target_reps || '8-10'}</span>
                 </div>
               </div>
             </div>
 
-            {/* Botón Guardar Serie */}
+            {/* Selector Táctil de RPE Ergonómico (Escala Completa 6-10 con RIR) */}
+            <div className="p-3.5 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wider block">
+                    Esfuerzo Percibido (RPE)
+                  </span>
+                  <span className="text-[9px] text-[var(--text-tertiary)]">
+                    {currentRpeItem.description}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-black font-mono text-[var(--text-primary)]">
+                    RPE {rpe}
+                  </span>
+                  <span
+                    className={`text-[9px] px-2 py-0.5 rounded-md font-bold ${currentRpeItem.colorClasses.badgeBg} ${currentRpeItem.colorClasses.badgeText} border ${currentRpeItem.colorClasses.border}`}
+                  >
+                    {currentRpeItem.badge}
+                  </span>
+                </div>
+              </div>
+
+              {/* Banda Táctil de 8 Posiciones */}
+              <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                {RPE_SCALE.map((scaleItem) => {
+                  const isSelected = rpe === scaleItem.value;
+                  return (
+                    <button
+                      key={scaleItem.value}
+                      type="button"
+                      onClick={() => setRpe(scaleItem.value)}
+                      className={`h-11 rounded-xl flex flex-col items-center justify-center transition-all active:scale-95 border ${
+                        isSelected
+                          ? `${scaleItem.colorClasses.activeBg} ${scaleItem.colorClasses.activeText} font-bold shadow-md ${scaleItem.colorClasses.glow} border-transparent`
+                          : `bg-[var(--glass-surface-thick)] border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--glass-border)]`
+                      }`}
+                      title={`RPE ${scaleItem.value} - ${scaleItem.rir}: ${scaleItem.description}`}
+                    >
+                      <span className="text-xs font-black leading-none font-mono">
+                        {scaleItem.label}
+                      </span>
+                      <span
+                        className={`text-[8px] font-medium leading-tight mt-0.5 ${
+                          isSelected ? 'opacity-90' : 'text-[var(--text-tertiary)]'
+                        }`}
+                      >
+                        {scaleItem.rir}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Nota Biomecánica / Prevención Articular */}
+              <div className="pt-1 border-t border-[var(--glass-border)]/50">
+                <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed italic">
+                  💡 {getRpeClinicalNote(rpe)}
+                </p>
+              </div>
+            </div>
+
+            {/* Botón Guardar Serie Manual */}
             <button
               onClick={handleSaveSet}
               disabled={isSaving}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#2D68C4] to-[#1E4E96] text-white font-black text-xs uppercase tracking-wider active:scale-98 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 disabled:opacity-50"
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#2D68C4] to-[#1E4E96] text-white font-black text-xs uppercase tracking-wider active:scale-98 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 disabled:opacity-50"
             >
               <Plus className="w-4 h-4" />
-              {isSaving ? 'Guardando serie...' : 'Guardar Serie'}
+              {isSaving
+                ? 'Guardando serie...'
+                : `Guardar Serie ${nextSetNumber}: ${weightKg > 0 ? `${weightKg} kg` : 'PC'} × ${reps} reps (RPE ${rpe})`}
             </button>
 
             {/* Resumen de series de hoy y opción de deshacer */}

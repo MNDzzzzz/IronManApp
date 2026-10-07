@@ -14,10 +14,19 @@ import {
   Info,
   ChevronDown,
   ChevronUp,
+  Check,
+  Bookmark,
+  X,
 } from 'lucide-react';
 import { NutritionLog, WaterLog } from '@/types/database';
 import { initialFrequentFoods, DayType } from '@/lib/nutritionProtocol';
 import { getTodayRoutine, getSpainDate } from '@/lib/weeklyRoutine';
+import {
+  FREQUENT_MEAL_PRESETS,
+  MealBlockTemplate,
+  generateTypicalDayMeals,
+  calculateMealTotals,
+} from '@/lib/nutritionPresets';
 
 interface NutritionViewProps {
   meals: NutritionLog[];
@@ -33,6 +42,8 @@ interface NutritionViewProps {
   onDeleteWater?: (waterId: string) => Promise<void>;
   onAddMeal: (mealData: Partial<NutritionLog>) => Promise<void>;
   onDeleteMeal?: (mealId: string) => Promise<void>;
+  onAddMealsBatch?: (mealsData: Partial<NutritionLog>[]) => Promise<void>;
+  onRefreshData?: () => void;
 }
 
 export const NutritionView: React.FC<NutritionViewProps> = ({
@@ -43,6 +54,8 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   onDeleteWater,
   onAddMeal,
   onDeleteMeal,
+  onAddMealsBatch,
+  onRefreshData,
 }) => {
   // Fecha seleccionada (por defecto hoy en España)
   const todayStr = useMemo(() => getSpainDate().toISOString().split('T')[0], []);
@@ -200,6 +213,107 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     }
   };
 
+  // Estados para Día Típico Cumplido y Plantillas de Comidas
+  const [showPresetsModal, setShowPresetsModal] = useState(false);
+  const [selectedPresetTab, setSelectedPresetTab] = useState<'Todos' | 'Desayuno' | 'Almuerzo' | 'Merienda' | 'Cena'>('Todos');
+  const [showTypicalConfirm, setShowTypicalConfirm] = useState(false);
+  const [isApplyingBatch, setIsApplyingBatch] = useState(false);
+  const [batchToast, setBatchToast] = useState<string | null>(null);
+
+  // Lote oficial del día según la rutina
+  const typicalMealsForDay = useMemo(() => {
+    return generateTypicalDayMeals(selectedDate);
+  }, [selectedDate]);
+
+  // Tomas que todavía no se han registrado hoy
+  const missingTypicalMeals = useMemo(() => {
+    const existingTypes = new Set(
+      displayedMeals.map((m) => (m.meal_type || '').toLowerCase().trim())
+    );
+    return typicalMealsForDay.filter((m) => {
+      const norm = (m.meal_type || '').toLowerCase().trim();
+      if (norm === 'snack' && (existingTypes.has('snack') || existingTypes.has('merienda'))) {
+        return false;
+      }
+      return !existingTypes.has(norm);
+    });
+  }, [displayedMeals, typicalMealsForDay]);
+
+  // Ejecutar lote de inserción
+  const handleExecuteBatch = async (mealsToInsert: Partial<NutritionLog>[]) => {
+    if (mealsToInsert.length === 0) return;
+    setIsApplyingBatch(true);
+    try {
+      if (onAddMealsBatch) {
+        await onAddMealsBatch(mealsToInsert);
+      } else {
+        const res = await fetch('/api/nutrition', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'batch_insert',
+            meals: mealsToInsert,
+            date: selectedDate,
+          }),
+        });
+        if (!res.ok) {
+          for (const m of mealsToInsert) {
+            await onAddMeal({ ...m, date: selectedDate });
+          }
+        }
+      }
+
+      const totals = calculateMealTotals(mealsToInsert);
+      setBatchToast(`⚡ Registradas ${mealsToInsert.length} tomas (+${totals.calories} kcal, ${totals.protein_g}g prot)`);
+      setTimeout(() => setBatchToast(null), 3500);
+      if (onRefreshData) onRefreshData();
+    } catch (e) {
+      console.error('Error aplicando lote de comidas:', e);
+      setBatchToast('Error al registrar lote de comidas.');
+      setTimeout(() => setBatchToast(null), 3000);
+    } finally {
+      setIsApplyingBatch(false);
+      setShowTypicalConfirm(false);
+    }
+  };
+
+  // Botón Día Típico Cumplido (1-Tap con confirmación si ya hay comidas)
+  const handleTypicalDayClick = () => {
+    if (displayedMeals.length === 0) {
+      handleExecuteBatch(typicalMealsForDay);
+    } else {
+      setShowTypicalConfirm(true);
+    }
+  };
+
+  // Añadir una plantilla individual (1-Tap)
+  const handleAddPresetMeal = async (preset: MealBlockTemplate) => {
+    try {
+      await onAddMeal({
+        date: selectedDate,
+        meal_type: preset.meal_type,
+        description: preset.description,
+        calories: preset.calories,
+        protein_g: preset.protein_g,
+        carbs_g: preset.carbs_g,
+        fat_g: preset.fat_g,
+      });
+      setBatchToast(`+ Registrado ${preset.name} (+${preset.calories} kcal)`);
+      setTimeout(() => setBatchToast(null), 2500);
+      if (onRefreshData) onRefreshData();
+    } catch (e) {
+      console.error('Error añadiendo plantilla:', e);
+    }
+  };
+
+  const filteredPresets = useMemo(() => {
+    if (selectedPresetTab === 'Todos') return FREQUENT_MEAL_PRESETS;
+    if (selectedPresetTab === 'Merienda') {
+      return FREQUENT_MEAL_PRESETS.filter((p) => p.meal_type === 'Snack');
+    }
+    return FREQUENT_MEAL_PRESETS.filter((p) => p.meal_type === selectedPresetTab);
+  }, [selectedPresetTab]);
+
   const handleSaveMeal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim()) return;
@@ -234,6 +348,15 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowPresetsModal(true)}
+            className="p-2 rounded-2xl liquid-glass-card text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all flex items-center gap-1 text-xs font-bold"
+            title="Plantillas de Comidas Frecuentes"
+            aria-label="Plantillas de comidas frecuentes"
+          >
+            <Bookmark className="w-4 h-4 text-[#D97757]" />
+            <span className="hidden sm:inline">Plantillas</span>
+          </button>
           <button
             onClick={() => setShowProtocolModal(true)}
             className="p-2 rounded-2xl liquid-glass-card text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all"
@@ -406,7 +529,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 {currentRoutine.nutritionStrategy.recommendedMeals.map((meal, idx) => (
                   <div
                     key={idx}
-                    className="p-2.5 rounded-2xl liquid-glass-pill text-xs space-y-1"
+                    className="p-2.5 rounded-2xl liquid-glass-pill text-xs space-y-1.5"
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-[#D97757] text-[11px] uppercase tracking-wider">
@@ -414,7 +537,41 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                       </span>
                       <span className="text-[10px] text-[var(--text-tertiary)] font-mono">{meal.details}</span>
                     </div>
-                    <p className="text-[var(--text-primary)] text-[11px] leading-relaxed">{meal.dish}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[var(--text-primary)] text-[11px] leading-relaxed flex-1">{meal.dish}</p>
+                      <button
+                        onClick={async () => {
+                          const slotLower = meal.slot.toLowerCase();
+                          const mType: NutritionLog['meal_type'] = slotLower.includes('desayun')
+                            ? 'Desayuno'
+                            : slotLower.includes('almuerz')
+                            ? 'Almuerzo'
+                            : slotLower.includes('cen')
+                            ? 'Cena'
+                            : 'Snack';
+                          const calMatch = meal.details.match(/(\d+)\s*kcal/);
+                          const pMatch = meal.details.match(/(\d+)g\s*P/);
+                          const cMatch = meal.details.match(/(\d+)g\s*HC/);
+                          const gMatch = meal.details.match(/(\d+)g\s*G/);
+                          await onAddMeal({
+                            date: selectedDate,
+                            meal_type: mType,
+                            description: meal.dish,
+                            calories: calMatch ? Number(calMatch[1]) : 550,
+                            protein_g: pMatch ? Number(pMatch[1]) : 45,
+                            carbs_g: cMatch ? Number(cMatch[1]) : 50,
+                            fat_g: gMatch ? Number(gMatch[1]) : 15,
+                          });
+                          setBatchToast(`+ Registrado ${meal.slot}`);
+                          setTimeout(() => setBatchToast(null), 2500);
+                          if (onRefreshData) onRefreshData();
+                        }}
+                        className="py-1 px-2.5 rounded-xl bg-[#D97757]/15 text-[#D97757] hover:bg-[#D97757] hover:text-white text-[10px] font-bold active:scale-95 transition-all whitespace-nowrap"
+                        title={`Registrar ${meal.slot}`}
+                      >
+                        + Registrar
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -629,6 +786,95 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
             </div>
           </div>
         )}
+      </div>
+
+      {/* ================================================================ */}
+      {/* FEEDBACK TOAST / ESTADO DE LOTE                                   */}
+      {/* ================================================================ */}
+      {batchToast && (
+        <div className="p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-300 text-xs font-bold flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2">
+            <Check className="w-4 h-4 text-emerald-500" />
+            <span>{batchToast}</span>
+          </div>
+          <button
+            onClick={() => setBatchToast(null)}
+            className="text-[10px] text-emerald-600/70 hover:text-emerald-600"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* ================================================================ */}
+      {/* PLANTILLAS EN BLOQUE Y BOTÓN DÍA TÍPICO CUMPLIDO (P1.3)           */}
+      {/* ================================================================ */}
+      <div className="p-4 rounded-3xl liquid-glass-card space-y-3 border border-[var(--glass-border)]">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-xl bg-[#D97757]/15 text-[#D97757] flex items-center justify-center">
+              <Zap className="w-4 h-4 fill-current" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
+                Nutrición Rápida en Bloque
+              </h3>
+              <p className="text-[10px] text-[var(--text-secondary)]">
+                Plantilla Álvaro: 2.400 kcal • 202g Proteína
+              </p>
+            </div>
+          </div>
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono">
+            Anti-Fatiga
+          </span>
+        </div>
+
+        {/* Botón Principal: Día Típico Cumplido */}
+        <button
+          onClick={handleTypicalDayClick}
+          disabled={isApplyingBatch}
+          className="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-[#D97757] to-[#E28464] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-[#D97757]/20 active:scale-[0.98] transition-all disabled:opacity-50"
+        >
+          <Zap className="w-4 h-4 fill-current" />
+          <span>
+            {isApplyingBatch
+              ? 'Registrando día completo...'
+              : `⚡ Marcar Día Típico Cumplido (2.400 kcal)`}
+          </span>
+        </button>
+
+        {/* Atajos 1-Tap de tomas individuales de la plantilla */}
+        <div className="space-y-1.5 pt-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-wider block">
+              Bloques Frecuentes Mercadona (1-Tap):
+            </span>
+            <button
+              onClick={() => setShowPresetsModal(true)}
+              className="text-[10px] text-[#D97757] hover:underline font-bold"
+            >
+              Ver las 8 plantillas &rarr;
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {FREQUENT_MEAL_PRESETS.slice(0, 4).map((preset) => (
+              <button
+                key={preset.id}
+                onClick={() => handleAddPresetMeal(preset)}
+                className="p-2 rounded-xl liquid-glass-pill text-left hover:border-[#D97757]/30 active:scale-95 transition-all group flex flex-col justify-between"
+                title={`Añadir ${preset.name}`}
+              >
+                <div className="flex items-center justify-between text-[11px] font-bold text-[var(--text-primary)]">
+                  <span className="truncate pr-1">{preset.name}</span>
+                  <span className="text-[10px] font-mono text-[#D97757]">+{preset.calories}k</span>
+                </div>
+                <div className="text-[9px] text-[var(--text-secondary)] mt-0.5 font-mono">
+                  P: {preset.protein_g}g • C: {preset.carbs_g}g • G: {preset.fat_g}g
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* LISTADO DE COMIDAS REGISTRADAS */}
@@ -978,6 +1224,162 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMACIÓN: DÍA TÍPICO CUMPLIDO */}
+      {showTypicalConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-sm liquid-glass-card bg-[var(--glass-surface-thick)] p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--glass-border)] pb-3">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-[#D97757]" />
+                <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
+                  Confirmar Día Típico
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowTypicalConfirm(false)}
+                className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-1 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <p className="text-[var(--text-primary)] font-medium">
+                Ya tienes <strong className="text-[#D97757]">{displayedMeals.length}</strong> tomas registradas en {selectedDate === todayStr ? 'el día de hoy' : selectedDate}:
+              </p>
+              <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                {displayedMeals.map((m) => (
+                  <span
+                    key={m.id}
+                    className="px-2 py-0.5 rounded-lg liquid-glass-pill text-[10px] font-mono text-[var(--text-secondary)]"
+                  >
+                    {m.meal_type}: {m.calories} kcal
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              {missingTypicalMeals.length > 0 ? (
+                <button
+                  onClick={() => handleExecuteBatch(missingTypicalMeals)}
+                  disabled={isApplyingBatch}
+                  className="w-full py-2.5 px-3 rounded-xl bg-[#D97757] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-[#D97757]/20 active:scale-95 transition-all"
+                >
+                  <Zap className="w-3.5 h-3.5 fill-current" />
+                  <span>Añadir solo las {missingTypicalMeals.length} tomas pendientes (Recomendado)</span>
+                </button>
+              ) : (
+                <p className="text-[11px] text-emerald-500 font-semibold text-center">
+                  ¡Todas las 4 tomas de la rutina ya están registradas!
+                </p>
+              )}
+
+              <button
+                onClick={() => handleExecuteBatch(typicalMealsForDay)}
+                disabled={isApplyingBatch}
+                className="w-full py-2.5 px-3 rounded-xl liquid-glass-pill text-[var(--text-primary)] font-bold text-xs flex items-center justify-center gap-1.5 hover:border-[#D97757]/40 active:scale-95 transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Añadir las 4 tomas completas (+2.400 kcal)</span>
+              </button>
+
+              <button
+                onClick={() => setShowTypicalConfirm(false)}
+                className="w-full py-2 rounded-xl text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] text-xs font-semibold"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL SELECTOR DE PLANTILLAS FRECUENTES (8 BLOQUES) */}
+      {showPresetsModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md liquid-glass-card bg-[var(--glass-surface-thick)] p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[var(--glass-border)] pb-3">
+              <div className="flex items-center gap-2">
+                <Bookmark className="w-4 h-4 text-[#D97757]" />
+                <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
+                  Plantillas de Comidas Frecuentes
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowPresetsModal(false)}
+                className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-1 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Pestañas de categoría */}
+            <div className="flex gap-1 p-1 liquid-glass-pill text-[11px] font-bold">
+              {(['Todos', 'Desayuno', 'Almuerzo', 'Merienda', 'Cena'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setSelectedPresetTab(tab)}
+                  className={`flex-1 py-1 rounded-lg text-center transition-all ${
+                    selectedPresetTab === tab
+                      ? 'bg-[#D97757] text-white shadow-sm'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Listado de bloques frecuentes */}
+            <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
+              {filteredPresets.map((preset) => (
+                <div
+                  key={preset.id}
+                  className="p-3 rounded-2xl liquid-glass-pill space-y-2 border border-[var(--glass-border)] hover:border-[#D97757]/40 transition-all"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--glass-border-subtle)] text-[var(--text-primary)] font-bold mr-2">
+                        {preset.meal_type}
+                      </span>
+                      <span className="text-xs font-bold text-[var(--text-primary)]">
+                        {preset.name}
+                      </span>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-[#D97757]">
+                      {preset.calories} kcal
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                    {preset.description}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-[var(--glass-border)]">
+                    <div className="flex items-center gap-2 text-[10px] font-mono text-[var(--text-secondary)]">
+                      <span>P: <strong className="text-rose-500">{preset.protein_g}g</strong></span>
+                      <span>C: <strong className="text-amber-500">{preset.carbs_g}g</strong></span>
+                      <span>G: <strong className="text-emerald-500">{preset.fat_g}g</strong></span>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        await handleAddPresetMeal(preset);
+                        setShowPresetsModal(false);
+                      }}
+                      className="py-1 px-2.5 rounded-xl bg-[#D97757] text-white font-bold text-[10px] flex items-center gap-1 active:scale-95 transition-all shadow-sm shadow-[#D97757]/20"
+                    >
+                      <Plus className="w-3 h-3 stroke-[2.5]" />
+                      Añadir a {selectedDate === todayStr ? 'Hoy' : selectedDate}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

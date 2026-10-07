@@ -1,0 +1,186 @@
+The following is a <SYSTEM_MESSAGE> not actually sent by the user. It is provided by the system as important information to pay attention to.
+
+<SYSTEM_MESSAGE>
+[Message] timestamp=2026-10-07T22:11:09Z sender=449093d8-50d4-4add-8e21-bc957f38a299 priority=MESSAGE_PRIORITY_HIGH content=¡Hola equipo! Como Arquitecto de Software, he analizado los requerimientos para las fases P1.1, P1.2 y P1.3, así como su integración transversal con el bot conversacional. A continuación presento la propuesta de arquitectura, los contratos de datos en TypeScript y el diseño de los flujos principales.
+
+### 1. P1.1: Gestor de Molestias (`discomfortManager.ts`)
+
+El objetivo es abstraer la lógica de evaluación de molestias físicas para detonar adaptaciones automáticas tanto en entrenamiento como en nutrición.
+
+**Modelo de Datos y Contratos (TypeScript):**
+
+```typescript
+// src/lib/training/models/discomfort.types.ts
+
+export enum DiscomfortLevel {
+  NONE = 0,       // Sin dolor
+  VERY_LIGHT = 1, // Ligera molestia, no afecta movimiento
+  LIGHT = 2,      // Molestia notable, se puede entrenar con precaución
+  MODERATE = 3,   // Dolor que altera la técnica, requiere adaptación
+  SEVERE = 4,     // Dolor agudo, impide el ejercicio específico
+  CRITICAL = 5    // Dolor incapacitante, requiere reposo total/médico
+}
+
+export interface DiscomfortReport {
+  id: string;
+  userId: string;
+  bodyPartId: string;
+  level: DiscomfortLevel;
+  notes?: string;
+  reportedAt: Date;
+}
+
+export interface AdaptationStrategy {
+  training: {
+    volumeReductionPercent: number; // Ej: 20 para reducir 20% los sets
+    intensityReductionPercent: number;
+    substituteExercises?: string[]; // IDs de ejercicios alternativos
+    skipMuscleGroup: boolean;
+  };
+  nutrition: {
+    proteinMultiplier: number; // Ej: 1.1 para aumentar 10% la proteína (recuperación)
+    hydrationIncreaseMl: number;
+    suggestedSupplements: string[];
+  };
+}
+```
+
+**Arquitectura del Gestor:**
+El `DiscomfortManager` actuará como un servicio de dominio puro que toma un reporte y genera una estrategia.
+
+```typescript
+// src/lib/training/discomfortManager.ts
+export class DiscomfortManager {
+  static evaluate(report: DiscomfortReport): AdaptationStrategy {
+    // Lógica de matriz de decisión basada en nivel y zona
+    if (report.level >= DiscomfortLevel.SEVERE) {
+      return this.generateCriticalRestStrategy();
+    }
+    // ... cálculo de reducción de volumen/intensidad
+  }
+}
+```
+
+---
+
+### 2. P1.2: Flujo de Pre-llenado y Sobrecarga Progresiva (`GymView`)
+
+Para minimizar la fricción en el logueo, `GymView` debe sugerir el peso y repeticiones basándose en la sesión anterior, implementando la sobrecarga progresiva.
+
+**Modelo de Datos:**
+
+```typescript
+// src/lib/training/models/progression.types.ts
+
+export interface SetHistory {
+  reps: number;
+  weight: number;
+  rpe: number; // Rate of Perceived Exertion (1-10)
+}
+
+export interface ProgressionSuggestion {
+  suggestedSets: SetHistory[];
+  overloadApplied: 'WEIGHT' | 'REPS' | 'NONE';
+  rationale: string; // Ej: "Alcanzaste el RPE objetivo la sesión pasada, subimos 2.5kg"
+}
+```
+
+**Flujo Arquitectónico en UI:**
+1. Al montar el componente del ejercicio en `GymView`, se dispara un fetch (vía React Query / SWR) a `WorkoutRepository.getLastSession(exerciseId)`.
+2. El resultado pasa por el `ProgressionEngine.calculateNext(lastSession)`.
+3. El estado del formulario se inicializa (`pre-fill`) con estas sugerencias. El usuario solo hace tap en "Completar" si está de acuerdo.
+
+---
+
+### 3. P1.3: Inserción por Lotes - "Día Típico Cumplido"
+
+Para el tracking nutricional de un clic, requerimos una transacción segura en base de datos que maneje inserciones masivas y evite duplicidad de registros si el usuario ya introdujo una comida aislada ese día.
+
+**Contratos:**
+
+```typescript
+// src/lib/nutrition/models/typicalDay.types.ts
+
+export interface TypicalDayMeal {
+  mealId: string; // Ej: "desayuno", "snack_1"
+  foodItems: Array<{ foodId: string, quantity: number, unit: string }>;
+  totalMacros: { calories: number, p: number, c: number, f: number };
+}
+
+export interface BatchInsertResult {
+  success: boolean;
+  insertedMeals: number;
+  skippedMeals: string[]; // IDs de comidas omitidas por duplicidad
+}
+```
+
+**Lógica de Deduplicación:**
+Utilizaremos un identificador compuesto (ej. `userId_date_mealId`) en la base de datos (PostgreSQL/Supabase) con una restricción `UNIQUE`. El `BatchInsert` usará una estrategia `UPSERT` o `INSERT IGNORE`.
+
+```typescript
+// src/lib/nutrition/nutritionService.ts
+export async function logTypicalDay(userId: string, date: string, typicalDayId: string): Promise<BatchInsertResult> {
+  const existingLogs = await getLoggedMeals(userId, date);
+  const typicalDay = await getTypicalDayPlan(typicalDayId);
+  
+  // Deduplicación en memoria antes del batch
+  const mealsToInsert = typicalDay.meals.filter(
+    m => !existingLogs.some(log => log.mealId === m.mealId)
+  );
+
+  // Inserción transaccional de mealsToInsert...
+  return { success: true, insertedMeals: mealsToInsert.length, skippedMeals: [...] };
+}
+```
+
+---
+
+### 4. Integración Transversal: Triage en `coachCore.ts`
+
+El bot debe actuar como el enrutador principal (Controller) delegando a estos managers especializados.
+
+```typescript
+// src/lib/coach/coachCore.ts
+import { DiscomfortManager } from '../training/discomfortManager';
+import { NutritionService } from '../nutrition/nutritionService';
+
+export enum IntentType {
+  REPORT_DISCOMFORT = 'REPORT_DISCOMFORT',
+  LOG_TYPICAL_DAY = 'LOG_TYPICAL_DAY',
+  LOG_WORKOUT = 'LOG_WORKOUT',
+  GENERAL_QA = 'GENERAL_QA'
+}
+
+export class CoachCore {
+  async triageMessage(userId: string, message: string) {
+    // 1. NLP/LLM o Regex para extraer intención
+    const intent = await this.analyzeIntent(message);
+
+    switch (intent.type) {
+      case IntentType.REPORT_DISCOMFORT:
+        // Extraer nivel y zona del mensaje
+        const strategy = DiscomfortManager.evaluate({
+          userId,
+          bodyPartId: intent.entities.bodyPart,
+          level: intent.entities.level,
+          /* ... */
+        });
+        return this.formatDiscomfortResponse(strategy);
+
+      case IntentType.LOG_TYPICAL_DAY:
+        const result = await NutritionService.logTypicalDay(userId, today(), intent.entities.typicalDayId);
+        return `¡Listo! He registrado tu día típico. Omití ${result.skippedMeals.length} comidas que ya habías registrado hoy.`;
+        
+      default:
+        // Manejar como conversación LLM estándar
+    }
+  }
+}
+```
+
+### Resumen de Decisiones (Trade-offs)
+*   **Separación de Responsabilidades:** El bot (`CoachCore`) no calcula adaptaciones ni guarda en BD directamente; delega en managers de dominio (`DiscomfortManager`, `NutritionService`). Esto permite que la interfaz gráfica (`GymView`) y la interfaz conversacional (`Coach`) reutilicen exactamente la misma lógica de negocio.
+*   **Gestión de Estado (Deduplicación):** Se hace en dos capas: validación en memoria (para reportar al usuario qué se omitió) y restricción `UNIQUE` en base de datos para integridad referencial.
+
+¿Qué les parece esta base arquitectónica? Quedo a la espera del feedback del equipo para proceder con la implementación a nivel de código o ajustar los modelos.
+</SYSTEM_MESSAGE>
