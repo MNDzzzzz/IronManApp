@@ -409,9 +409,20 @@ export async function tryDeterministicBypass(
   const items = extractItemsFromText(clean);
   const explicitMacros = extractExplicitMacrosFromText(clean);
 
-  const hasKnownFoods = items.length > 0 && items.some((item) => {
-    return Boolean(findMercadonaProduct(item.food) || findUserFrequentFood(item.food));
-  });
+  let hasKnownFoods = false;
+  if (items.length > 0) {
+    for (const item of items) {
+      if (findMercadonaProduct(item.food)) {
+        hasKnownFoods = true;
+        break;
+      }
+      const freq = await findUserFrequentFood(item.food);
+      if (freq) {
+        hasKnownFoods = true;
+        break;
+      }
+    }
+  }
 
   if (hasKnownFoods || (explicitMacros.hasExplicitMacros && (explicitMacros.calories || explicitMacros.protein_g))) {
     const calc = await calculateMealFromWeighedItems(items);
@@ -902,10 +913,11 @@ export async function executeCoachTurn({
           if (newWater) {
             writes.push(Promise.resolve(supabaseAdmin.from('water_logs').insert([newWater])));
           }
-          // I/O en background paralelo sin bloquear la respuesta de vuelta al usuario
-          Promise.all(writes).catch((err) => {
-            console.warn('Fallo guardando en Supabase en background:', err);
-          });
+          try {
+            await Promise.all(writes);
+          } catch (err) {
+            console.warn('Fallo guardando comida en Supabase, fallback a mockStore:', err);
+          }
         }
 
         dataSummary = {

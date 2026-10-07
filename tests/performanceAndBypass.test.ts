@@ -10,7 +10,7 @@ test('PERFORMANCE: Búsqueda indexada en memoria O(1) de Mercadona en < 1ms', ()
 
   assert.ok(pollo, 'Debe encontrar la pechuga de pollo cocinada');
   assert.strictEqual(pollo.calories_100g, 145);
-  assert.strictEqual(pollo.protein_g, undefined); // en product es protein_100g
+  assert.ok(!('protein_g' in pollo), 'En product es protein_100g, no protein_g');
   assert.strictEqual(pollo.protein_100g, 31);
   assert.ok((t1 - t0) < 5, `La búsqueda debe ser ultra-rápida (tardó ${(t1 - t0).toFixed(3)}ms)`);
 });

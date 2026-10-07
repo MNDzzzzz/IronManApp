@@ -132,6 +132,76 @@ export const DEFAULT_FREQUENT_FOODS: UserFrequentFood[] = [
     last_used_at: new Date().toISOString(),
   },
   {
+    id: 'fav-tortilla-francesa',
+    name: 'Tortilla Francesa / Tortilla de Huevo Plancha',
+    brand: 'Hacendado / Casera',
+    category: 'huevos',
+    calories_100g: 154,
+    protein_100g: 11.5,
+    carbs_100g: 0.6,
+    fat_100g: 11.8,
+    default_serving_grams: 100,
+    unit_name: 'unidad',
+    aliases: [
+      'tortilla',
+      'tortilla francesa',
+      'tortilla de huevo',
+      'tortilla de huevos',
+      'tortilla simple',
+      'tortilla de huevo simple',
+    ],
+    times_used: 20,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-queso-semicurado-tierno',
+    name: 'Queso Semicurado / Tierno / Rallado Hacendado',
+    brand: 'Hacendado',
+    category: 'lacteos_proteicos',
+    calories_100g: 345,
+    protein_100g: 24.5,
+    carbs_100g: 1.5,
+    fat_100g: 27.0,
+    default_serving_grams: 30,
+    unit_name: 'loncha',
+    aliases: [
+      'queso',
+      'queso rallado',
+      'queso semicurado',
+      'queso tierno',
+      'queso en lonchas',
+      'loncha de queso',
+      'lonchas de queso',
+      'un poco de queso',
+      'queso normal',
+    ],
+    times_used: 15,
+    last_used_at: new Date().toISOString(),
+  },
+  {
+    id: 'fav-higos-frescos',
+    name: 'Higos Frescos Hacendado / Frutería',
+    brand: 'Hacendado / Frutería',
+    category: 'frutas',
+    calories_100g: 74,
+    protein_100g: 0.8,
+    carbs_100g: 16.0,
+    fat_100g: 0.3,
+    default_serving_grams: 35,
+    unit_name: 'unidad',
+    aliases: [
+      'higo',
+      'higos',
+      'higos frescos',
+      'higo fresco',
+      'breva',
+      'brevas',
+      'higos maduros',
+    ],
+    times_used: 10,
+    last_used_at: new Date().toISOString(),
+  },
+  {
     id: 'fav-copos-avena',
     name: 'Copos de Avena Hacendado',
     brand: 'Hacendado',
@@ -621,7 +691,7 @@ export async function findUserFrequentFood(query: string): Promise<UserFrequentF
     )
   );
 
-  const anchorWords = ['atun', 'salmon', 'merluza', 'bacalao', 'pollo', 'pavo', 'ternera', 'cerdo'];
+  const anchorWords = ['atun', 'salmon', 'merluza', 'bacalao', 'pollo', 'pavo', 'ternera', 'cerdo', 'tortilla'];
 
   for (const prod of catalog) {
     for (const alias of prod.aliases) {

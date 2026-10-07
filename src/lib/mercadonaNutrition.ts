@@ -484,8 +484,75 @@ export const MERCADONA_CATALOG: MercadonaProduct[] = [
     unitName: 'huevo',
     aliases: ['huevo', 'huevos', 'huevo entero', 'huevos enteros', 'huevo cocido', 'huevos revueltos'],
   },
+  {
+    id: 'tortilla_francesa',
+    name: 'Tortilla Francesa / Tortilla de Huevo Plancha',
+    brand: 'Hacendado / Casera',
+    category: 'huevos_claras',
+    calories_100g: 154,
+    protein_100g: 11.5,
+    carbs_100g: 0.6,
+    fat_100g: 11.8,
+    defaultServingGrams: 100,
+    unitName: 'unidad',
+    aliases: [
+      'tortilla',
+      'tortilla francesa',
+      'tortilla de huevo',
+      'tortilla de huevos',
+      'tortilla simple',
+      'tortilla francesa de huevo',
+      'tortilla de huevo simple',
+    ],
+  },
+  {
+    id: 'tortilla_espinacas_queso',
+    name: 'Tortilla de Espinacas y Queso / Tortilla con Verduras',
+    brand: 'Hacendado / Casera',
+    category: 'huevos_claras',
+    calories_100g: 145,
+    protein_100g: 12.0,
+    carbs_100g: 2.2,
+    fat_100g: 10.0,
+    defaultServingGrams: 150,
+    unitName: 'unidad',
+    aliases: [
+      'tortilla de espinacas',
+      'tortilla de espinaca',
+      'tortilla con espinacas',
+      'tortilla de espinacas y queso',
+      'tortilla de espinaca y queso',
+      'tortilla de huevo con espinacas',
+      'tortilla de huevo espinaca y queso',
+      'tortilla de huevo, espinaca y queso',
+      'tortilla con queso y espinacas',
+    ],
+  },
 
   // --- LÁCTEOS Y GAMA +PROTEÍNAS MERCADONA ---
+  {
+    id: 'queso_tierno_semicurado_rallado',
+    name: 'Queso Semicurado / Tierno / Rallado Hacendado',
+    brand: 'Hacendado',
+    category: 'lacteos_proteinas',
+    calories_100g: 345,
+    protein_100g: 24.5,
+    carbs_100g: 1.5,
+    fat_100g: 27.0,
+    defaultServingGrams: 30,
+    unitName: 'loncha',
+    aliases: [
+      'queso',
+      'queso rallado',
+      'queso semicurado',
+      'queso tierno',
+      'queso en lonchas',
+      'loncha de queso',
+      'lonchas de queso',
+      'un poco de queso',
+      'queso normal',
+    ],
+  },
   {
     id: 'queso_fresco_batido_0',
     name: 'Queso Fresco Batido 0% Hacendado',
@@ -495,6 +562,7 @@ export const MERCADONA_CATALOG: MercadonaProduct[] = [
     protein_100g: 8.0,
     carbs_100g: 3.5,
     fat_100g: 0.1,
+    defaultServingGrams: 250,
     aliases: ['queso batido', 'queso fresco batido', 'queso batido 0%', 'queso fresco batido 0'],
   },
   {
@@ -1365,6 +1433,59 @@ export const MERCADONA_CATALOG: MercadonaProduct[] = [
     defaultServingGrams: 150,
     aliases: ['puerro', 'puerros', 'puerro cocinado'],
   },
+  {
+    id: 'higos_frescos',
+    name: 'Higos Frescos Hacendado / Frutería',
+    brand: 'Hacendado / Frutería',
+    category: 'frutas_verduras',
+    calories_100g: 74,
+    protein_100g: 0.8,
+    carbs_100g: 16.0,
+    fat_100g: 0.3,
+    fiber_100g: 2.9,
+    defaultServingGrams: 35, // 1 higo mediano fresco pesa 35g
+    unitName: 'unidad',
+    aliases: [
+      'higo',
+      'higos',
+      'higos frescos',
+      'higo fresco',
+      'higos negros',
+      'higo negro',
+      'breva',
+      'brevas',
+      'higo maduro',
+      'higos maduros',
+    ],
+  },
+  {
+    id: 'platano_fresco',
+    name: 'Plátano de Canarias Hacendado',
+    brand: 'Hacendado',
+    category: 'frutas_verduras',
+    calories_100g: 89,
+    protein_100g: 1.1,
+    carbs_100g: 20.0,
+    fat_100g: 0.2,
+    fiber_100g: 2.5,
+    defaultServingGrams: 100,
+    unitName: 'unidad',
+    aliases: ['platano', 'platanos', 'platano de canarias', 'banana', 'bananas'],
+  },
+  {
+    id: 'manzana_fresca',
+    name: 'Manzana Golden / Royal Gala Hacendado',
+    brand: 'Hacendado',
+    category: 'frutas_verduras',
+    calories_100g: 52,
+    protein_100g: 0.3,
+    carbs_100g: 12.0,
+    fat_100g: 0.2,
+    fiber_100g: 2.4,
+    defaultServingGrams: 160,
+    unitName: 'unidad',
+    aliases: ['manzana', 'manzanas', 'manzana golden', 'manzana roja', 'manzana fuji'],
+  },
 
   // --- SUPLEMENTOS Y OTROS ---
   {
@@ -1545,7 +1666,7 @@ export function findMercadonaProduct(query: string): MercadonaProduct | null {
     )
   );
 
-  const anchorWords = ['atun', 'salmon', 'merluza', 'bacalao', 'pollo', 'pavo', 'ternera', 'cerdo'];
+  const anchorWords = ['atun', 'salmon', 'merluza', 'bacalao', 'pollo', 'pavo', 'ternera', 'cerdo', 'tortilla'];
 
   for (const prod of MERCADONA_CATALOG) {
     for (const alias of prod.aliases) {
@@ -1644,7 +1765,7 @@ export async function searchOpenFoodFacts(
   query: string
 ): Promise<MercadonaProduct | null> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 3500);
+  const timeoutId = setTimeout(() => controller.abort(), 1500);
 
   try {
     const cleanQuery = cleanFoodSearchQuery(query) || query;
@@ -1866,6 +1987,38 @@ export function getScientificReferenceNutrition(query: string): MercadonaProduct
     };
   }
 
+  // 3.5. HUEVOS Y TORTILLAS (Precisión proteica)
+  if (norm.includes('tortilla')) {
+    const isVeggie = norm.includes('espinaca') || norm.includes('verdura');
+    return {
+      id: `bedca-tortilla-${Date.now()}`,
+      name: isVeggie ? 'Tortilla de Espinacas / Verduras' : 'Tortilla Francesa / de Huevo',
+      brand: 'Bromatología BEDCA',
+      category: 'huevos_claras',
+      calories_100g: isVeggie ? 145 : 154,
+      protein_100g: isVeggie ? 12.0 : 11.5,
+      carbs_100g: isVeggie ? 2.2 : 0.6,
+      fat_100g: isVeggie ? 10.0 : 11.8,
+      defaultServingGrams: isVeggie ? 150 : 100,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('huevo') && !norm.includes('clara')) {
+    return {
+      id: `bedca-huevo-${Date.now()}`,
+      name: 'Huevo Entero Cocinado / Plancha',
+      brand: 'Bromatología BEDCA',
+      category: 'huevos_claras',
+      calories_100g: 143,
+      protein_100g: 12.5,
+      carbs_100g: 0.7,
+      fat_100g: 9.7,
+      defaultServingGrams: 55,
+      aliases: [query],
+    };
+  }
+
   // 4. VERDURAS Y HORTALIZAS (Calorías reales de base botánica)
   if (norm.includes('calabacin') || norm.includes('pepino') || norm.includes('apio') || norm.includes('rabano')) {
     return {
@@ -2078,6 +2231,82 @@ export function getScientificReferenceNutrition(query: string): MercadonaProduct
     };
   }
 
+  if (norm.includes('queso')) {
+    return {
+      id: `bedca-queso-${Date.now()}`,
+      name: 'Queso Semicurado / Tierno',
+      brand: 'Bromatología BEDCA',
+      category: 'lacteos_proteinas',
+      calories_100g: 345,
+      protein_100g: 24.5,
+      carbs_100g: 1.5,
+      fat_100g: 27.0,
+      defaultServingGrams: 30,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('leche')) {
+    return {
+      id: `bedca-leche-${Date.now()}`,
+      name: 'Leche Desnatada / Semidesnatada',
+      brand: 'Bromatología BEDCA',
+      category: 'lacteos_proteinas',
+      calories_100g: 40,
+      protein_100g: 3.3,
+      carbs_100g: 4.8,
+      fat_100g: 0.8,
+      defaultServingGrams: 200,
+      aliases: [query],
+    };
+  }
+
+  // 5.5. FRUTAS FRESCAS (Higos, Plátano, Manzana)
+  if (norm.includes('higo') || norm.includes('breva')) {
+    return {
+      id: `bedca-higos-${Date.now()}`,
+      name: 'Higos Frescos / Brevas',
+      brand: 'Bromatología BEDCA',
+      category: 'frutas_verduras',
+      calories_100g: 74,
+      protein_100g: 0.8,
+      carbs_100g: 16.0,
+      fat_100g: 0.3,
+      defaultServingGrams: 35,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('platano') || norm.includes('banana')) {
+    return {
+      id: `bedca-platano-${Date.now()}`,
+      name: 'Plátano / Banana',
+      brand: 'Bromatología BEDCA',
+      category: 'frutas_verduras',
+      calories_100g: 89,
+      protein_100g: 1.1,
+      carbs_100g: 20.0,
+      fat_100g: 0.2,
+      defaultServingGrams: 100,
+      aliases: [query],
+    };
+  }
+
+  if (norm.includes('manzana')) {
+    return {
+      id: `bedca-manzana-${Date.now()}`,
+      name: 'Manzana Fresca',
+      brand: 'Bromatología BEDCA',
+      category: 'frutas_verduras',
+      calories_100g: 52,
+      protein_100g: 0.3,
+      carbs_100g: 12.0,
+      fat_100g: 0.2,
+      defaultServingGrams: 160,
+      aliases: [query],
+    };
+  }
+
   // 6. ACEITES Y GRASAS
   if (norm.includes('aceite') || norm.includes('aove') || norm.includes('oliva')) {
     return {
@@ -2176,20 +2405,46 @@ function applyNutritionalSanityChecks(prod: MercadonaProduct, originalName: stri
     result.carbs_100g = 0.0;
   }
 
-  // Verduras y hortalizas NUNCA superan 45 kcal/100g (salvo aguacate o tubérculos)
+  // Frutas (higos, plátanos, manzanas, etc.): respetan sus carbohidratos y calorías naturales
+  const isFruit =
+    prodNorm.includes('higo') ||
+    prodNorm.includes('breva') ||
+    prodNorm.includes('platano') ||
+    prodNorm.includes('banana') ||
+    prodNorm.includes('manzana') ||
+    prodNorm.includes('pera') ||
+    prodNorm.includes('naranja') ||
+    prodNorm.includes('fresa') ||
+    prodNorm.includes('arandano') ||
+    prodNorm.includes('uva') ||
+    prodNorm.includes('mango') ||
+    prodNorm.includes('kiwi') ||
+    origNorm.includes('higo') ||
+    origNorm.includes('breva') ||
+    origNorm.includes('platano') ||
+    origNorm.includes('manzana');
+
+  // Verduras y hortalizas NUNCA superan 45 kcal/100g (salvo aguacate, tubérculos o frutas)
   const isGreenVeg =
-    prod.category === 'frutas_verduras' ||
-    prodNorm.includes('calabacin') ||
-    prodNorm.includes('pepino') ||
-    prodNorm.includes('lechuga') ||
-    prodNorm.includes('espinaca') ||
-    prodNorm.includes('acelga') ||
-    prodNorm.includes('apio') ||
-    prodNorm.includes('brocoli') ||
-    prodNorm.includes('coliflor') ||
-    prodNorm.includes('champinon') ||
-    prodNorm.includes('champiñon') ||
-    prodNorm.includes('esparrago');
+    !isFruit &&
+    (
+      prodNorm.includes('calabacin') ||
+      prodNorm.includes('pepino') ||
+      prodNorm.includes('lechuga') ||
+      prodNorm.includes('espinaca') ||
+      prodNorm.includes('acelga') ||
+      prodNorm.includes('apio') ||
+      prodNorm.includes('brocoli') ||
+      prodNorm.includes('coliflor') ||
+      prodNorm.includes('champinon') ||
+      prodNorm.includes('champiñon') ||
+      prodNorm.includes('esparrago') ||
+      prodNorm.includes('judia verde') ||
+      prodNorm.includes('alcachofa') ||
+      prodNorm.includes('calabaza') ||
+      prodNorm.includes('pimiento') ||
+      (prod.category === 'frutas_verduras' && !prodNorm.includes('aguacate') && !origNorm.includes('aguacate'))
+    );
 
   if (isGreenVeg) {
     if (result.calories_100g > 45) result.calories_100g = 25;
@@ -2304,7 +2559,7 @@ export async function resolveSingleFoodItem(
         source = 'heuristica_ia';
       } else {
         // 5. Consulta externa a Open Food Facts con validación
-        const offProduct = (await searchOpenFoodFacts(itemInput.food)) || (await searchOpenFoodFacts(cleanName));
+        const offProduct = (await searchOpenFoodFacts(itemInput.food)) || (cleanName !== itemInput.food ? await searchOpenFoodFacts(cleanName) : null);
         if (offProduct) {
           matchedProduct = offProduct;
           source = 'open_food_facts';

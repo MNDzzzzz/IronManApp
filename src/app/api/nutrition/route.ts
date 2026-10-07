@@ -4,6 +4,7 @@ import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import { mockStore } from '@/lib/mockStore';
 import { NutritionLog, WaterLog } from '@/types/database';
 import { activeProtocol } from '@/lib/nutritionProtocol';
+import { getSpainTodayStr } from '@/lib/coach/coachCore';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     };
 
     const { searchParams } = new URL(request.url);
-    const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+    const date = searchParams.get('date') || getSpainTodayStr();
 
     let meals: NutritionLog[] = [];
     let waterLogs: WaterLog[] = [];
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getSpainTodayStr();
     const logDate = body.date || todayStr;
 
     // Registro o resta de agua

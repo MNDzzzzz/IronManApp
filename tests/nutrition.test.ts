@@ -118,3 +118,33 @@ test('TDD: Desayuno complejo con 5 ingredientes y etiquetas nutricionales por 10
   assert.ok(meal.totalFat >= 14 && meal.totalFat <= 18, `Grasa esperada ~16g pero fue ${meal.totalFat}`);
 });
 
+test('TDD: Ingesta reportada con higos, leche y tortilla de huevo con espinacas y queso', async () => {
+  const mealText = '3 higos, 250 ml de leche y una tortilla de huevo, espinaca y queso';
+  const items = extractItemsFromText(mealText);
+
+  // Debe extraer los alimentos de la ingesta
+  assert.ok(items.length >= 3, `Esperados al menos 3 alimentos, obtenidos: ${items.length}`);
+
+  const higos = items.find(i => i.food.toLowerCase().includes('higo'));
+  const leche = items.find(i => i.food.toLowerCase().includes('leche'));
+
+  assert.ok(higos, 'Debe detectar higos');
+  assert.strictEqual(higos?.amount, 3);
+
+  assert.ok(leche, 'Debe detectar leche');
+  assert.strictEqual(leche?.amount, 250);
+
+  const meal = await calculateMealFromWeighedItems(items);
+
+  // Valores metabólicos coherentes:
+  // 3 higos (105g) ~ 78 kcal, 0.8g P, 16.8g HC, 0.3g G
+  // 250 ml leche desnatada ~ 85 kcal, 8.0g P, 12.3g HC, 0.3g G
+  // Tortilla de huevo + espinaca + queso ~ 260-280 kcal, ~20g P, ~3g HC, ~20g G
+  // Total comida: ~400 - 470 kcal, ~27 - 35g Proteína, ~28 - 36g Carbohidratos, ~18 - 25g Grasa
+  assert.ok(meal.totalCalories >= 380 && meal.totalCalories <= 500, `Calorías totales deben estar entre 380 y 500 pero fueron ${meal.totalCalories}`);
+  assert.ok(meal.totalProtein >= 25 && meal.totalProtein <= 38, `Proteína total debe estar entre 25 y 38g pero fue ${meal.totalProtein}`);
+  assert.ok(meal.totalCarbs >= 26 && meal.totalCarbs <= 40, `Carbohidratos totales deben estar entre 26 y 40g pero fueron ${meal.totalCarbs}`);
+  assert.ok(meal.totalFat >= 15 && meal.totalFat <= 26, `Grasa total debe estar entre 15 y 26g pero fue ${meal.totalFat}`);
+});
+
+
