@@ -25,10 +25,10 @@
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | P1.1 Discomfort & Proportional Adaptation | Complete `discomfortManager.ts`, `coachCore.ts` triage, and `TodayView`/`DynamicIslandCoach` UI | None | IN_PROGRESS (worker_m1: eba0adfe-c1d6-428a-8d25-0e8b39aea86f) |
-| M2 | P1.2 Gym Strength Log & Overload | Implement `gymOverload.ts`, `tests/gym-overload.test.ts`, and `GymView.tsx` UI | None | IN_PROGRESS (worker_m2: 9766fa8f-8a3e-48ec-93f6-44e3a6ab561f) |
-| M3 | P1.3 Nutrition Meal Presets & Batch Insert | Implement `nutritionPresets.ts`, batch insert in `/api/nutrition`, and `NutritionView.tsx` UI | None | IN_PROGRESS (worker_m3: 968cfeff-c39e-4169-9b78-5bf5b1f9e098) |
-| M4 | Final Integration, Test Suites, & Integrity Audit | Run full test suite, tsc, build, adversarial challenge, and forensic audit | M1, M2, M3 | PLANNED |
+| M1 | P1.1 Discomfort & Proportional Adaptation | Complete `discomfortManager.ts`, `coachCore.ts` triage, and `TodayView`/`DynamicIslandCoach` UI | None | DONE |
+| M2 | P1.2 Gym Strength Log & Overload | Implement `gymOverload.ts`, `tests/gym-overload.test.ts`, and `GymView.tsx` UI | None | DONE |
+| M3 | P1.3 Nutrition Meal Presets & Batch Insert | Implement `nutritionPresets.ts`, batch insert in `/api/nutrition`, and `NutritionView.tsx` UI | None | DONE |
+| M4 | Final Integration, Test Suites, & Integrity Audit | Run full test suite, tsc, build, adversarial challenge, and forensic audit | M1, M2, M3 | DONE (Gate: PASS, Audit: CLEAN) |
 
 ## Interface Contracts
 ### P1.1 Discomfort System

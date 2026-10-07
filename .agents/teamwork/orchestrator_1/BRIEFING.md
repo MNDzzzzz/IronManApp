@@ -48,16 +48,21 @@ Orchestrate the full implementation, testing, verification, and audit of the 3 P
 | explorer_survey_p1 | teamwork_preview_explorer | Survey P1.1 Discomfort & Adaptation | completed | 66d9bef6-4156-483c-bc00-583cbbb86bca |
 | explorer_survey_p2 | teamwork_preview_explorer | Survey P1.2 Gym Strength Log & Overload | completed | 6e9a9c08-8214-44b7-ab39-a82bf1005566 |
 | explorer_survey_p3 | teamwork_preview_explorer | Survey P1.3 Nutrition & Testing Infra | completed | 059f75ca-7654-41b6-9ee5-73c0c438cc6c |
-| worker_m1 | teamwork_preview_worker | Milestone 1 P1.1 Discomfort & Adaptation | in-progress | eba0adfe-c1d6-428a-8d25-0e8b39aea86f |
-| worker_m2 | teamwork_preview_worker | Milestone 2 P1.2 Gym Strength Log & Overload | in-progress | 9766fa8f-8a3e-48ec-93f6-44e3a6ab561f |
-| worker_m3 | teamwork_preview_worker | Milestone 3 P1.3 Nutrition Presets & Batch Insert | in-progress | 968cfeff-c39e-4169-9b78-5bf5b1f9e098 |
+| worker_m1 | teamwork_preview_worker | Milestone 1 P1.1 Discomfort & Adaptation | completed | eba0adfe-c1d6-428a-8d25-0e8b39aea86f |
+| worker_m2 | teamwork_preview_worker | Milestone 2 P1.2 Gym Strength Log & Overload | completed | 9766fa8f-8a3e-48ec-93f6-44e3a6ab561f |
+| worker_m3 | teamwork_preview_worker | Milestone 3 P1.3 Nutrition Presets & Batch Insert | completed | 968cfeff-c39e-4169-9b78-5bf5b1f9e098 |
+| reviewer_1 | teamwork_preview_reviewer | Comprehensive Code Review | completed (APPROVE) | 0197f6c5-74db-4d2e-ad76-c9f63d06213f |
+| reviewer_2 | teamwork_preview_reviewer | Adversarial Code Review | completed (APPROVE) | f1facbd1-7e6a-4513-9f42-56ef7ca6691d |
+| challenger_1 | teamwork_preview_challenger | Empirical Stress Challenge | completed (APPROVE) | 791d02a1-7d69-47d6-9279-668698c90660 |
+| challenger_2 | teamwork_preview_challenger | Regression & Integration Challenge | completed (APPROVE) | 82ddbf80-b205-465c-8527-afef26ae1038 |
+| auditor_1 | teamwork_preview_auditor | Forensic Integrity Audit | completed (CLEAN) | a818db78-5013-4085-8b4f-862304b81196 |
 
 ## Succession Status
-- Succession required: no
-- Spawn count: 6 / 16
-- Pending subagents: eba0adfe-c1d6-428a-8d25-0e8b39aea86f, 9766fa8f-8a3e-48ec-93f6-44e3a6ab561f, 968cfeff-c39e-4169-9b78-5bf5b1f9e098
+- Succession required: no (project fully completed within quota)
+- Spawn count: 11 / 16
+- Pending subagents: none (all 11 completed)
 - Predecessor: none
-- Successor: not yet spawned
+- Successor: not needed (work complete)
 
 ## Active Timers
 - Heartbeat cron: not started
