@@ -646,7 +646,7 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
             <span>🏁</span>
             <span>Media Maratón 28 Feb 2027</span>
           </div>
-          <span className="font-mono text-[var(--text-primary)] font-bold">
+          <span suppressHydrationWarning className="font-mono text-[var(--text-primary)] font-bold">
             Faltan {daysToMarathon} días
           </span>
         </div>

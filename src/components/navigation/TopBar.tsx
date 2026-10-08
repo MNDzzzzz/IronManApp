@@ -43,7 +43,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               21K 2027
             </span>
           </div>
-          <p className="text-[11px] text-[var(--text-secondary)] capitalize font-medium tracking-tight mt-0.5">
+          <p suppressHydrationWarning className="text-[11px] text-[var(--text-secondary)] capitalize font-medium tracking-tight mt-0.5">
             {todayFormatted}
           </p>
         </div>
