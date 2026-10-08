@@ -660,7 +660,8 @@ export async function generateWeeklyReportPdf(
 
   currentY -= 14;
 
-  drawCard(page3, MARGIN, currentY, CONTENT_WIDTH, 48);
+  const nutriCardHeight = dataset.foodDiversity ? 64 : 48;
+  drawCard(page3, MARGIN, currentY, CONTENT_WIDTH, nutriCardHeight);
   page3.drawText(`Calorias medias: ${dataset.summary.avgDailyCalories} kcal/dia (Meta: 2.400 kcal)   |   Proteina media: ${dataset.summary.avgDailyProteinG} g/dia (Meta: 202 g - 2.0g/kg)`, {
     x: MARGIN + 12,
     y: currentY - 16,
@@ -677,7 +678,18 @@ export async function generateWeeklyReportPdf(
     color: C_TEXT_LIGHT,
   });
 
-  currentY -= 60;
+  if (dataset.foodDiversity) {
+    const fd = dataset.foodDiversity;
+    page3.drawText(`Auditoria Variedad: Score ${fd.diversityScore}/100 (${fd.diversityLevel}) | Plant Points: ${fd.uniquePlantCount}/${fd.plantScoreTarget} plantas | Monotonia: ${fd.abuseWarnings.length} alertas`, {
+      x: MARGIN + 12,
+      y: currentY - 48,
+      size: 8,
+      font: fontBold,
+      color: C_EMERALD,
+    });
+  }
+
+  currentY -= nutriCardHeight + 14;
 
   // SECCIÓN 2: DIAGNÓSTICO DEL COACH (LO QUE FUE BIEN / A MEJORAR)
   page3.drawText('SECCION 2: DIAGNOSTICO CLINICO DEL PREPARADOR FISICO', {

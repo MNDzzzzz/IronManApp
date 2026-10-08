@@ -28,6 +28,10 @@ import {
   RunningWeekPlan,
 } from '@/lib/weeklyRoutine';
 import { getEffectiveRoutineForDate } from '@/lib/scheduleManager';
+import {
+  analyzeWeeklyFoodDiversity,
+  FoodDiversityReport,
+} from '@/lib/nutrition/foodDiversityEngine';
 
 export interface DayHealthTelemetry {
   hasData: boolean;
@@ -134,6 +138,7 @@ export interface WeeklyReportDataset {
   progressionPlan: RunningWeekPlan;
   days: WeeklyDayTelemetry[];
   summary: WeeklyReportSummary;
+  foodDiversity?: FoodDiversityReport;
 }
 
 /**
@@ -607,6 +612,10 @@ export async function getWeeklyReportDataset(
   const countdown = getHalfMarathonCountdown(new Date(endDateStr));
   const progressionPlan = getRunningProgressionForWeek(weekNumber);
 
+  // Calcular auditoría bromatológica semanal y diversidad nutricional
+  const allWeekMeals = daysTelemetry.flatMap(d => d.nutrition.meals);
+  const foodDiversity = analyzeWeeklyFoodDiversity(allWeekMeals);
+
   return {
     startDate: startDateStr,
     endDate: endDateStr,
@@ -636,6 +645,7 @@ export async function getWeeklyReportDataset(
       weightDeltaKg,
       latestWeightKg,
     },
+    foodDiversity,
   };
 }
 

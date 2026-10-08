@@ -21,6 +21,7 @@ import {
   ArrowLeftRight,
   Sliders,
   Zap,
+  Flame,
 } from 'lucide-react';
 import { GymExercise, GymWorkoutLog } from '@/types/database';
 import { getSpainDate } from '@/lib/weeklyRoutine';
@@ -41,6 +42,10 @@ const ScheduleManagerModal = dynamic(
 );
 const ExerciseManagerModal = dynamic(
   () => import('@/components/gym/ExerciseManagerModal').then((m) => m.ExerciseManagerModal),
+  { ssr: false }
+);
+const GymFlowModal = dynamic(
+  () => import('@/components/gym/GymFlowModal').then((m) => m.GymFlowModal),
   { ssr: false }
 );
 
@@ -68,6 +73,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
   // Modales modulares de reorganización de calendario y ejercicios
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isExerciseModalOpen, setIsExerciseModalOpen] = useState(false);
+  const [isGymFlowOpen, setIsGymFlowOpen] = useState(false);
 
   // Pestaña principal: 'routine' o 'history'
   const [activeTab, setActiveTab] = useState<'routine' | 'history'>('routine');
@@ -299,21 +305,31 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
 
       {/* BARRA DE MODULARIDAD Y ADAPTACIÓN */}
       {activeTab === 'routine' && (
-        <div className="flex items-center gap-2">
+        <div className="space-y-2">
           <button
-            onClick={() => setIsScheduleModalOpen(true)}
-            className="flex-1 py-2.5 px-3 rounded-2xl liquid-glass-card border border-[var(--glass-border)] hover:border-[#2D68C4]/40 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex items-center justify-center gap-1.5 active:scale-98 shadow-sm"
+            onClick={() => setIsGymFlowOpen(true)}
+            className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-teal-500/15 to-emerald-500/20 border border-emerald-500/40 hover:border-emerald-500 text-xs font-black text-emerald-600 dark:text-emerald-400 transition-all flex items-center justify-center gap-2 active:scale-98 shadow-md"
           >
-            <ArrowLeftRight className="w-3.5 h-3.5 text-[#D97757]" />
-            <span>Reorganizar Días</span>
+            <Flame className="w-4 h-4 text-emerald-500 animate-pulse" />
+            <span>ACTIVAR MODO EN SALA (GYM FLOW) • TEMPORIZADOR HÁPTICO</span>
           </button>
-          <button
-            onClick={() => setIsExerciseModalOpen(true)}
-            className="flex-1 py-2.5 px-3 rounded-2xl liquid-glass-card border border-[var(--glass-border)] hover:border-[#2D68C4]/40 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex items-center justify-center gap-1.5 active:scale-98 shadow-sm"
-          >
-            <Sliders className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Personalizar Ejercicios</span>
-          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsScheduleModalOpen(true)}
+              className="flex-1 py-2.5 px-3 rounded-2xl liquid-glass-card border border-[var(--glass-border)] hover:border-[#2D68C4]/40 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex items-center justify-center gap-1.5 active:scale-98 shadow-sm"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5 text-[#D97757]" />
+              <span>Reorganizar Días</span>
+            </button>
+            <button
+              onClick={() => setIsExerciseModalOpen(true)}
+              className="flex-1 py-2.5 px-3 rounded-2xl liquid-glass-card border border-[var(--glass-border)] hover:border-[#2D68C4]/40 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex items-center justify-center gap-1.5 active:scale-98 shadow-sm"
+            >
+              <Sliders className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Personalizar Ejercicios</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -936,6 +952,28 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
         onExerciseUpdated={() => window.location.reload()}
         onExerciseDeleted={() => window.location.reload()}
       />
+
+      {/* Modal Gym Flow a Pantalla Completa (Modo en Sala) */}
+      {isGymFlowOpen && selectedExercise && (
+        <GymFlowModal
+          exercise={selectedExercise}
+          allExercises={filteredExercises.length > 0 ? filteredExercises : strengthExercises}
+          todayLogs={currentExerciseLogs}
+          allHistoricalLogs={logs}
+          todayDateStr={todayStr}
+          onLogSet={async (setNumber, weightKg, reps, rpe) => {
+            await onAddSet({
+              exercise_id: selectedExercise.id,
+              set_number: setNumber,
+              reps,
+              weight_kg: weightKg,
+              rpe,
+            });
+          }}
+          onClose={() => setIsGymFlowOpen(false)}
+          onSelectExercise={(ex) => handleSelectExercise(ex.id)}
+        />
+      )}
     </div>
   );
 };

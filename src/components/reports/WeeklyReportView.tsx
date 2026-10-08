@@ -7,7 +7,7 @@
 // Idioma: Español (Strict TypeScript / Clean Architecture / Liquid Glass)
 // ====================================================================
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Download,
   ChevronLeft,
@@ -18,6 +18,9 @@ import {
   Utensils,
   Printer,
   Sparkles,
+  Leaf,
+  Apple,
+  RefreshCw,
 } from 'lucide-react';
 import {
   BarChart,
@@ -31,6 +34,12 @@ import {
 } from 'recharts';
 import { WeeklyReportDataset } from '@/lib/reports/weeklyDataAggregator';
 import { WeeklyClinicalAssessment } from '@/lib/reports/weeklyClinicalEngine';
+import dynamic from 'next/dynamic';
+
+const BodyRecompositionChart = dynamic(
+  () => import('@/components/reports/BodyRecompositionChart').then((m) => m.BodyRecompositionChart),
+  { ssr: false }
+);
 
 interface WeeklyReportViewProps {
   onClose?: () => void;
@@ -127,6 +136,18 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
     isRest: d.isRestDay,
     overstepped: d.isRestDay && d.health.steps > 9500,
   })) || [];
+
+  // Datos para gráfica de recomposición corporal
+  const recompositionData = useMemo(() => {
+    if (!dataset) return [];
+    return dataset.days.map((d) => ({
+      date: d.dayName.substring(0, 3),
+      weightKg: d.weight.weightKg || undefined,
+      targetWeightKg: 86,
+      calories: d.nutrition.totalCalories,
+      deficitKcal: Math.max(0, 2400 - d.nutrition.totalCalories),
+    }));
+  }, [dataset]);
 
   return (
     <div className="pb-24 pt-2 text-[var(--text-primary)] max-w-4xl mx-auto px-4">
@@ -347,6 +368,13 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
             </div>
           </div>
 
+          {/* Gráfica de Recomposición Corporal (Recharts Dinámico) */}
+          <BodyRecompositionChart
+            data={recompositionData}
+            currentWeightKg={dataset.summary.latestWeightKg}
+            targetWeightKg={86}
+          />
+
           {/* Diagnóstico Clínico del Coach: Fortalezas y Áreas de Mejora */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Columna: Lo que fue bien */}
@@ -525,6 +553,168 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Auditoría Bromatológica Semanal & Diversidad de Alimentos */}
+          {dataset.foodDiversity && (
+            <div className="liquid-glass-card border border-emerald-500/30 rounded-3xl p-5 shadow-xl space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-500">
+                    <Leaf className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-emerald-500">
+                      Nutrición Avanzada & Microbioma
+                    </span>
+                    <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                      Auditoría Bromatológica Semanal & Variedad de Alimentos
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="px-3 py-1.5 rounded-xl liquid-glass-pill border border-[var(--glass-border)] flex items-center gap-2">
+                    <span className="text-xs text-[var(--text-secondary)]">Score Variedad:</span>
+                    <span className={`text-sm font-black font-mono ${
+                      dataset.foodDiversity.diversityScore >= 80 ? 'text-emerald-500' :
+                      dataset.foodDiversity.diversityScore >= 60 ? 'text-blue-500' :
+                      dataset.foodDiversity.diversityScore >= 40 ? 'text-amber-500' : 'text-rose-500'
+                    }`}>
+                      {dataset.foodDiversity.diversityScore}/100
+                    </span>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${
+                    dataset.foodDiversity.diversityLevel === 'EXCELLENT' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30' :
+                    dataset.foodDiversity.diversityLevel === 'GOOD' ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30' :
+                    dataset.foodDiversity.diversityLevel === 'MODERATE' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' :
+                    'bg-rose-500/20 text-rose-500 border border-rose-500/30'
+                  }`}>
+                    {dataset.foodDiversity.diversityLevel}
+                  </span>
+                </div>
+              </div>
+
+              {/* Barra de Progreso de Plant Points (Objetivo 30 plantas de The American Gut Project) */}
+              <div className="p-3.5 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+                <div className="flex justify-between items-center mb-1.5 text-xs">
+                  <span className="font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+                    <Apple className="w-3.5 h-3.5 text-emerald-500" /> Plant Points (Variedad Vegetal)
+                  </span>
+                  <span className="font-mono text-[var(--text-secondary)] text-[11px]">
+                    <strong>{dataset.foodDiversity.uniquePlantCount}</strong> / {dataset.foodDiversity.plantScoreTarget} plantas únicas ({dataset.foodDiversity.plantScorePercentage}%)
+                  </span>
+                </div>
+                <div className="w-full bg-[var(--glass-surface-thick)] h-2 rounded-full overflow-hidden border border-[var(--glass-border)]">
+                  <div
+                    className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${dataset.foodDiversity.plantScorePercentage}%` }}
+                  />
+                </div>
+                {dataset.foodDiversity.plantPoints.length > 0 && (
+                  <p className="text-[10px] text-[var(--text-secondary)] mt-2 italic truncate">
+                    Plantas registradas: {dataset.foodDiversity.plantPoints.slice(0, 10).join(', ')}
+                    {dataset.foodDiversity.plantPoints.length > 10 ? ` y ${dataset.foodDiversity.plantPoints.length - 10} más` : ''}
+                  </p>
+                )}
+              </div>
+
+              {/* Desglose de Grupos Bromatológicos */}
+              <div>
+                <h4 className="text-xs font-bold text-[var(--text-primary)] mb-2">Grupos Bromatológicos Consumidos esta Semana</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {Object.values(dataset.foodDiversity.groupsBreakdown).map((group, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-2 rounded-xl text-left border text-xs transition-colors ${
+                        group.detected
+                          ? 'bg-emerald-500/10 border-emerald-500/30 text-[var(--text-primary)]'
+                          : 'bg-[var(--glass-surface)] border-[var(--glass-border)] opacity-60 text-[var(--text-secondary)]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold truncate">{group.name}</span>
+                        {group.detected && (
+                          <span className="text-[9px] font-mono px-1 rounded bg-emerald-500/20 text-emerald-500 font-bold">
+                            {group.count}x
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[9px] text-[var(--text-secondary)] mt-0.5 truncate">
+                        {group.detected && group.examples.length > 0 ? group.examples.join(', ') : 'Sin ingesta'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Alertas de Sobreconsumo / Monotonía */}
+              {dataset.foodDiversity.abuseWarnings.length > 0 && (
+                <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+                  <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 text-xs font-bold">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>Alertas de Monotonía / Sobreconsumo</span>
+                  </div>
+                  <ul className="text-xs text-[var(--text-primary)] space-y-1 list-disc list-inside">
+                    {dataset.foodDiversity.abuseWarnings.map((warn) => (
+                      <li key={warn.id} className="leading-relaxed">
+                        <strong>{warn.food}:</strong> {warn.message}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Alertas de Carencias */}
+              {dataset.foodDiversity.deficiencyAlerts.length > 0 && (
+                <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 space-y-2">
+                  <div className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 text-xs font-bold">
+                    <ShieldAlert className="w-4 h-4 shrink-0" />
+                    <span>Carencias Nutricionales a Subsanar</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {dataset.foodDiversity.deficiencyAlerts.map((def) => (
+                      <div key={def.id} className="text-xs text-[var(--text-primary)] flex flex-col sm:flex-row sm:items-center justify-between gap-1 bg-[var(--glass-surface)] p-2 rounded-xl border border-[var(--glass-border)]">
+                        <div>
+                          <strong className="text-rose-500">{def.groupName}:</strong> {def.message}
+                        </div>
+                        <span className="text-[10px] text-emerald-500 font-semibold self-start sm:self-auto shrink-0">
+                          Recomendado: {def.recommendedFood}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recomendaciones de Rotación de Mercadona */}
+              {dataset.foodDiversity.rotationSuggestions.length > 0 && (
+                <div className="p-3.5 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
+                    <RefreshCw className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Propuestas de Rotación Saludable (Mercadona)</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    {dataset.foodDiversity.rotationSuggestions.map((sug, i) => (
+                      <div key={i} className="p-2.5 rounded-xl bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-[var(--text-secondary)] line-through">
+                            {sug.originalFood}
+                          </span>
+                          <span className="text-[10px] font-bold text-emerald-500">
+                            → {sug.alternativeFood}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[var(--text-primary)]">{sug.benefit}</p>
+                        <p className="text-[10px] text-[var(--text-secondary)] italic">
+                          🛒 {sug.mercadonaProduct}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

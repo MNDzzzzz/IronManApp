@@ -15,6 +15,7 @@ import {
   ChevronRight,
   CheckCircle2,
   MessageSquare,
+  Activity,
 } from 'lucide-react';
 import { DailyHealthMetric, StravaActivity } from '@/types/database';
 import { CoachTurnResult } from '@/lib/coach/coachCore';
@@ -22,6 +23,7 @@ import { HeroVoiceButton } from '@/components/voice/HeroVoiceButton';
 import { DynamicIslandCoach } from '@/components/dashboard/DynamicIslandCoach';
 import { TabType } from '@/components/navigation/BottomNav';
 import { DiscomfortLevel, DiscomfortManager, AdaptationStrategy } from '@/lib/discomfortManager';
+import { assessJointStrain, DailyWorkloadSample } from '@/lib/biomechanics/jointStrainEngine';
 
 // Carga diferida de modales pesados bajo demanda (reducción de bundle JS)
 const ScheduleManagerModal = dynamic(
@@ -138,6 +140,17 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
       reportedAt: new Date(),
     });
   }, [selectedDiscomfortLevel]);
+
+  // Monitor Biomecánico de Carga Articular (ACWR & KJSI)
+  const jointStrain = useMemo(() => {
+    const sampleToday: DailyWorkloadSample = {
+      date: new Date().toISOString().split('T')[0],
+      runningKm: latestActivity ? latestActivity.distance / 1000 : 0,
+      gymVolumeKg: 2000,
+      discomfortLevel: selectedDiscomfortLevel || 1,
+    };
+    return assessJointStrain([sampleToday], currentWeight, 168);
+  }, [latestActivity, selectedDiscomfortLevel, currentWeight]);
 
   const fetchSchedule = () => {
     fetch('/api/schedule')
@@ -396,6 +409,43 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
             Selecciona un nivel del 1 al 6 solo si notas alguna incomodidad para adaptar el entreno sin alarmismos.
           </p>
         )}
+      </section>
+
+      {/* ================================================================ */}
+      {/* 2.2 MONITOR BIOMECÁNICO ACWR & KNEE JOINT STRAIN (P2.2)          */}
+      {/* ================================================================ */}
+      <section className="p-3.5 rounded-3xl liquid-glass-card border border-[var(--glass-border)] space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className={`w-6 h-6 rounded-xl flex items-center justify-center ${
+              jointStrain.acwrZone === 'OPTIMAL' ? 'bg-emerald-500/15 text-emerald-500' :
+              jointStrain.acwrZone === 'WARNING' ? 'bg-amber-500/15 text-amber-500' : 'bg-rose-500/15 text-rose-500'
+            }`}>
+              <Activity className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-[var(--text-primary)]">
+                Carga Articular ACWR & KJSI
+              </span>
+              <span className="text-[10px] text-[var(--text-secondary)] ml-1.5 font-mono">
+                Ratio: {jointStrain.acwr} • {jointStrain.acwrZone === 'OPTIMAL' ? 'Sweet Spot' : jointStrain.acwrZone}
+              </span>
+            </div>
+          </div>
+          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg border ${
+            jointStrain.kneeStatus === 'PROTECTED'
+              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+              : jointStrain.kneeStatus === 'LOADED'
+              ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+              : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+          }`}>
+            KJSI: {jointStrain.kjsi}/100
+          </span>
+        </div>
+
+        <p className="text-[10.5px] text-[var(--text-secondary)] leading-relaxed">
+          {jointStrain.clinicalAdvice}
+        </p>
       </section>
 
       {/* ================================================================ */}

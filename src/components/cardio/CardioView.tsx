@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Gauge,
   Camera,
+  Award,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -25,6 +26,12 @@ import {
 } from 'recharts';
 import { CardioActivity } from '@/types/database';
 import { StravaUploadModal } from '@/components/workout/StravaUploadModal';
+import dynamic from 'next/dynamic';
+
+const RaceSimulatorModal = dynamic(
+  () => import('@/components/cardio/RaceSimulatorModal').then((m) => m.RaceSimulatorModal),
+  { ssr: false }
+);
 
 interface CardioViewProps {
   activities: CardioActivity[];
@@ -42,6 +49,7 @@ export const CardioView: React.FC<CardioViewProps> = ({
   const [activeMetric, setActiveMetric] = useState<'all' | 'hr' | 'alt'>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isStravaModalOpen, setIsStravaModalOpen] = useState(false);
+  const [isSimulatorModalOpen, setIsSimulatorModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Formulario para registrar rodaje Fit3
@@ -107,6 +115,14 @@ export const CardioView: React.FC<CardioViewProps> = ({
           <p className="text-xs text-[var(--text-secondary)] font-medium">Preparación Media Maratón 28 Feb 2027</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsSimulatorModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-[#FC5200] border border-[#FC5200]/40 font-bold text-xs hover:border-[#FC5200] active:scale-95 transition-all shadow-sm"
+            title="Simular ritmo y estrategia para la Media Maratón 2027"
+          >
+            <Award className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Simulador 21K</span>
+          </button>
           <button
             onClick={() => setIsStravaModalOpen(true)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-2xl liquid-glass-pill text-[#FC5200] border border-[#FC5200]/30 font-bold text-xs hover:bg-[#FC5200]/10 active:scale-95 transition-all"
@@ -509,6 +525,14 @@ export const CardioView: React.FC<CardioViewProps> = ({
           if (onRefresh) onRefresh();
         }}
       />
+
+      {/* Modal Simulador de Media Maratón 2027 */}
+      {isSimulatorModalOpen && (
+        <RaceSimulatorModal
+          initialWeightKg={101}
+          onClose={() => setIsSimulatorModalOpen(false)}
+        />
+      )}
     </div>
   );
 };
