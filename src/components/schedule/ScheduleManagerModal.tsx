@@ -220,33 +220,33 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-apple-fade-in">
-      <div className="liquid-glass-card bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-apple-scale-in">
-        {/* Cabecera del Modal */}
-        <div className="p-5 border-b border-[var(--glass-border)] flex items-center justify-between bg-[var(--glass-surface)]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in motion-reduce:transition-none">
+      <div className="liquid-glass-sheet rounded-3xl border border-[var(--glass-border)] border-t border-t-white/30 dark:border-t-white/15 w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-apple-scale-in">
+        {/* Cabecera del Modal con borde especular y tipografía Apple */}
+        <div className="p-5 border-b border-[var(--glass-border)] flex items-center justify-between bg-[var(--glass-surface)]/80 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#D97757]/15 border border-[#D97757]/30 flex items-center justify-center text-[#D97757]">
+            <div className="w-10 h-10 rounded-2xl bg-[#D97757]/15 border border-[#D97757]/30 flex items-center justify-center text-[#D97757] shadow-inner">
               <ArrowLeftRight className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[var(--text-primary)]">Gestor Modular de Rutinas</h2>
+              <h2 className="text-base font-bold text-[var(--text-primary)] apple-title tracking-tight">Gestor Modular de Rutinas</h2>
               <p className="text-xs text-[var(--text-secondary)]">Adapta el plan ante imprevistos, molestias o disponibilidad</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors active:scale-95"
+            className="w-8 h-8 rounded-full bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors apple-pressable"
             aria-label="Cerrar modal"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Pestañas de Acción */}
-        <div className="flex border-b border-[var(--glass-border)] bg-[var(--glass-surface)] text-xs font-semibold">
+        {/* Pestañas de Acción Fluidas */}
+        <div className="flex border-b border-[var(--glass-border)] bg-[var(--glass-surface)]/50 text-xs font-semibold">
           <button
             onClick={() => { setActiveTab('swap'); setFeedback(null); }}
-            className={`flex-1 py-3 px-2 flex items-center justify-center gap-1.5 transition-colors border-b-2 ${
+            className={`flex-1 py-3 px-2 flex items-center justify-center gap-1.5 transition-all border-b-2 apple-pressable ${
               activeTab === 'swap'
                 ? 'border-[#D97757] text-[#D97757] bg-[#D97757]/10'
                 : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -257,7 +257,7 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
           </button>
           <button
             onClick={() => { setActiveTab('reassign'); setFeedback(null); }}
-            className={`flex-1 py-3 px-2 flex items-center justify-center gap-1.5 transition-colors border-b-2 ${
+            className={`flex-1 py-3 px-2 flex items-center justify-center gap-1.5 transition-all border-b-2 apple-pressable ${
               activeTab === 'reassign'
                 ? 'border-[#D97757] text-[#D97757] bg-[#D97757]/10'
                 : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -268,7 +268,7 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
           </button>
           <button
             onClick={() => { setActiveTab('reset'); setFeedback(null); }}
-            className={`flex-1 py-3 px-2 flex items-center justify-center gap-1.5 transition-colors border-b-2 ${
+            className={`flex-1 py-3 px-2 flex items-center justify-center gap-1.5 transition-all border-b-2 apple-pressable ${
               activeTab === 'reset'
                 ? 'border-[#D97757] text-[#D97757] bg-[#D97757]/10'
                 : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -284,7 +284,7 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
           {/* Alerta de Feedback */}
           {feedback && (
             <div
-              className={`p-3.5 rounded-2xl border text-xs flex items-center gap-2.5 ${
+              className={`p-3.5 rounded-2xl border text-xs flex items-center gap-2.5 animate-apple-fade-in ${
                 feedback.type === 'success'
                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
                   : 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400'
@@ -322,13 +322,13 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
                     type="date"
                     value={swapDate1}
                     onChange={(e) => setSwapDate1(e.target.value)}
-                    className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[#D97757] font-mono"
+                    className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[#D97757] font-mono tabular-nums"
                   />
                   <div className="flex gap-1.5 mt-1.5">
                     <button
                       type="button"
                       onClick={() => setSwapDate1(yesterdayStr)}
-                      className={`text-[10px] px-2 py-0.5 rounded-lg border transition-all ${
+                      className={`text-[10px] px-2 py-0.5 rounded-lg border transition-all apple-pressable tabular-nums ${
                         swapDate1 === yesterdayStr
                           ? 'bg-[#D97757]/20 border-[#D97757]/40 text-[#D97757] font-bold'
                           : 'bg-[var(--glass-surface)] border-[var(--glass-border)] text-[var(--text-secondary)]'
@@ -339,7 +339,7 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setSwapDate1(todayStr)}
-                      className={`text-[10px] px-2 py-0.5 rounded-lg border transition-all ${
+                      className={`text-[10px] px-2 py-0.5 rounded-lg border transition-all apple-pressable tabular-nums ${
                         swapDate1 === todayStr
                           ? 'bg-[#D97757]/20 border-[#D97757]/40 text-[#D97757] font-bold'
                           : 'bg-[var(--glass-surface)] border-[var(--glass-border)] text-[var(--text-secondary)]'
@@ -358,13 +358,13 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
                     type="date"
                     value={swapDate2}
                     onChange={(e) => setSwapDate2(e.target.value)}
-                    className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[#D97757] font-mono"
+                    className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[#D97757] font-mono tabular-nums"
                   />
                   <div className="flex gap-1.5 mt-1.5">
                     <button
                       type="button"
                       onClick={() => setSwapDate2(todayStr)}
-                      className={`text-[10px] px-2 py-0.5 rounded-lg border transition-all ${
+                      className={`text-[10px] px-2 py-0.5 rounded-lg border transition-all apple-pressable tabular-nums ${
                         swapDate2 === todayStr
                           ? 'bg-[#D97757]/20 border-[#D97757]/40 text-[#D97757] font-bold'
                           : 'bg-[var(--glass-surface)] border-[var(--glass-border)] text-[var(--text-secondary)]'
@@ -375,7 +375,7 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setSwapDate2(tomorrowStr)}
-                      className={`text-[10px] px-2 py-0.5 rounded-lg border transition-all ${
+                      className={`text-[10px] px-2 py-0.5 rounded-lg border transition-all apple-pressable tabular-nums ${
                         swapDate2 === tomorrowStr
                           ? 'bg-[#D97757]/20 border-[#D97757]/40 text-[#D97757] font-bold'
                           : 'bg-[var(--glass-surface)] border-[var(--glass-border)] text-[var(--text-secondary)]'
@@ -403,7 +403,7 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
               <button
                 onClick={handleExecuteSwap}
                 disabled={isSubmitting || swapDate1 === swapDate2}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#D97757] to-[#C26243] hover:opacity-90 active:scale-[0.99] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 transition-all"
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#D97757] to-[#C26243] hover:opacity-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 transition-all apple-pressable apple-btn-spring disabled:opacity-50"
               >
                 <ArrowLeftRight className="w-4 h-4" />
                 {isSubmitting ? 'Intercambiando días...' : 'Intercambiar Ambas Rutinas'}
@@ -422,7 +422,7 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
                   type="date"
                   value={reassignDate}
                   onChange={(e) => setReassignDate(e.target.value)}
-                  className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[#D97757] font-mono"
+                  className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[#D97757] font-mono tabular-nums"
                 />
               </div>
 
@@ -435,7 +435,7 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
                     <div
                       key={opt.key}
                       onClick={() => setSelectedRoutineKey(opt.key)}
-                      className={`p-3 rounded-2xl border text-left cursor-pointer transition-all flex items-start gap-3 ${
+                      className={`p-3 rounded-2xl border text-left cursor-pointer transition-all flex items-start gap-3 apple-pressable ${
                         selectedRoutineKey === opt.key
                           ? 'bg-[#D97757]/15 border-[#D97757]/60 shadow-md ring-1 ring-[#D97757]/40'
                           : 'bg-[var(--glass-surface)] border-[var(--glass-border)] hover:border-[#D97757]/40'
@@ -448,7 +448,7 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
                           <span className="text-[10px] font-semibold text-[#D97757]">{opt.category}</span>
                         </div>
                         <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 leading-snug">{opt.description}</p>
-                        <p className="text-[10px] text-[var(--text-tertiary)] mt-1 font-mono">👟 Meta: {opt.stepsTarget}</p>
+                        <p className="text-[10px] text-[var(--text-tertiary)] mt-1 font-mono tabular-nums">👟 Meta: {opt.stepsTarget}</p>
                       </div>
                     </div>
                   ))}
@@ -471,7 +471,7 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
               <button
                 onClick={handleExecuteReassign}
                 disabled={isSubmitting}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#D97757] to-[#C26243] hover:opacity-90 active:scale-[0.99] disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 transition-all"
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#D97757] to-[#C26243] hover:opacity-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 transition-all apple-pressable apple-btn-spring disabled:opacity-50"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 {isSubmitting ? 'Guardando adaptación...' : 'Aplicar Nueva Sesión al Día'}
@@ -510,14 +510,14 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
                   type="date"
                   value={reassignDate}
                   onChange={(e) => setReassignDate(e.target.value)}
-                  className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[#D97757] font-mono"
+                  className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[#D97757] font-mono tabular-nums"
                 />
               </div>
 
               <button
                 onClick={handleExecuteReset}
                 disabled={isSubmitting}
-                className="w-full py-3 rounded-2xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] active:scale-[0.99] disabled:opacity-50 text-[var(--text-primary)] font-bold text-xs flex items-center justify-center gap-2 border border-[var(--glass-border)] transition-all"
+                className="w-full py-3 rounded-2xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold text-xs flex items-center justify-center gap-2 border border-[var(--glass-border)] transition-all apple-pressable apple-btn-spring disabled:opacity-50"
               >
                 <RotateCcw className="w-4 h-4 text-amber-500" />
                 {isSubmitting ? 'Restaurando...' : 'Restablecer Día a la Rutina Base'}

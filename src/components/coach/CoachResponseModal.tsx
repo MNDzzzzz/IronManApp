@@ -89,13 +89,13 @@ export const CoachResponseModal: React.FC<CoachResponseModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-end sm:items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-end sm:items-center justify-center p-3 sm:p-4 animate-apple-fade-in motion-reduce:transition-none"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="w-full max-w-lg liquid-glass-card bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-250 max-h-[85vh] overflow-y-auto"
+        className="w-full max-w-lg liquid-glass-sheet border-t border-t-white/30 dark:border-t-white/15 rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl animate-apple-scale-in max-h-[85vh] overflow-y-auto"
         role="dialog"
         aria-modal="true"
         aria-labelledby="coach-response-title"
@@ -114,7 +114,7 @@ export const CoachResponseModal: React.FC<CoachResponseModalProps> = ({
           <button
             onClick={onClose}
             aria-label="Cerrar modal"
-            className="p-1.5 rounded-full bg-[var(--glass-surface)] hover:bg-[var(--glass-surface-thick)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--glass-border)] transition-all active:scale-90"
+            className="p-1.5 rounded-full bg-[var(--glass-surface)] hover:bg-[var(--glass-surface-thick)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--glass-border)] apple-pressable transition-all active:scale-90"
           >
             <X className="w-4 h-4" />
           </button>
@@ -143,7 +143,7 @@ export const CoachResponseModal: React.FC<CoachResponseModalProps> = ({
             <div className="w-6 h-6 rounded-lg bg-[#D97757]/20 flex items-center justify-center text-[#D97757]">
               <Sparkles className="w-3.5 h-3.5" />
             </div>
-            <h3 id="coach-response-title" className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+            <h3 id="coach-response-title" className="apple-title text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
               Head Coach
             </h3>
           </div>
@@ -158,7 +158,7 @@ export const CoachResponseModal: React.FC<CoachResponseModalProps> = ({
             <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block tracking-wider">
               Desglose Nutricional
             </span>
-            <p className="text-xs font-mono text-[var(--text-primary)] font-medium">
+            <p className="text-xs font-mono tabular-nums text-[var(--text-primary)] font-medium">
               {result.breakdownText}
             </p>
           </div>
@@ -181,7 +181,7 @@ export const CoachResponseModal: React.FC<CoachResponseModalProps> = ({
                 onClose();
                 onOpenFullChat();
               }}
-              className="flex-1 py-2.5 px-3 rounded-2xl bg-[var(--glass-surface)] hover:bg-[var(--glass-surface-thick)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--glass-border)] text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95"
+              className="flex-1 py-2.5 px-3 rounded-2xl bg-[var(--glass-surface)] hover:bg-[var(--glass-surface-thick)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--glass-border)] text-xs font-bold flex items-center justify-center gap-1.5 apple-pressable transition-all active:scale-95"
             >
               <MessageSquare className="w-3.5 h-3.5" />
               <span>Ver en el chat</span>
@@ -190,7 +190,7 @@ export const CoachResponseModal: React.FC<CoachResponseModalProps> = ({
 
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 px-4 rounded-2xl bg-[#D97757] hover:bg-[#c66849] text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-[#D97757]/25 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+            className="flex-1 py-2.5 px-4 rounded-2xl bg-[#D97757] hover:bg-[#c66849] text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-[#D97757]/25 flex items-center justify-center gap-1.5 apple-pressable transition-all active:scale-95"
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
             <span>Entendido</span>

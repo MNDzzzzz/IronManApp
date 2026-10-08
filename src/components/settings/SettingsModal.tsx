@@ -88,15 +88,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md overflow-y-auto pb-24 pt-[env(safe-area-inset-top,20px)] px-4 animate-apple-fade-in flex items-center justify-center">
-      <div className="max-w-md w-full mx-auto space-y-4 liquid-glass-card bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] rounded-3xl p-5 shadow-2xl my-auto animate-apple-scale-in">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl overflow-y-auto pb-24 pt-[env(safe-area-inset-top,20px)] px-4 animate-apple-fade-in motion-reduce:transition-none flex items-center justify-center">
+      <div className="max-w-md w-full mx-auto space-y-4 liquid-glass-sheet rounded-3xl border border-[var(--glass-border)] border-t border-t-white/30 dark:border-t-white/15 p-5 shadow-2xl my-auto animate-apple-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="w-8" />
           <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">Configuración & Integraciones</span>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all"
+            className="p-1.5 rounded-full bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all apple-pressable"
             aria-label="Cerrar modal"
           >
             <X className="w-4 h-4" />
@@ -104,7 +104,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         <div>
-          <h2 className="text-xl font-black text-[var(--text-primary)]">Puentes & Integraciones</h2>
+          <h2 className="text-xl font-black text-[var(--text-primary)] apple-title tracking-tight">Puentes & Integraciones</h2>
           <p className="text-xs text-[var(--text-secondary)]">Direcciones para sincronizar tu Samsung Galaxy Fit3 y Telegram</p>
         </div>
 
@@ -119,7 +119,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <span className="truncate pr-2">{bridgeUrl}</span>
             <button
               onClick={() => copyToClipboard(bridgeUrl, 'bridge')}
-              className="text-[#D97757] hover:opacity-80 active:scale-95 transition-transform"
+              className="text-[#D97757] hover:opacity-80 transition-all apple-pressable p-1"
               aria-label="Copiar endpoint de puente"
             >
               {copiedKey === 'bridge' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
@@ -141,7 +141,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <span className="truncate pr-2">{currentOrigin}/api/activities</span>
             <button
               onClick={() => copyToClipboard(`${currentOrigin}/api/activities`, 'act')}
-              className="text-[#D97757] hover:opacity-80 active:scale-95 transition-transform"
+              className="text-[#D97757] hover:opacity-80 transition-all apple-pressable p-1"
               aria-label="Copiar endpoint de actividades"
             >
               {copiedKey === 'act' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
@@ -161,7 +161,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <span className="truncate pr-2">{telegramWebhookUrl}</span>
             <button
               onClick={() => copyToClipboard(telegramWebhookUrl, 'telegram')}
-              className="text-[#D97757] hover:opacity-80 active:scale-95 transition-transform"
+              className="text-[#D97757] hover:opacity-80 transition-all apple-pressable p-1"
               aria-label="Copiar webhook de Telegram"
             >
               {copiedKey === 'telegram' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
@@ -172,13 +172,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               onClick={handleActivateTelegram}
               disabled={isActivatingTelegram}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#2D68C4]/15 border border-[#2D68C4]/30 text-[#2D68C4] hover:bg-[#2D68C4]/25 text-xs font-bold transition-all disabled:opacity-50 active:scale-98"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#2D68C4]/15 border border-[#2D68C4]/30 text-[#2D68C4] hover:bg-[#2D68C4]/25 text-xs font-bold transition-all disabled:opacity-50 apple-pressable apple-btn-spring"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isActivatingTelegram ? 'animate-spin' : ''}`} />
               {isActivatingTelegram ? 'Comprobando en Telegram...' : '⚡ Comprobar & Vincular Webhook'}
             </button>
             {telegramStatus && (
-              <p className="mt-2 text-[11px] text-[var(--text-primary)] bg-[var(--glass-surface-thick)] p-2.5 rounded-xl border border-[var(--glass-border)]">
+              <p className="mt-2 text-[11px] text-[var(--text-primary)] bg-[var(--glass-surface-thick)] p-2.5 rounded-xl border border-[var(--glass-border)] animate-apple-fade-in">
                 {telegramStatus}
               </p>
             )}
@@ -198,14 +198,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             onClick={handleReseed}
             disabled={isReseeding}
-            className="w-full py-3 rounded-2xl bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] hover:border-[#D97757]/50 text-[var(--text-primary)] font-bold text-xs flex items-center justify-center gap-2 active:scale-98 transition-all"
+            className="w-full py-3 rounded-2xl bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] hover:border-[#D97757]/50 text-[var(--text-primary)] font-bold text-xs flex items-center justify-center gap-2 transition-all apple-pressable apple-btn-spring disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isReseeding ? 'animate-spin text-[#D97757]' : ''}`} />
             {isReseeding ? 'Regenerando datos...' : 'Recargar Datos de Simulación'}
           </button>
 
           {reseedStatus && (
-            <p className="text-center text-xs font-semibold text-emerald-500">{reseedStatus}</p>
+            <p className="text-center text-xs font-semibold text-emerald-500 animate-apple-fade-in">{reseedStatus}</p>
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   TrendingUp,
   Clock,
@@ -15,6 +15,8 @@ import {
   Gauge,
   Camera,
   Award,
+  ShieldCheck,
+  Scale,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -26,6 +28,7 @@ import {
 } from 'recharts';
 import { CardioActivity } from '@/types/database';
 import { StravaUploadModal } from '@/components/workout/StravaUploadModal';
+import { simulateHalfMarathon2027 } from '@/lib/cardio/raceSimulatorEngine';
 import dynamic from 'next/dynamic';
 
 const RaceSimulatorModal = dynamic(
@@ -51,6 +54,17 @@ export const CardioView: React.FC<CardioViewProps> = ({
   const [isStravaModalOpen, setIsStravaModalOpen] = useState(false);
   const [isSimulatorModalOpen, setIsSimulatorModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Estimación determinista para Media Maratón 2027 basada en bioenergética
+  const raceEstimate = useMemo(() => {
+    return simulateHalfMarathon2027({
+      currentWeightKg: 101,
+      projectedWeightKg: 86,
+      basePaceMinKm: 5.5,
+      targetCadenceSpm: 172,
+      cacoProtocol: true,
+    });
+  }, []);
 
   // Formulario para registrar rodaje Fit3
   const [formName, setFormName] = useState('Rodaje CaCo 4.0 km (Galaxy Fit3)');
@@ -103,69 +117,176 @@ export const CardioView: React.FC<CardioViewProps> = ({
 
   return (
     <div className="space-y-6 pb-24 font-sans">
-      {/* ENCABEZADO MINIMALISTA ESTILO HOY */}
-      <div className="flex items-center justify-between">
+      {/* ENCABEZADO MINIMALISTA ESTILO APPLE */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <span className="text-[11px] font-bold tracking-[0.16em] uppercase text-[#FC5200] editorial-heading">
             Carrera & Aeróbico
           </span>
-          <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] tracking-tight leading-tight">
+          <h1 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight leading-tight apple-title">
             Cardio & Resistencia
           </h1>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsSimulatorModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/50 dark:bg-white/[0.08] border border-white/60 dark:border-white/10 shadow-sm text-xs font-semibold text-[#FC5200] hover:bg-[#FC5200]/10 apple-btn-spring"
+            className="flex items-center gap-2 min-h-[44px] px-4 py-2.5 rounded-full liquid-glass-pill shadow-sm text-xs font-bold text-[#FC5200] hover:bg-[#FC5200]/10 apple-btn-spring"
             title="Simular ritmo y estrategia para la Media Maratón 2027"
           >
-            <Award className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Simulador 21K</span>
+            <Award className="w-4 h-4" />
+            <span className="apple-subhead font-semibold">Simulador 21K</span>
           </button>
           <button
             onClick={() => setIsStravaModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/50 dark:bg-white/[0.08] border border-white/60 dark:border-white/10 shadow-sm text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] apple-btn-spring"
+            className="flex items-center gap-2 min-h-[44px] px-4 py-2.5 rounded-full liquid-glass-pill shadow-sm text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] apple-btn-spring"
             title="Escanear captura de Strava con IA"
           >
-            <Camera className="w-3.5 h-3.5" />
-            <span>Strava</span>
+            <Camera className="w-4 h-4" />
+            <span className="apple-subhead font-semibold">Strava</span>
           </button>
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#FC5200] text-white font-bold text-xs shadow-md shadow-[#FC5200]/25 apple-btn-spring"
+            className="flex items-center gap-2 min-h-[44px] px-4 py-2.5 rounded-full bg-[#FC5200] text-white font-bold text-xs shadow-md shadow-[#FC5200]/25 apple-btn-spring"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Añadir</span>
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span className="apple-subhead font-semibold">Añadir</span>
           </button>
         </div>
       </div>
 
-      {/* TARJETA FOCO AERÓBICO BENTO (1 BLOQUE LIMPIO SIN BORDES ANIDADOS) */}
-      <div className="p-5 sm:p-6 rounded-3xl liquid-glass-card shadow-lg space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#FC5200]" />
-            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] editorial-heading">
-              Zona 2 Aeróbica • 101 kg
+      {/* BENTO DUAL CARDIO: ZONAS Z2/Z4 & ESTIMACIONES 21K (Apple Liquid Glass) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* TARJETA 1: ZONAS DE FRECUENCIA CARDÍACA Z2 / Z4 */}
+        <div className="p-5 sm:p-6 rounded-3xl liquid-glass-card space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#FC5200] animate-pulse" />
+              <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] editorial-heading">
+                Zonas Cardíacas • 101 kg
+              </h2>
+            </div>
+            <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 data-tabular">
+              Z2 Óptima
             </span>
           </div>
-          <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 data-tabular">
-            130-145 bpm
-          </span>
+
+          {/* Barra de Zonas Cardíacas Segmentada Visual Apple */}
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] font-mono data-tabular">
+              <span>Z1 &lt;130</span>
+              <span className="text-emerald-500 font-bold">Z2 (130-145)</span>
+              <span>Z3 (146-155)</span>
+              <span className="text-rose-500 font-bold">Z4 &gt;156</span>
+            </div>
+            <div className="h-2.5 w-full rounded-full bg-black/10 dark:bg-white/10 overflow-hidden flex p-0.5 gap-0.5">
+              <div className="w-[20%] h-full rounded-l-full bg-blue-400/60" title="Z1 Calentamiento" />
+              <div className="w-[40%] h-full bg-emerald-500 shadow-sm shadow-emerald-500/50" title="Z2 Salud Articular" />
+              <div className="w-[20%] h-full bg-amber-400/70" title="Z3 Tempo" />
+              <div className="w-[20%] h-full rounded-r-full bg-rose-500" title="Z4 Umbral Anaeróbico" />
+            </div>
+          </div>
+
+          {/* Comparativa Z2 vs Z4 en Cuidado Articular */}
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[var(--glass-border-subtle)]">
+            <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-0.5">
+              <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-[10px] uppercase font-bold tracking-wider">Zona 2 (130-145)</span>
+              </div>
+              <p className="text-[11px] font-semibold text-[var(--text-primary)]">
+                Protección Rotuliana
+              </p>
+              <p className="text-[9px] text-[var(--text-secondary)] leading-tight">
+                Metabolismo graso y mínimo impacto a 101 kg.
+              </p>
+            </div>
+
+            <div className="p-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 space-y-0.5">
+              <div className="flex items-center gap-1.5 text-rose-500">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-[10px] uppercase font-bold tracking-wider">Zona 4 (&gt;156)</span>
+              </div>
+              <p className="text-[11px] font-semibold text-[var(--text-primary)]">
+                Alerta de Sobrecarga
+              </p>
+              <p className="text-[9px] text-[var(--text-secondary)] leading-tight">
+                Fatiga articular. Si sube, caminar en CaCo.
+              </p>
+            </div>
+          </div>
+
+          {/* Métricas de Cadencia y Método CaCo */}
+          <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+            <div>
+              <p className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold">Cadencia</p>
+              <p className="text-base sm:text-lg font-bold font-mono text-[var(--text-primary)] data-tabular">165-175 <span className="text-[10px] text-[var(--text-tertiary)] font-normal">ppm</span></p>
+            </div>
+            <div>
+              <p className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold">Método</p>
+              <p className="text-base sm:text-lg font-bold font-mono text-amber-500 data-tabular">CaCo</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold">Impacto</p>
+              <p className="text-base sm:text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400 data-tabular">Bajo</p>
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 pt-1 border-t border-[var(--glass-border-subtle)]">
+        {/* TARJETA 2: ESTIMACIONES 21K (MEDIA MARATÓN 28-FEB-2027) */}
+        <div className="p-5 sm:p-6 rounded-3xl liquid-glass-card space-y-4 flex flex-col justify-between">
           <div>
-            <p className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold">Cadencia</p>
-            <p className="text-lg sm:text-xl font-bold font-mono text-[var(--text-primary)] data-tabular">165-175 <span className="text-xs text-[var(--text-tertiary)] font-normal">ppm</span></p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Award className="w-4 h-4 text-[#FC5200]" />
+                <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] editorial-heading">
+                  Proyección 21K • 28 Feb 2027
+                </h2>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#FC5200]/15 text-[#FC5200] font-bold">
+                21.097 km
+              </span>
+            </div>
+
+            {/* Número grande Apple Display */}
+            <div className="mt-3 text-center sm:text-left">
+              <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold block">
+                Tiempo Estimado Final (Objetivo 86 kg)
+              </span>
+              <div className="text-3xl sm:text-4xl font-black text-[#FC5200] font-mono data-tabular tracking-tight leading-none mt-1">
+                {raceEstimate.totalTimeFormatted}
+              </div>
+              <div className="flex items-center gap-3 mt-2 text-xs font-mono">
+                <span className="text-[var(--text-secondary)]">
+                  Ritmo: <strong className="text-emerald-500 data-tabular">{raceEstimate.projectedPaceStr}</strong>
+                </span>
+                <span className="text-[var(--text-tertiary)]">•</span>
+                <span className="text-[var(--text-secondary)]">
+                  Ahorro peso: <strong className="text-[#FC5200] data-tabular">-{raceEstimate.weightTimeSavedMinutes} min</strong>
+                </span>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold">Método</p>
-            <p className="text-lg sm:text-xl font-bold font-mono text-amber-500 data-tabular">CaCo</p>
-          </div>
-          <div>
-            <p className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold">Cuidado</p>
-            <p className="text-lg sm:text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 data-tabular">Bajo Impacto</p>
+
+          {/* Resumen de Carga Articular y Acceso a Simulador */}
+          <div className="pt-2 border-t border-[var(--glass-border-subtle)] space-y-2.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-[var(--text-secondary)] flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                Impacto acumulado estimado:
+              </span>
+              <span className="font-mono font-bold text-[var(--text-primary)] data-tabular">
+                {raceEstimate.kneeImpactTons} tons
+              </span>
+            </div>
+
+            <button
+              onClick={() => setIsSimulatorModalOpen(true)}
+              className="w-full min-h-[44px] py-2.5 px-4 rounded-2xl bg-white/60 dark:bg-white/[0.08] hover:bg-[#FC5200]/10 border border-white/70 dark:border-white/10 text-xs font-bold text-[#FC5200] flex items-center justify-center gap-2 apple-btn-spring transition-all shadow-sm"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>Personalizar Simulación & Geles</span>
+              <ChevronRight className="w-3.5 h-3.5 ml-auto" />
+            </button>
           </div>
         </div>
       </div>
@@ -222,35 +343,35 @@ export const CardioView: React.FC<CardioViewProps> = ({
                   </div>
                 </div>
 
-                {/* Métricas tabulares limpias idénticas a la tarjeta de Strava en Hoy */}
-                <div className="grid grid-cols-4 gap-2 pt-2 border-t border-[var(--glass-border-subtle)] text-center">
+                {/* Métricas tabulares limpias con Tipografía Óptica Apple */}
+                <div className="grid grid-cols-4 gap-2 pt-2.5 border-t border-[var(--glass-border-subtle)] text-center">
                   <div>
                     <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold block">Distancia</span>
-                    <span className="text-base sm:text-lg font-bold font-mono text-[var(--text-primary)] data-tabular">{distanceKm} <span className="text-xs font-normal text-[var(--text-tertiary)]">km</span></span>
+                    <span className="text-base sm:text-lg font-black font-mono text-[var(--text-primary)] data-tabular tracking-tight apple-title">{distanceKm} <span className="text-xs font-normal text-[var(--text-tertiary)]">km</span></span>
                   </div>
                   <div>
                     <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold block">Ritmo</span>
-                    <span className="text-base sm:text-lg font-bold font-mono text-[var(--text-primary)] data-tabular">{paceMinPerKm} <span className="text-xs font-normal text-[var(--text-tertiary)]">/km</span></span>
+                    <span className="text-base sm:text-lg font-black font-mono text-[var(--text-primary)] data-tabular tracking-tight apple-title">{paceMinPerKm} <span className="text-xs font-normal text-[var(--text-tertiary)]">/km</span></span>
                   </div>
                   <div>
                     <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold block">Cadencia</span>
-                    <span className="text-base sm:text-lg font-bold font-mono text-amber-500 data-tabular">{cadence} <span className="text-xs font-normal text-[var(--text-tertiary)]">ppm</span></span>
+                    <span className="text-base sm:text-lg font-black font-mono text-amber-500 data-tabular tracking-tight apple-title">{cadence} <span className="text-xs font-normal text-[var(--text-tertiary)]">ppm</span></span>
                   </div>
                   <div>
                     <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold block">Pulso</span>
-                    <span className="text-base sm:text-lg font-bold font-mono text-rose-500 data-tabular">{activity.avg_hr || 142} <span className="text-xs font-normal text-[var(--text-tertiary)]">bpm</span></span>
+                    <span className="text-base sm:text-lg font-black font-mono text-rose-500 data-tabular tracking-tight apple-title">{activity.avg_hr || 142} <span className="text-xs font-normal text-[var(--text-tertiary)]">bpm</span></span>
                   </div>
                 </div>
 
                 {/* Nota o alerta biomecánica */}
                 {isHighHr ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[11px]">
-                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-medium">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
                     <span>Pulso superior a Zona 2. Añade más minutos caminando para cuidar tus articulaciones (101 kg).</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px]">
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
                     <span>Zona aeróbica perfecta (Z2). Rodillas y tendón rotuliano protegidos.</span>
                   </div>
                 )}
@@ -262,52 +383,53 @@ export const CardioView: React.FC<CardioViewProps> = ({
 
       {/* MODAL PARA REGISTRAR RODAJE FIT3 */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md liquid-glass-card bg-[var(--glass-surface-thick)] p-5 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md liquid-glass-sheet p-6 space-y-4 shadow-2xl rounded-3xl">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-base font-bold text-[var(--text-primary)]">Registrar Rodaje Fit3</h2>
+                <h2 className="text-base font-bold text-[var(--text-primary)] apple-title">Registrar Rodaje Fit3</h2>
                 <p className="text-xs text-[var(--text-secondary)]">Datos obtenidos de tu Samsung Galaxy Fit3</p>
               </div>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="p-2 rounded-full liquid-glass-pill text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                className="w-10 h-10 rounded-full liquid-glass-pill flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] apple-btn-spring"
+                aria-label="Cerrar modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateActivity} className="space-y-3">
+            <form onSubmit={handleCreateActivity} className="space-y-3.5">
               <div>
-                <label className="text-[11px] text-[var(--text-secondary)] block mb-1">Nombre de la sesión</label>
+                <label className="text-[11px] font-semibold text-[var(--text-secondary)] block mb-1">Nombre de la sesión</label>
                 <input
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs text-[var(--text-primary)] outline-none focus:border-[#FC5200]"
+                  className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs text-[var(--text-primary)] outline-none focus:border-[#FC5200] transition-colors"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-[11px] text-[var(--text-secondary)] block mb-1">Distancia (km)</label>
+                  <label className="text-[11px] font-semibold text-[var(--text-secondary)] block mb-1">Distancia (km)</label>
                   <input
                     type="number"
                     step="0.1"
                     value={formDistanceKm}
                     onChange={(e) => setFormDistanceKm(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs text-[var(--text-primary)] outline-none focus:border-[#FC5200]"
+                    className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs font-mono text-[var(--text-primary)] outline-none focus:border-[#FC5200] transition-colors data-tabular"
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] text-[var(--text-secondary)] block mb-1">Duración (minutos)</label>
+                  <label className="text-[11px] font-semibold text-[var(--text-secondary)] block mb-1">Duración (minutos)</label>
                   <input
                     type="number"
                     value={formDurationMin}
                     onChange={(e) => setFormDurationMin(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs text-[var(--text-primary)] outline-none focus:border-[#FC5200]"
+                    className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs font-mono text-[var(--text-primary)] outline-none focus:border-[#FC5200] transition-colors data-tabular"
                     required
                   />
                 </div>
@@ -315,57 +437,57 @@ export const CardioView: React.FC<CardioViewProps> = ({
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="text-[11px] text-[var(--text-secondary)] block mb-1">FC Media (bpm)</label>
+                  <label className="text-[11px] font-semibold text-[var(--text-secondary)] block mb-1">FC Media (bpm)</label>
                   <input
                     type="number"
                     value={formAvgHr}
                     onChange={(e) => setFormAvgHr(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs text-[var(--text-primary)] outline-none focus:border-[#FC5200]"
+                    className="w-full min-h-[44px] px-3 py-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs font-mono text-[var(--text-primary)] outline-none focus:border-[#FC5200] transition-colors data-tabular"
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] text-[var(--text-secondary)] block mb-1">FC Máx (bpm)</label>
+                  <label className="text-[11px] font-semibold text-[var(--text-secondary)] block mb-1">FC Máx (bpm)</label>
                   <input
                     type="number"
                     value={formMaxHr}
                     onChange={(e) => setFormMaxHr(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs text-[var(--text-primary)] outline-none focus:border-[#FC5200]"
+                    className="w-full min-h-[44px] px-3 py-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs font-mono text-[var(--text-primary)] outline-none focus:border-[#FC5200] transition-colors data-tabular"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] text-[var(--text-secondary)] block mb-1">Cadencia (ppm)</label>
+                  <label className="text-[11px] font-semibold text-[var(--text-secondary)] block mb-1">Cadencia (ppm)</label>
                   <input
                     type="number"
                     value={formCadence}
                     onChange={(e) => setFormCadence(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs text-[var(--text-primary)] outline-none focus:border-[#FC5200]"
+                    className="w-full min-h-[44px] px-3 py-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs font-mono text-[var(--text-primary)] outline-none focus:border-[#FC5200] transition-colors data-tabular"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] text-[var(--text-secondary)] block mb-1">Sensaciones & Notas Biomecánicas</label>
+                <label className="text-[11px] font-semibold text-[var(--text-secondary)] block mb-1">Sensaciones & Notas Biomecánicas</label>
                 <textarea
                   rows={2}
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs text-[var(--text-primary)] outline-none focus:border-[#FC5200] resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs text-[var(--text-primary)] outline-none focus:border-[#FC5200] resize-none transition-colors"
                 />
               </div>
 
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2.5 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl liquid-glass-pill text-[var(--text-secondary)] text-xs font-bold hover:text-[var(--text-primary)]"
+                  className="flex-1 min-h-[44px] py-2.5 rounded-xl liquid-glass-pill text-[var(--text-secondary)] text-xs font-bold hover:text-[var(--text-primary)] apple-btn-spring"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 py-2.5 rounded-xl bg-[#FC5200] text-white text-xs font-bold disabled:opacity-50 active:scale-95 transition-all shadow-md shadow-[#FC5200]/25"
+                  className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-[#FC5200] text-white text-xs font-bold disabled:opacity-50 apple-btn-spring transition-all shadow-md shadow-[#FC5200]/25"
                 >
                   {isSubmitting ? 'Guardando...' : 'Guardar Rodaje'}
                 </button>
@@ -377,49 +499,50 @@ export const CardioView: React.FC<CardioViewProps> = ({
 
       {/* MODAL DETALLE DE ACTIVIDAD CON GRÁFICA MULTICAPA */}
       {selectedActivity && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-md overflow-y-auto pb-24 pt-[env(safe-area-inset-top,20px)] px-4 animate-in fade-in duration-200">
-          <div className="max-w-md mx-auto space-y-4 liquid-glass-card bg-[var(--glass-surface-thick)] p-5 rounded-3xl">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl overflow-y-auto pb-24 pt-[env(safe-area-inset-top,20px)] px-4 animate-in fade-in duration-200">
+          <div className="max-w-md mx-auto space-y-4 liquid-glass-sheet p-6 rounded-3xl">
             {/* Header del Modal */}
             <div className="flex items-center justify-between">
               <button
                 onClick={() => onSelectActivity(null)}
-                className="p-2 rounded-full liquid-glass-pill text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                className="w-10 h-10 rounded-full liquid-glass-pill flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] apple-btn-spring"
+                aria-label="Cerrar detalle"
               >
                 <X className="w-5 h-5" />
               </button>
-              <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+              <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)] editorial-heading">
                 {selectedActivity.source === 'strava_screenshot' ? 'Telemetría Strava' : 'Detalle Galaxy Fit3'}
               </span>
-              <div className="w-9" />
+              <div className="w-10" />
             </div>
 
             <div className="space-y-1">
-              <h2 className="text-xl font-bold text-[var(--text-primary)]">{selectedActivity.name}</h2>
+              <h2 className="text-xl font-bold text-[var(--text-primary)] apple-title">{selectedActivity.name}</h2>
               <p className="text-xs text-[var(--text-secondary)]">
                 {new Date(selectedActivity.start_date).toLocaleString('es-ES', { dateStyle: 'full', timeStyle: 'short' })}
               </p>
             </div>
 
-            {/* Grid 4 Stats */}
+            {/* Grid 4 Stats con Tipografía Óptica Apple */}
             <div className="grid grid-cols-4 gap-2">
               <div className="p-3 rounded-2xl liquid-glass-pill text-center">
                 <span className="text-[10px] text-[var(--text-tertiary)] block">Distancia</span>
-                <span className="text-sm font-bold text-[var(--text-primary)] font-mono">{(selectedActivity.distance / 1000).toFixed(2)}</span>
+                <span className="text-sm sm:text-base font-black text-[var(--text-primary)] font-mono data-tabular tracking-tight">{(selectedActivity.distance / 1000).toFixed(2)}</span>
                 <span className="text-[9px] text-[var(--text-secondary)] block">km</span>
               </div>
               <div className="p-3 rounded-2xl liquid-glass-pill text-center">
                 <span className="text-[10px] text-[var(--text-tertiary)] block">Tiempo</span>
-                <span className="text-sm font-bold text-[var(--text-primary)] font-mono">{Math.round(selectedActivity.elapsed_time / 60)}</span>
+                <span className="text-sm sm:text-base font-black text-[var(--text-primary)] font-mono data-tabular tracking-tight">{Math.round(selectedActivity.elapsed_time / 60)}</span>
                 <span className="text-[9px] text-[var(--text-secondary)] block">min</span>
               </div>
               <div className="p-3 rounded-2xl liquid-glass-pill text-center">
                 <span className="text-[10px] text-[var(--text-tertiary)] block">Cadencia</span>
-                <span className="text-sm font-bold text-amber-500 font-mono">{selectedActivity.avg_cadence || 168}</span>
+                <span className="text-sm sm:text-base font-black text-amber-500 font-mono data-tabular tracking-tight">{selectedActivity.avg_cadence || 168}</span>
                 <span className="text-[9px] text-[var(--text-secondary)] block">ppm</span>
               </div>
               <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-center">
                 <span className="text-[10px] text-rose-500 block">FC Media</span>
-                <span className="text-sm font-bold text-rose-500 font-mono">{selectedActivity.avg_hr || 142}</span>
+                <span className="text-sm sm:text-base font-black text-rose-500 font-mono data-tabular tracking-tight">{selectedActivity.avg_hr || 142}</span>
                 <span className="text-[9px] text-rose-400 block">bpm</span>
               </div>
             </div>

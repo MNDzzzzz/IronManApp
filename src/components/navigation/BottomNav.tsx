@@ -22,9 +22,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
     <nav
       role="navigation"
       aria-label="Navegación principal"
-      className="fixed bottom-3 sm:bottom-4 left-0 right-0 z-50 flex justify-center pointer-events-none px-4 pb-[max(env(safe-area-inset-bottom,0px),8px)]"
+      className="fixed bottom-3 sm:bottom-4 left-0 right-0 z-50 flex justify-center pointer-events-none px-4 pb-[max(env(safe-area-inset-bottom,0px),8px)] md:hidden"
     >
-      <div className="pointer-events-auto max-w-[360px] sm:max-w-sm w-full rounded-full bg-white/75 dark:bg-[#121622]/80 backdrop-blur-3xl border border-white/40 dark:border-white/10 shadow-[0_20px_45px_-8px_rgba(0,0,0,0.18),inset_0_1px_1.5px_0_rgba(255,255,255,0.6)] dark:shadow-[0_24px_50px_-10px_rgba(0,0,0,0.65),inset_0_1px_0.5px_0_rgba(255,255,255,0.2)] p-1.5 flex items-center justify-between transition-all duration-300">
+      <div className="pointer-events-auto max-w-[360px] sm:max-w-sm w-full rounded-full liquid-glass-dock p-1.5 flex items-center justify-between transition-all duration-300">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;
@@ -35,7 +35,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
               aria-selected={isActive}
               aria-label={tab.label}
               onClick={() => onSelectTab(tab.id)}
-              className={`relative flex flex-col items-center justify-center flex-1 min-h-[44px] py-1 px-1.5 sm:px-2 rounded-full transition-all duration-200 active:scale-95 ${
+              className={`relative flex flex-col items-center justify-center flex-1 min-h-[44px] py-1 px-1.5 sm:px-2 rounded-full transition-all duration-200 touch-manipulation apple-pressable apple-btn-spring active:scale-[0.97] ${
                 isActive
                   ? 'bg-white/60 dark:bg-white/10 text-[#D97757] dark:text-[#E28464] font-semibold shadow-[0_0_14px_rgba(217,119,87,0.25),inset_0_1px_0.5px_rgba(255,255,255,0.5)] dark:shadow-[0_0_18px_rgba(226,132,100,0.3),inset_0_1px_0.5px_rgba(255,255,255,0.15)]'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/30 dark:hover:bg-white/5'
@@ -48,7 +48,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
                   }`}
                 />
               </div>
-              <span className="text-[10px] sm:text-[10.5px] mt-0.5 tracking-tight font-medium">
+              <span className="text-[10px] sm:text-[10.5px] mt-0.5 tracking-tight font-medium apple-caption">
                 {tab.label}
               </span>
               {isActive && (

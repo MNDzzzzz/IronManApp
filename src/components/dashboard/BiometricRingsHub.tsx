@@ -91,7 +91,7 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
         </div>
         <button
           onClick={onNavigateToDiet}
-          className="text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 transition-colors active:scale-95"
+          className="text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 transition-colors touch-manipulation apple-pressable active:scale-[0.97]"
           title="Ver registro completo de comidas"
         >
           <span>Dieta completa</span>
@@ -204,7 +204,7 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
 
           {/* Núcleo Central: Porcentaje Calórico con Tipografía SF Pro Display */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
-            <span className="text-2xl font-bold font-mono data-tabular text-[var(--text-primary)] tracking-tight">
+            <span className="text-2xl sm:text-3xl font-bold font-mono data-tabular text-[var(--text-primary)] apple-title tracking-tight">
               {calPercent}%
             </span>
             <span className="text-[9.5px] uppercase tracking-wider text-[var(--text-tertiary)] font-bold">
@@ -216,7 +216,7 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
         {/* Columna de Datos Tabulares al estilo Apple Health */}
         <div className="flex-1 w-full space-y-2.5">
           {/* Fila 1: Calorías (Move) */}
-          <div className="p-3 rounded-2xl bg-white/40 dark:bg-white/[0.03] border border-[var(--glass-border-subtle)] shadow-sm flex items-center justify-between">
+          <div className="p-3 rounded-2xl bg-white/40 dark:bg-white/[0.03] border border-[var(--glass-border-subtle)] shadow-[var(--glass-specular-bevel)] flex items-center justify-between">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-[#E0533C]/15 text-[#E0533C] flex items-center justify-center shrink-0 shadow-inner">
                 <Flame className="w-4 h-4" />
@@ -225,7 +225,7 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
                 <p className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">
                   Calorías
                 </p>
-                <p className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular">
+                <p className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular apple-title tracking-tight">
                   {calConsumed.toLocaleString()}{' '}
                   <span className="text-xs font-normal text-[var(--text-tertiary)]">
                     / {calTarget.toLocaleString()} kcal
@@ -244,7 +244,7 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
           </div>
 
           {/* Fila 2: Proteína (Exercise) */}
-          <div className="p-3 rounded-2xl bg-white/40 dark:bg-white/[0.03] border border-[var(--glass-border-subtle)] shadow-sm flex items-center justify-between">
+          <div className="p-3 rounded-2xl bg-white/40 dark:bg-white/[0.03] border border-[var(--glass-border-subtle)] shadow-[var(--glass-specular-bevel)] flex items-center justify-between">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0 shadow-inner">
                 <Dumbbell className="w-4 h-4" />
@@ -253,7 +253,7 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
                 <p className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">
                   Proteína
                 </p>
-                <p className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular">
+                <p className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular apple-title tracking-tight">
                   {pConsumed.toFixed(0)}{' '}
                   <span className="text-xs font-normal text-[var(--text-tertiary)]">
                     / {pTarget} g
@@ -272,7 +272,7 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
           </div>
 
           {/* Fila 3: Agua / Hidratación (Stand) con Píldoras Táctiles Rápidas */}
-          <div className="p-3 rounded-2xl bg-white/40 dark:bg-white/[0.03] border border-[var(--glass-border-subtle)] shadow-sm flex items-center justify-between">
+          <div className="p-3 rounded-2xl bg-white/40 dark:bg-white/[0.03] border border-[var(--glass-border-subtle)] shadow-[var(--glass-specular-bevel)] flex items-center justify-between">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-sky-500/15 text-sky-500 flex items-center justify-center shrink-0 shadow-inner">
                 <Droplets className="w-4 h-4" />
@@ -281,7 +281,7 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
                 <p className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">
                   Agua
                 </p>
-                <p className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular">
+                <p className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular apple-title tracking-tight">
                   {(wConsumed / 1000).toFixed(1)}{' '}
                   <span className="text-xs font-normal text-[var(--text-tertiary)]">
                     / 3.0 L
@@ -293,14 +293,14 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
               <button
                 onClick={() => onQuickAddWater(-250)}
                 aria-label="Restar 250ml de agua"
-                className="w-7 h-7 rounded-xl bg-white/50 dark:bg-white/[0.06] border border-white/60 dark:border-white/10 text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center transition-all active:scale-90 shadow-sm"
+                className="w-7 h-7 rounded-xl bg-white/50 dark:bg-white/[0.06] border border-white/60 dark:border-white/10 text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center transition-all touch-manipulation apple-pressable apple-btn-spring active:scale-[0.92] shadow-sm"
               >
                 <Minus className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => onQuickAddWater(250)}
                 aria-label="Añadir 250ml de agua"
-                className="px-2.5 py-1.5 rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400 hover:bg-sky-500/25 text-xs font-mono font-bold flex items-center gap-1 transition-all active:scale-90 border border-sky-500/20 shadow-sm"
+                className="px-2.5 py-1.5 rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400 hover:bg-sky-500/25 text-xs font-mono font-bold flex items-center gap-1 transition-all touch-manipulation apple-pressable apple-btn-spring active:scale-[0.92] border border-sky-500/20 shadow-sm"
               >
                 <Plus className="w-3 h-3" />
                 <span>250ml</span>

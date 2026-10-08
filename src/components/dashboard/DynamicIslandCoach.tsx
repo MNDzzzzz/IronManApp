@@ -100,7 +100,7 @@ export const DynamicIslandCoach: React.FC<DynamicIslandCoachProps> = ({
     >
       <div
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`w-full cursor-pointer liquid-glass-pill px-4 py-2.5 flex items-center justify-between gap-3 transition-all duration-300 hover:border-[#D97757]/40 active:scale-[0.99] ${
+        className={`w-full cursor-pointer liquid-glass-pill px-4 py-2.5 flex items-center justify-between gap-3 transition-all duration-300 hover:border-[#D97757]/40 shadow-[var(--glass-specular-bevel)] touch-manipulation apple-pressable apple-btn-spring active:scale-[0.985] ${
           activeLevel === 6 ? 'border-red-500/50 shadow-sm shadow-red-500/20' : ''
         }`}
       >
@@ -128,7 +128,7 @@ export const DynamicIslandCoach: React.FC<DynamicIslandCoachProps> = ({
           </div>
           <div className="overflow-hidden flex-1">
             <div className="flex items-center gap-1.5">
-              <p className="text-xs font-medium text-[var(--text-primary)] truncate">
+              <p className="text-xs font-medium text-[var(--text-primary)] truncate apple-subhead">
                 {message}
               </p>
               {badgeConfig && (
@@ -148,7 +148,7 @@ export const DynamicIslandCoach: React.FC<DynamicIslandCoachProps> = ({
         <button
           type="button"
           aria-label={isExpanded ? 'Contraer aviso del Coach' : 'Expandir aviso del Coach'}
-          className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] shrink-0 p-1"
+          className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] shrink-0 p-1 touch-manipulation apple-pressable active:scale-90"
         >
           {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>

@@ -210,10 +210,10 @@ export const HealthView: React.FC<HealthViewProps> = ({
             Día Seleccionado
           </span>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-[var(--text-tertiary)] font-mono data-tabular">
+            <span className="text-[10px] text-[var(--text-tertiary)] font-mono tabular-nums">
               {selectedDate === todayStr ? 'Hoy' : selectedDate}
             </span>
-            <label className="relative p-1 px-2.5 rounded-xl liquid-glass-pill border border-[var(--glass-border)] text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer flex items-center gap-1.5 apple-btn-spring transition-all">
+            <label className="relative p-1 px-2.5 rounded-xl liquid-glass-pill border border-[var(--glass-border)] text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer flex items-center gap-1.5 apple-pressable apple-btn-spring transition-all active:scale-95">
               <input
                 type="date"
                 value={selectedDate}
@@ -241,7 +241,7 @@ export const HealthView: React.FC<HealthViewProps> = ({
               <button
                 key={dStr}
                 onClick={() => setSelectedDate(dStr)}
-                className={`py-1.5 px-3 rounded-xl text-center transition-all whitespace-nowrap flex flex-col items-center min-w-[68px] relative apple-btn-spring ${
+                className={`py-1.5 px-3 rounded-xl text-center apple-pressable transition-all whitespace-nowrap flex flex-col items-center min-w-[68px] relative ${
                   isSelected
                     ? 'bg-[#2D68C4] text-white shadow-md font-bold'
                     : 'bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -250,9 +250,9 @@ export const HealthView: React.FC<HealthViewProps> = ({
                 <span className="text-[9px] uppercase tracking-wider opacity-85">
                   {isToday ? 'Hoy' : dayOfWeek}
                 </span>
-                <span className="text-sm font-bold mt-0.5 font-mono data-tabular">{dayNum}</span>
+                <span className="text-sm font-bold mt-0.5 font-mono tabular-nums">{dayNum}</span>
                 {metricForDay ? (
-                  <span className="text-[8px] font-bold text-emerald-500 block mt-0.5 font-mono">
+                  <span className="text-[8px] font-bold text-emerald-500 block mt-0.5 font-mono tabular-nums">
                     {metricForDay.sleep_duration_minutes ? `${Math.round(metricForDay.sleep_duration_minutes / 60)}h` : 'Fit3'}
                   </span>
                 ) : (
@@ -264,7 +264,7 @@ export const HealthView: React.FC<HealthViewProps> = ({
         </div>
       </div>
 
-      {/* 3. ÍNDICE DE DISPONIBILIDAD / READINESS SCORE */}
+      {/* 3. ÍNDICE DE DISPONIBILIDAD / READINESS SCORE BENTO */}
       {readiness && (
         <div className="liquid-glass-card p-5 sm:p-6 rounded-3xl space-y-3.5">
           <div className="flex items-center justify-between">
@@ -273,14 +273,16 @@ export const HealthView: React.FC<HealthViewProps> = ({
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-xs uppercase font-bold tracking-wider text-[var(--text-primary)] editorial-heading">
+                <h2 className="apple-title text-xs uppercase font-bold tracking-wider text-[var(--text-primary)] editorial-heading">
                   Readiness Score (Recuperación)
                 </h2>
                 <p className="text-[10px] text-[var(--text-secondary)] font-mono">FC reposo + sueño + SpO2</p>
               </div>
             </div>
-            <div className="text-right">
-              <span className="text-3xl font-black text-emerald-500 font-mono data-tabular">{readiness.score}</span>
+            <div className="text-right flex items-baseline gap-1">
+              <span className="apple-display text-3xl sm:text-4xl font-black text-emerald-500 font-mono tabular-nums tracking-tight">
+                {readiness.score}
+              </span>
               <span className="text-xs text-[var(--text-tertiary)] font-mono">/100</span>
             </div>
           </div>
@@ -288,7 +290,7 @@ export const HealthView: React.FC<HealthViewProps> = ({
           <div className={`p-3 rounded-2xl border text-xs flex items-center gap-2.5 ${readiness.colorClass}`}>
             <Sparkles className="w-4 h-4 shrink-0" />
             <div>
-              <span className="font-bold block">{readiness.statusText}</span>
+              <span className="apple-title font-bold block">{readiness.statusText}</span>
               <span className="text-[11px] opacity-90 leading-tight">{readiness.statusDesc}</span>
             </div>
           </div>
@@ -303,16 +305,16 @@ export const HealthView: React.FC<HealthViewProps> = ({
               <HeartPulse className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-xs uppercase font-bold tracking-wider text-[var(--text-primary)] editorial-heading">
+              <h2 className="apple-title text-xs uppercase font-bold tracking-wider text-[var(--text-primary)] editorial-heading">
                 Curva de Pulso 24h (Galaxy Fit3)
               </h2>
-              <p className="text-[10px] text-[var(--text-secondary)] font-mono data-tabular">
+              <p className="text-[10px] text-[var(--text-secondary)] font-mono tabular-nums">
                 {hrSamples.length > 0 ? `${hrSamples.length} muestras continuas` : 'Sin muestras detalladas para este día'}
               </p>
             </div>
           </div>
           {current?.resting_hr && (
-            <span className="text-xs font-mono px-3 py-1 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-rose-500 font-bold data-tabular">
+            <span className="apple-title text-xs font-mono px-3 py-1 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-rose-500 font-bold tabular-nums">
               Reposo: {current.resting_hr} bpm
             </span>
           )}
@@ -379,11 +381,11 @@ export const HealthView: React.FC<HealthViewProps> = ({
                   </p>
                 </div>
               </div>
-              <div className="text-right">
-                <span className="text-2xl font-black text-indigo-500 font-mono data-tabular">
+              <div className="text-right flex items-baseline gap-1">
+                <span className="apple-display text-3xl sm:text-4xl font-black text-indigo-500 font-mono tabular-nums tracking-tight">
                   {current.sleep_score || 88}
-                  <span className="text-xs font-normal text-[var(--text-tertiary)]">/100</span>
                 </span>
+                <span className="text-xs font-normal text-[var(--text-tertiary)]">/100</span>
               </div>
             </div>
 
@@ -400,34 +402,34 @@ export const HealthView: React.FC<HealthViewProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
                 <div className="bg-[var(--glass-surface)] p-2.5 rounded-2xl border border-[var(--glass-border)] text-center">
                   <span className="text-[10px] text-[var(--text-secondary)] block font-medium">Profundo</span>
-                  <span className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular">
+                  <span className="apple-title text-sm font-bold text-[var(--text-primary)] font-mono tabular-nums">
                     {current.deep_sleep_minutes || 0}m
                   </span>
-                  <span className="text-[9px] text-[var(--text-tertiary)] block font-mono">({deepPct}%)</span>
+                  <span className="text-[9px] text-[var(--text-tertiary)] block font-mono tabular-nums">({deepPct}%)</span>
                 </div>
 
                 <div className="bg-[var(--glass-surface)] p-2.5 rounded-2xl border border-[var(--glass-border)] text-center">
                   <span className="text-[10px] text-[var(--text-secondary)] block font-medium">REM</span>
-                  <span className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular">
+                  <span className="apple-title text-sm font-bold text-[var(--text-primary)] font-mono tabular-nums">
                     {current.rem_sleep_minutes || 0}m
                   </span>
-                  <span className="text-[9px] text-[var(--text-tertiary)] block font-mono">({remPct}%)</span>
+                  <span className="text-[9px] text-[var(--text-tertiary)] block font-mono tabular-nums">({remPct}%)</span>
                 </div>
 
                 <div className="bg-[var(--glass-surface)] p-2.5 rounded-2xl border border-[var(--glass-border)] text-center">
                   <span className="text-[10px] text-[var(--text-secondary)] block font-medium">Ligero</span>
-                  <span className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular">
+                  <span className="apple-title text-sm font-bold text-[var(--text-primary)] font-mono tabular-nums">
                     {current.light_sleep_minutes || 0}m
                   </span>
-                  <span className="text-[9px] text-[var(--text-tertiary)] block font-mono">({lightPct}%)</span>
+                  <span className="text-[9px] text-[var(--text-tertiary)] block font-mono tabular-nums">({lightPct}%)</span>
                 </div>
 
                 <div className="bg-[var(--glass-surface)] p-2.5 rounded-2xl border border-[var(--glass-border)] text-center">
                   <span className="text-[10px] text-[var(--text-secondary)] block font-medium">Despierto</span>
-                  <span className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular">
+                  <span className="apple-title text-sm font-bold text-[var(--text-primary)] font-mono tabular-nums">
                     {current.awake_minutes || 0}m
                   </span>
-                  <span className="text-[9px] text-[var(--text-tertiary)] block font-mono">({awakePct}%)</span>
+                  <span className="text-[9px] text-[var(--text-tertiary)] block font-mono tabular-nums">({awakePct}%)</span>
                 </div>
               </div>
             </div>
@@ -442,8 +444,10 @@ export const HealthView: React.FC<HealthViewProps> = ({
                 <span className="text-[9px] font-mono text-emerald-500 font-bold">Normal</span>
               </div>
               <span className="text-[10px] text-[var(--text-secondary)] block uppercase tracking-wider">SpO2</span>
-              <div className="text-2xl font-black text-[var(--text-primary)] font-mono data-tabular">{current.spo2_avg || 98.0}%</div>
-              <p className="text-[9px] text-[var(--text-tertiary)] font-mono">Mín: {current.spo2_min || 94.0}%</p>
+              <div className="apple-display text-2xl font-black text-[var(--text-primary)] font-mono tabular-nums tracking-tight">
+                {current.spo2_avg || 98.0}%
+              </div>
+              <p className="text-[9px] text-[var(--text-tertiary)] font-mono tabular-nums">Mín: {current.spo2_min || 94.0}%</p>
             </div>
 
             {/* FC Reposo */}
@@ -453,7 +457,7 @@ export const HealthView: React.FC<HealthViewProps> = ({
                 <span className="text-[9px] font-mono text-emerald-500 font-bold">Atleta</span>
               </div>
               <span className="text-[10px] text-[var(--text-secondary)] block uppercase tracking-wider">FC Reposo</span>
-              <div className="text-2xl font-black text-[var(--text-primary)] font-mono data-tabular">
+              <div className="apple-display text-2xl font-black text-[var(--text-primary)] font-mono tabular-nums tracking-tight">
                 {current.resting_hr || 40} <span className="text-xs font-normal text-[var(--text-tertiary)]">bpm</span>
               </div>
               <p className="text-[9px] text-emerald-500 font-medium">Zona Óptima</p>
@@ -466,7 +470,7 @@ export const HealthView: React.FC<HealthViewProps> = ({
                 <span className="text-[9px] font-mono text-amber-500 font-bold">Activo</span>
               </div>
               <span className="text-[10px] text-[var(--text-secondary)] block uppercase tracking-wider">Pasos</span>
-              <div className="text-2xl font-black text-[var(--text-primary)] font-mono data-tabular">
+              <div className="apple-display text-2xl font-black text-[var(--text-primary)] font-mono tabular-nums tracking-tight">
                 {(current.total_steps || 0).toLocaleString()}
               </div>
               <p className="text-[9px] text-[var(--text-tertiary)] font-mono">Meta: 10k</p>

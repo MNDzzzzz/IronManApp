@@ -66,6 +66,14 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
   const latestWeight = chronologicalLogs[chronologicalLogs.length - 1]?.weight_kg || currentWeight;
   const totalChangeKg = Number((latestWeight - initialWeight).toFixed(2));
 
+  // Estimación fisiológica de grasa corporal y recomposición
+  const estimatedBodyFatPct = useMemo(() => {
+    const basePct = 19.8;
+    const deltaKg = latestWeight - 101.0;
+    const estimated = basePct + (deltaKg * 0.35);
+    return Number(Math.max(12, Math.min(30, estimated)).toFixed(1));
+  }, [latestWeight]);
+
   // Datos para la gráfica según el selector temporal
   const chartData = useMemo(() => {
     if (timeframe === 'dias') {
@@ -170,8 +178,8 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
             <Scale className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-sm font-black uppercase tracking-wider text-[var(--text-primary)]">
-              Evolución de Peso
+            <h2 className="apple-title text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">
+              Evolución de Peso & Grasa
             </h2>
             <p className="text-[11px] text-[var(--text-secondary)]">Pesaje antes de cenar / post-entreno</p>
           </div>
@@ -179,53 +187,65 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
 
         <button
           onClick={() => setShowAddModal(true)}
-          className="px-3 py-1.5 rounded-full liquid-glass-pill border border-[var(--glass-border)] text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all hover:bg-emerald-500/10 shadow-sm"
+          className="px-3.5 py-1.5 rounded-full liquid-glass-pill border border-[var(--glass-border)] text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5 apple-pressable apple-btn-spring active:scale-95 transition-all hover:bg-emerald-500/10 shadow-sm"
         >
-          <Plus className="w-3.5 h-3.5" />
+          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
           <span>Anotar</span>
         </button>
       </div>
 
-      {/* Tarjetas de Resumen KPI */}
-      <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 pt-1">
-        <div className="p-2.5 sm:p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left min-w-0">
-          <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[var(--text-secondary)] block truncate">Actual</span>
-          <div className="text-base sm:text-lg font-black text-[var(--text-primary)] mt-0.5 font-mono truncate data-tabular">
-            {latestWeight.toFixed(1)} <span className="text-[10px] font-normal text-[var(--text-secondary)]">kg</span>
+      {/* Tarjetas de Resumen KPI (Peso, Grasa Corporal, Variación, Inicio) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+        {/* Actual */}
+        <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left min-w-0">
+          <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[var(--text-secondary)] block truncate tracking-wider">Actual</span>
+          <div className="apple-display text-lg sm:text-2xl font-black text-[var(--text-primary)] mt-0.5 font-mono truncate tabular-nums tracking-tight">
+            {latestWeight.toFixed(1)} <span className="text-[10px] font-normal text-[var(--text-secondary)] font-sans">kg</span>
           </div>
-          <span className="text-[9px] sm:text-[10px] text-[var(--text-tertiary)] block truncate">Registro</span>
+          <span className="text-[9px] text-[var(--text-tertiary)] block truncate font-mono">Último pesaje</span>
         </div>
 
-        <div className="p-2.5 sm:p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left min-w-0">
-          <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[var(--text-secondary)] block truncate">Variación</span>
+        {/* Grasa Corporal Est. */}
+        <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left min-w-0">
+          <span className="text-[9px] sm:text-[10px] uppercase font-bold text-cyan-500 block truncate tracking-wider">Grasa Est.</span>
+          <div className="apple-display text-lg sm:text-2xl font-black text-cyan-500 dark:text-cyan-400 mt-0.5 font-mono truncate tabular-nums tracking-tight">
+            {estimatedBodyFatPct}%
+          </div>
+          <span className="text-[9px] text-cyan-600 dark:text-cyan-400 block truncate font-medium">Recomposición</span>
+        </div>
+
+        {/* Variación */}
+        <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left min-w-0">
+          <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[var(--text-secondary)] block truncate tracking-wider">Variación</span>
           <div
-            className={`text-base sm:text-lg font-black mt-0.5 flex items-center gap-0.5 font-mono truncate data-tabular ${
+            className={`apple-display text-lg sm:text-2xl font-black mt-0.5 flex items-center gap-0.5 font-mono truncate tabular-nums tracking-tight ${
               totalChangeKg <= 0 ? 'text-emerald-500' : 'text-amber-500'
             }`}
           >
             {totalChangeKg <= 0 ? (
-              <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline shrink-0" />
+              <TrendingDown className="w-4 h-4 inline shrink-0" />
             ) : (
-              <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline shrink-0" />
+              <TrendingUp className="w-4 h-4 inline shrink-0" />
             )}
             <span>{totalChangeKg > 0 ? `+${totalChangeKg}` : totalChangeKg}</span>
-            <span className="text-[10px] font-normal text-[var(--text-secondary)]">kg</span>
+            <span className="text-[10px] font-normal text-[var(--text-secondary)] font-sans">kg</span>
           </div>
-          <span className="text-[9px] sm:text-[10px] text-emerald-600 dark:text-emerald-400 block truncate">Recomposición</span>
+          <span className="text-[9px] text-emerald-600 dark:text-emerald-400 block truncate font-medium">Desde el inicio</span>
         </div>
 
-        <div className="p-2.5 sm:p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left min-w-0">
-          <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[var(--text-secondary)] block truncate">Inicio</span>
-          <div className="text-base sm:text-lg font-black text-[var(--text-primary)] mt-0.5 font-mono truncate data-tabular">
-            {initialWeight.toFixed(1)} <span className="text-[10px] font-normal text-[var(--text-secondary)]">kg</span>
+        {/* Inicio */}
+        <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left min-w-0">
+          <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[var(--text-secondary)] block truncate tracking-wider">Inicio</span>
+          <div className="apple-display text-lg sm:text-2xl font-black text-[var(--text-primary)] mt-0.5 font-mono truncate tabular-nums tracking-tight">
+            {initialWeight.toFixed(1)} <span className="text-[10px] font-normal text-[var(--text-secondary)] font-sans">kg</span>
           </div>
-          <span className="text-[9px] sm:text-[10px] text-[var(--text-tertiary)] block truncate">Punto de partida</span>
+          <span className="text-[9px] text-[var(--text-tertiary)] block truncate font-mono">Punto de partida</span>
         </div>
       </div>
 
       {/* Selector Temporal (Días / Semanas / Meses) */}
       <div className="flex items-center justify-between pt-1">
-        <span className="text-[11px] font-bold text-[var(--text-secondary)] flex items-center gap-1.5">
+        <span className="text-[11px] font-bold text-[var(--text-secondary)] flex items-center gap-1.5 editorial-heading">
           <Calendar className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
           Rango de Visualización
         </span>
@@ -235,7 +255,7 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
             <button
               key={tab}
               onClick={() => setTimeframe(tab)}
-              className={`px-3 py-1 rounded-lg font-semibold transition-all ${
+              className={`px-3 py-1 rounded-lg font-semibold apple-pressable transition-all ${
                 timeframe === tab
                   ? 'bg-emerald-500 text-black shadow-md font-bold'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -411,18 +431,18 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
 
       {/* Modal de Registro Rápido */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="liquid-glass-card bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 animate-apple-fade-in motion-reduce:transition-none">
+          <div className="liquid-glass-sheet rounded-3xl p-5 sm:p-6 max-w-sm w-full space-y-4 border-t border-t-white/30 dark:border-t-white/15 shadow-2xl animate-apple-scale-in">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center">
                   <Scale className="w-4 h-4" />
                 </div>
-                <h3 className="text-sm font-black text-[var(--text-primary)]">Registrar Pesaje</h3>
+                <h3 className="apple-title text-sm font-black text-[var(--text-primary)]">Registrar Pesaje</h3>
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1.5 rounded-full bg-[var(--glass-surface)] border border-[var(--glass-border)]"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1.5 rounded-full bg-[var(--glass-surface)] border border-[var(--glass-border)] apple-pressable active:scale-90"
                 aria-label="Cerrar modal"
               >
                 <X className="w-4 h-4" />
@@ -441,7 +461,7 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
                   value={newWeight}
                   onChange={(e) => setNewWeight(e.target.value)}
                   placeholder="ej: 101.0"
-                  className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-[var(--text-primary)] font-mono text-lg font-black focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-[var(--text-primary)] font-mono text-lg font-black tabular-nums focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -452,7 +472,7 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
                   required
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                  className="w-full bg-[var(--glass-surface)] border border-[var(--glass-border)] rounded-xl px-3 py-2 text-[var(--text-primary)] text-xs focus:outline-none focus:border-emerald-500 font-mono tabular-nums"
                 />
               </div>
 
@@ -473,14 +493,14 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors active:scale-95"
+                  className="flex-1 py-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] apple-pressable active:scale-95 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black text-xs font-black shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black text-xs font-black shadow-lg shadow-emerald-500/20 apple-pressable active:scale-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   {isSaving ? 'Guardando...' : 'Guardar Pesaje'}
                 </button>

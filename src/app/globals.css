@@ -206,13 +206,33 @@ body {
     animation: siri-aura 4s ease infinite;
   }
 
-  /* Micro-interacciones hápticas nativas de Apple (iOS 18+ / visionOS) */
-  .apple-btn-spring {
-    transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.16s ease;
+  /* Micro-interacciones hápticas y físicas de resorte nativas de Apple (WWDC Fluid Interfaces) */
+  .apple-pressable {
+    transition: transform 100ms cubic-bezier(0.16, 1, 0.3, 1), opacity 100ms ease-out;
     will-change: transform;
+    touch-action: manipulation;
+  }
+  .apple-pressable:active {
+    transform: scale(0.97);
+  }
+
+  .apple-btn-spring {
+    transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1), opacity 120ms ease-out, box-shadow 120ms ease-out;
+    will-change: transform;
+    touch-action: manipulation;
   }
   .apple-btn-spring:active {
     transform: scale(0.965);
+  }
+
+  /* Efecto de compresión y elevación en tarjetas interactivas */
+  .apple-interactive-card {
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.22s ease;
+    will-change: transform;
+    touch-action: manipulation;
+  }
+  .apple-interactive-card:active {
+    transform: scale(0.985);
   }
 
   /* Contenedor de pestaña con cross-fade ultra-rápido sin CLS */
@@ -221,13 +241,71 @@ body {
     will-change: opacity, transform;
   }
 
-  /* Efecto de compresión y elevación en tarjetas interactivas */
-  .apple-interactive-card {
-    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.22s ease;
-    will-change: transform;
+  /* Modal y Bottom Sheet Liquid Glass con profundidad espacial */
+  .liquid-glass-sheet {
+    background: var(--glass-surface-thick);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), var(--glass-specular-bevel);
   }
-  .apple-interactive-card:active {
-    transform: scale(0.985);
+
+  /* =====================================================================
+     TIPOGRAFÍA ÓPTICA APPLE (WWDC 2020: The Details of UI Typography)
+     ===================================================================== */
+  .apple-display {
+    font-size: clamp(1.75rem, 4vw, 2.75rem);
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    font-optical-sizing: auto;
+    font-weight: 700;
+  }
+
+  .apple-title {
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    font-weight: 700;
+  }
+
+  .apple-subhead {
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+  }
+
+  .apple-caption {
+    letter-spacing: 0.01em;
+  }
+}
+
+/* =====================================================================
+   ACCESIBILIDAD & REDUCED MOTION (apple-design Sección 14)
+   ===================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .apple-tab-panel, .apple-interactive-card, .apple-btn-spring, .apple-pressable {
+    transition: opacity 150ms ease !important;
+    transform: none !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .liquid-glass-card, .liquid-glass-nav, .liquid-glass-dock, .liquid-glass-pill, .liquid-glass-sheet {
+    background: var(--background) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-color: rgba(128, 128, 128, 0.3) !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .liquid-glass-card, .liquid-glass-nav, .liquid-glass-dock, .liquid-glass-pill, .liquid-glass-sheet {
+    border-width: 1.5px !important;
+    border-color: currentColor !important;
   }
 }
 

@@ -37,6 +37,9 @@ export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<StravaActivity | null>(null);
+  const [coachStatusMessage, setCoachStatusMessage] = useState<string>(
+    'Head Coach listo. Habla o escribe para registrar comidas o mover entrenos.'
+  );
 
   // Hook de gestión de Modo Claro / Oscuro Liquid Glass
   const { isDark, toggleTheme } = useTheme();
@@ -305,7 +308,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex flex-col justify-between transition-colors duration-300">
-      {/* Barra Superior con Selector de Tema */}
+      {/* Barra Superior con Selector de Tema, Dynamic Island y Tabs de Escritorio */}
       <TopBar
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenReport={() => setIsReportOpen((prev) => !prev)}
@@ -314,10 +317,13 @@ export default function Home() {
         lastSyncedText="Galaxy Fit3 Conectada"
         isDark={isDark}
         onToggleTheme={toggleTheme}
+        currentTab={currentTab}
+        onSelectTab={setCurrentTab}
+        coachStatusMessage={coachStatusMessage}
       />
 
       {/* Contenido Principal con Bento Grid Responsive de Alta Gama (Móvil a 4K) */}
-      <main className="flex-1 w-full max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 transition-all duration-300">
+      <main className="flex-1 w-full max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 md:pb-10 transition-all duration-300">
         {isReportOpen ? (
           <div className="apple-tab-panel">
             <WeeklyReportView onClose={() => setIsReportOpen(false)} />
@@ -335,6 +341,8 @@ export default function Home() {
                 onSelectActivity={(act) => setSelectedActivity(act)}
                 onOpenReport={() => setIsReportOpen(true)}
                 onReloadData={loadAllData}
+                coachStatusMessage={coachStatusMessage}
+                onCoachStatusChange={setCoachStatusMessage}
               />
             )}
 

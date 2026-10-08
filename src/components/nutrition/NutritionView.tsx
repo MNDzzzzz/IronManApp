@@ -185,6 +185,52 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     return targetWater;
   }, [currentRoutine, targetWater]);
 
+  // Geometría y cálculo de anillos concéntricos Kcal / P / C / G (Apple Activity Rings)
+  const macroRings = useMemo(() => {
+    const size = 150;
+    const center = 75;
+    const strokeWidth = 7;
+
+    const calPct = Math.min(100, Math.max(0, (activeTotals.calories / activeTargetCalories) * 100));
+    const protPct = Math.min(100, Math.max(0, (activeTotals.protein_g / targetProtein) * 100));
+    const carbsPct = Math.min(100, Math.max(0, (activeTotals.carbs_g / targetCarbs) * 100));
+    const fatPct = Math.min(100, Math.max(0, (activeTotals.fat_g / targetFat) * 100));
+
+    // Ring 1: Kcal (Exterior) - Radio 62
+    const rCal = 62;
+    const circCal = 2 * Math.PI * rCal;
+    const offsetCal = circCal - (calPct / 100) * circCal;
+
+    // Ring 2: Proteína - Radio 49
+    const rProt = 49;
+    const circProt = 2 * Math.PI * rProt;
+    const offsetProt = circProt - (protPct / 100) * circProt;
+
+    // Ring 3: Carbos - Radio 36
+    const rCarbs = 36;
+    const circCarbs = 2 * Math.PI * rCarbs;
+    const offsetCarbs = circCarbs - (carbsPct / 100) * circCarbs;
+
+    // Ring 4: Grasas (Interior) - Radio 23
+    const rFat = 23;
+    const circFat = 2 * Math.PI * rFat;
+    const offsetFat = circFat - (fatPct / 100) * circFat;
+
+    return {
+      size,
+      center,
+      strokeWidth,
+      calPct: Math.round(calPct),
+      protPct: Math.round(protPct),
+      carbsPct: Math.round(carbsPct),
+      fatPct: Math.round(fatPct),
+      rCal, circCal, offsetCal,
+      rProt, circProt, offsetProt,
+      rCarbs, circCarbs, offsetCarbs,
+      rFat, circFat, offsetFat,
+    };
+  }, [activeTotals, activeTargetCalories, targetProtein, targetCarbs, targetFat]);
+
   const handleToggleCreatine = async () => {
     const nextState = !creatineTaken;
     setCreatineTaken(nextState);
@@ -451,17 +497,17 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       {/* CABECERA Y BOTONES DE ACCIÓN */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">
+          <h1 className="apple-title text-xl font-bold text-[var(--text-primary)] tracking-tight">
             Dieta & Nutrición
           </h1>
           <p className="text-xs text-[var(--text-secondary)] font-medium">
-            Protocolo Maratón + Fuerza • <span className="text-[#D97757] font-bold">{weightKg} kg</span>
+            Protocolo Maratón + Fuerza • <span className="text-[#D97757] font-bold font-mono tabular-nums">{weightKg} kg</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowPresetsModal(true)}
-            className="p-2 rounded-2xl liquid-glass-card text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all flex items-center gap-1 text-xs font-bold"
+            className="p-2 rounded-2xl liquid-glass-card text-[var(--text-secondary)] hover:text-[var(--text-primary)] apple-pressable active:scale-95 transition-all flex items-center gap-1 text-xs font-bold"
             title="Plantillas de Comidas Frecuentes"
             aria-label="Plantillas de comidas frecuentes"
           >
@@ -470,7 +516,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
           </button>
           <button
             onClick={() => setShowProtocolModal(true)}
-            className="p-2 rounded-2xl liquid-glass-card text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all"
+            className="p-2 rounded-2xl liquid-glass-card text-[var(--text-secondary)] hover:text-[var(--text-primary)] apple-pressable active:scale-95 transition-all"
             title="Ajustar protocolo y objetivos"
             aria-label="Ajustar protocolo y objetivos"
           >
@@ -478,7 +524,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
           </button>
           <button
             onClick={() => setShowAddModal(true)}
-            className="py-2 px-3.5 rounded-2xl bg-[#D97757] text-white font-bold text-xs flex items-center gap-1 active:scale-95 transition-all shadow-md shadow-[#D97757]/20"
+            className="py-2 px-3.5 rounded-2xl bg-[#D97757] text-white font-bold text-xs flex items-center gap-1 apple-pressable active:scale-95 transition-all shadow-md shadow-[#D97757]/20"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" /> Añadir
           </button>
@@ -488,15 +534,15 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       {/* SELECTOR DINÁMICO DE FECHAS */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-[11px] text-[var(--text-secondary)] px-1">
-          <span className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[var(--text-primary)]">
+          <span className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[var(--text-primary)] editorial-heading">
             <Calendar className="w-3.5 h-3.5 text-[#D97757]" />
             Calendario & Rutina
           </span>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-[var(--text-tertiary)] font-mono">
+            <span className="text-[10px] text-[var(--text-tertiary)] font-mono tabular-nums">
               {selectedDate === todayStr ? 'Hoy' : selectedDate}
             </span>
-            <label className="relative p-1 px-2.5 rounded-xl liquid-glass-pill text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all">
+            <label className="relative p-1 px-2.5 rounded-xl liquid-glass-pill text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer flex items-center gap-1.5 apple-pressable active:scale-95 transition-all">
               <input
                 type="date"
                 value={selectedDate}
@@ -535,7 +581,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
               <button
                 key={dStr}
                 onClick={() => setSelectedDate(dStr)}
-                className={`py-1.5 px-3 rounded-2xl text-center transition-all whitespace-nowrap flex flex-col items-center min-w-[68px] relative ${
+                className={`py-1.5 px-3 rounded-2xl text-center apple-pressable transition-all whitespace-nowrap flex flex-col items-center min-w-[68px] relative ${
                   isSelected
                     ? 'bg-[#D97757] text-white shadow-md font-bold'
                     : 'liquid-glass-pill text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -543,7 +589,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
               >
                 <div className="flex items-center gap-1 text-[11px] leading-tight">
                   <span className="capitalize font-bold">{dayOfWeek}</span>
-                  <span className="font-mono text-xs">{dayNum}</span>
+                  <span className="font-mono text-xs tabular-nums">{dayNum}</span>
                 </div>
                 <span
                   className={`text-[9px] mt-0.5 px-1 rounded-full font-semibold ${
@@ -622,75 +668,209 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         </div>
       </div>
 
-      {/* BENTO GRID: COLUMNA 1 (MACROS) & COLUMNA 2 (HIDRATACIÓN Y SUPLEMENTOS) */}
+      {/* BENTO GRID: COLUMNA 1 (MACROS CON ANILLOS APPLE) & COLUMNA 2 (HIDRATACIÓN Y SUPLEMENTOS) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* TARJETA DE CALORÍAS Y MACRONUTRIENTES */}
+        {/* TARJETA DE CALORÍAS Y MACRONUTRIENTES CON ANILLOS CONCÉNTRICOS */}
         <div className="liquid-glass-card p-5 sm:p-6 rounded-3xl space-y-4 flex flex-col justify-between">
-          <div>
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider editorial-heading">Calorías ({selectedDate === todayStr ? 'Hoy' : selectedDate})</span>
-                <div className="text-3xl font-black text-[var(--text-primary)] editorial-heading font-mono data-tabular mt-0.5">
-                  {activeTotals.calories}{' '}
-                  <span className="text-xs font-normal text-[var(--text-secondary)] font-sans">/ {activeTargetCalories}</span>
+                <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider editorial-heading">
+                  Calorías ({selectedDate === todayStr ? 'Hoy' : selectedDate})
+                </span>
+                <div className="flex items-baseline gap-1.5 mt-0.5">
+                  <span className="apple-display font-black text-[var(--text-primary)] font-mono tabular-nums leading-none">
+                    {activeTotals.calories}
+                  </span>
+                  <span className="text-xs font-normal text-[var(--text-secondary)] font-sans">
+                    / {activeTargetCalories} kcal
+                  </span>
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider editorial-heading">Restante</span>
-                <div className="text-lg font-bold text-[#D97757] dark:text-[#E28464] editorial-heading font-mono data-tabular mt-0.5">
-                  {Math.max(0, activeTargetCalories - activeTotals.calories)} <span className="text-xs font-normal text-[var(--text-secondary)] font-sans">kcal</span>
+                <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider editorial-heading">
+                  Restante
+                </span>
+                <div className="apple-title text-lg font-bold text-[#D97757] dark:text-[#E28464] font-mono tabular-nums mt-0.5">
+                  {Math.max(0, activeTargetCalories - activeTotals.calories)}{' '}
+                  <span className="text-xs font-normal text-[var(--text-secondary)] font-sans">kcal</span>
                 </div>
               </div>
             </div>
 
-            {/* Barra de progreso de calorías */}
-            <div className="w-full bg-[var(--glass-surface-thick)] h-2 rounded-full overflow-hidden mt-3 border border-[var(--glass-border)]">
-              <div
-                className="bg-gradient-to-r from-[#D97757] to-[#E28464] h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, (activeTotals.calories / activeTargetCalories) * 100)}%` }}
-              />
+            {/* Fusión de Anillos de Actividad Concéntricos Apple + Leyenda Dinámica */}
+            <div className="flex items-center justify-between gap-4 p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+              {/* Anillos SVG concéntricos */}
+              <div className="relative shrink-0 flex items-center justify-center">
+                <svg
+                  width={macroRings.size}
+                  height={macroRings.size}
+                  viewBox="0 0 150 150"
+                  className="rotate-[-90deg] drop-shadow-md"
+                  aria-label="Anillos de actividad de macronutrientes"
+                >
+                  <defs>
+                    {/* Gradiente Kcal */}
+                    <linearGradient id="appleKcalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#E0533C" />
+                      <stop offset="60%" stopColor="#D97757" />
+                      <stop offset="100%" stopColor="#FF7E5F" />
+                    </linearGradient>
+                    {/* Gradiente Proteína */}
+                    <linearGradient id="appleProtGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#BE123C" />
+                      <stop offset="60%" stopColor="#F43F5E" />
+                      <stop offset="100%" stopColor="#FB7185" />
+                    </linearGradient>
+                    {/* Gradiente Carbos */}
+                    <linearGradient id="appleCarbsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#D97706" />
+                      <stop offset="60%" stopColor="#F59E0B" />
+                      <stop offset="100%" stopColor="#FCD34D" />
+                    </linearGradient>
+                    {/* Gradiente Grasas */}
+                    <linearGradient id="appleFatGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#047857" />
+                      <stop offset="60%" stopColor="#10B981" />
+                      <stop offset="100%" stopColor="#34D399" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Tracks de fondo */}
+                  <circle cx={macroRings.center} cy={macroRings.center} r={macroRings.rCal} stroke="currentColor" strokeWidth={macroRings.strokeWidth} fill="transparent" className="text-orange-500/15" />
+                  <circle cx={macroRings.center} cy={macroRings.center} r={macroRings.rProt} stroke="currentColor" strokeWidth={macroRings.strokeWidth} fill="transparent" className="text-rose-500/15" />
+                  <circle cx={macroRings.center} cy={macroRings.center} r={macroRings.rCarbs} stroke="currentColor" strokeWidth={macroRings.strokeWidth} fill="transparent" className="text-amber-500/15" />
+                  <circle cx={macroRings.center} cy={macroRings.center} r={macroRings.rFat} stroke="currentColor" strokeWidth={macroRings.strokeWidth} fill="transparent" className="text-emerald-500/15" />
+
+                  {/* Anillos de progreso */}
+                  <circle
+                    cx={macroRings.center}
+                    cy={macroRings.center}
+                    r={macroRings.rCal}
+                    stroke="url(#appleKcalGrad)"
+                    strokeWidth={macroRings.strokeWidth}
+                    fill="transparent"
+                    strokeDasharray={macroRings.circCal}
+                    strokeDashoffset={macroRings.offsetCal}
+                    strokeLinecap="round"
+                    className="transition-all duration-700 ease-out"
+                  />
+                  <circle
+                    cx={macroRings.center}
+                    cy={macroRings.center}
+                    r={macroRings.rProt}
+                    stroke="url(#appleProtGrad)"
+                    strokeWidth={macroRings.strokeWidth}
+                    fill="transparent"
+                    strokeDasharray={macroRings.circProt}
+                    strokeDashoffset={macroRings.offsetProt}
+                    strokeLinecap="round"
+                    className="transition-all duration-700 ease-out"
+                  />
+                  <circle
+                    cx={macroRings.center}
+                    cy={macroRings.center}
+                    r={macroRings.rCarbs}
+                    stroke="url(#appleCarbsGrad)"
+                    strokeWidth={macroRings.strokeWidth}
+                    fill="transparent"
+                    strokeDasharray={macroRings.circCarbs}
+                    strokeDashoffset={macroRings.offsetCarbs}
+                    strokeLinecap="round"
+                    className="transition-all duration-700 ease-out"
+                  />
+                  <circle
+                    cx={macroRings.center}
+                    cy={macroRings.center}
+                    r={macroRings.rFat}
+                    stroke="url(#appleFatGrad)"
+                    strokeWidth={macroRings.strokeWidth}
+                    fill="transparent"
+                    strokeDasharray={macroRings.circFat}
+                    strokeDashoffset={macroRings.offsetFat}
+                    strokeLinecap="round"
+                    className="transition-all duration-700 ease-out"
+                  />
+                </svg>
+
+                {/* Centro del Anillo */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <Flame className="w-5 h-5 text-[#D97757] animate-pulse" />
+                  <span className="text-[10px] font-bold font-mono text-[var(--text-primary)] tabular-nums mt-0.5">
+                    {macroRings.calPct}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Guía compacta con badges de macros */}
+              <div className="flex-1 space-y-1.5 min-w-0 text-[11px] font-mono tabular-nums">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 font-bold text-[#D97757]">
+                    <span className="w-2 h-2 rounded-full bg-[#D97757]" /> Kcal
+                  </span>
+                  <span className="font-bold text-[var(--text-primary)]">{activeTotals.calories} / {activeTargetCalories}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-rose-500 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-rose-500" /> Prot
+                  </span>
+                  <span className="text-[var(--text-secondary)]">{activeTotals.protein_g}g <span className="text-[9px] text-[var(--text-tertiary)]">({macroRings.protPct}%)</span></span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-amber-500 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" /> Carb
+                  </span>
+                  <span className="text-[var(--text-secondary)]">{activeTotals.carbs_g}g <span className="text-[9px] text-[var(--text-tertiary)]">({macroRings.carbsPct}%)</span></span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-emerald-500 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" /> Gras
+                  </span>
+                  <span className="text-[var(--text-secondary)]">{activeTotals.fat_g}g <span className="text-[9px] text-[var(--text-tertiary)]">({macroRings.fatPct}%)</span></span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Desglose de Macronutrientes */}
+          {/* Desglose de Macronutrientes con Tipografía Óptica */}
           <div className="grid grid-cols-3 gap-2 pt-3 border-t border-[var(--glass-border)]">
             {/* Proteína */}
             <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-center">
-              <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase block">Proteína</span>
-              <div className="text-base font-bold text-rose-500 font-mono data-tabular my-0.5">{activeTotals.protein_g}g</div>
-              <div className="w-full bg-[var(--glass-surface-thick)] h-1 rounded-full overflow-hidden my-1">
+              <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase block tracking-wider">Proteína</span>
+              <div className="apple-title text-base font-bold text-rose-500 font-mono tabular-nums my-0.5">{activeTotals.protein_g}g</div>
+              <div className="w-full bg-[var(--glass-surface-thick)] h-1.5 rounded-full overflow-hidden my-1">
                 <div
                   className="bg-rose-500 h-full rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, (activeTotals.protein_g / targetProtein) * 100)}%` }}
                 />
               </div>
-              <span className="text-[9px] text-[var(--text-tertiary)] font-mono">Meta {targetProtein}g</span>
+              <span className="text-[9px] text-[var(--text-tertiary)] font-mono tabular-nums">Meta {targetProtein}g</span>
             </div>
 
             {/* Carbohidratos */}
             <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-center">
-              <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase block">Carbos</span>
-              <div className="text-base font-bold text-amber-500 font-mono data-tabular my-0.5">{activeTotals.carbs_g}g</div>
-              <div className="w-full bg-[var(--glass-surface-thick)] h-1 rounded-full overflow-hidden my-1">
+              <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase block tracking-wider">Carbos</span>
+              <div className="apple-title text-base font-bold text-amber-500 font-mono tabular-nums my-0.5">{activeTotals.carbs_g}g</div>
+              <div className="w-full bg-[var(--glass-surface-thick)] h-1.5 rounded-full overflow-hidden my-1">
                 <div
                   className="bg-amber-500 h-full rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, (activeTotals.carbs_g / targetCarbs) * 100)}%` }}
                 />
               </div>
-              <span className="text-[9px] text-[var(--text-tertiary)] font-mono">Meta {targetCarbs}g</span>
+              <span className="text-[9px] text-[var(--text-tertiary)] font-mono tabular-nums">Meta {targetCarbs}g</span>
             </div>
 
             {/* Grasas */}
             <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-center">
-              <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase block">Grasas</span>
-              <div className="text-base font-bold text-emerald-500 font-mono data-tabular my-0.5">{activeTotals.fat_g}g</div>
-              <div className="w-full bg-[var(--glass-surface-thick)] h-1 rounded-full overflow-hidden my-1">
+              <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase block tracking-wider">Grasas</span>
+              <div className="apple-title text-base font-bold text-emerald-500 font-mono tabular-nums my-0.5">{activeTotals.fat_g}g</div>
+              <div className="w-full bg-[var(--glass-surface-thick)] h-1.5 rounded-full overflow-hidden my-1">
                 <div
                   className="bg-emerald-500 h-full rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, (activeTotals.fat_g / targetFat) * 100)}%` }}
                 />
               </div>
-              <span className="text-[9px] text-[var(--text-tertiary)] font-mono">Meta {targetFat}g</span>
+              <span className="text-[9px] text-[var(--text-tertiary)] font-mono tabular-nums">Meta {targetFat}g</span>
             </div>
           </div>
         </div>
@@ -708,12 +888,12 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider editorial-heading">
                     Hidratación Diaria
                   </h3>
-                  <p className="text-[11px] text-[var(--text-secondary)] font-mono data-tabular">
+                  <p className="text-[11px] text-[var(--text-secondary)] font-mono tabular-nums">
                     {(activeTotals.water_ml / 1000).toFixed(2)}L de {(activeTargetWater / 1000).toFixed(1)}L objetivo
                   </p>
                 </div>
               </div>
-              <span className="text-sm font-mono font-bold text-blue-500 data-tabular">
+              <span className="apple-title text-sm font-mono font-bold text-blue-500 tabular-nums">
                 {Math.min(100, Math.round((activeTotals.water_ml / activeTargetWater) * 100))}%
               </span>
             </div>
@@ -725,30 +905,30 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
               />
             </div>
 
-            {/* Botones de suma rápida de agua */}
+            {/* Botones de suma rápida de agua con feedback inmediato apple-pressable */}
             <div className="grid grid-cols-4 gap-2 pt-1">
               <button
                 onClick={() => onAddWater(-250, selectedDate)}
-                className="py-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] apple-btn-spring transition-all font-mono"
+                className="py-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] apple-pressable apple-btn-spring transition-all font-mono tabular-nums"
                 title="Restar 250ml"
               >
                 -250 ml
               </button>
               <button
                 onClick={() => onAddWater(250, selectedDate)}
-                className="py-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-xs font-bold text-blue-500 hover:text-blue-400 apple-btn-spring transition-all font-mono"
+                className="py-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-xs font-bold text-blue-500 hover:text-blue-400 apple-pressable apple-btn-spring transition-all font-mono tabular-nums"
               >
                 +250 ml
               </button>
               <button
                 onClick={() => onAddWater(500, selectedDate)}
-                className="py-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-xs font-bold text-blue-500 hover:text-blue-400 apple-btn-spring transition-all font-mono"
+                className="py-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-xs font-bold text-blue-500 hover:text-blue-400 apple-pressable apple-btn-spring transition-all font-mono tabular-nums"
               >
                 +500 ml
               </button>
               <button
                 onClick={() => onAddWater(1000, selectedDate)}
-                className="py-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-xs font-bold text-blue-500 hover:text-blue-400 apple-btn-spring transition-all font-mono"
+                className="py-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-xs font-bold text-blue-500 hover:text-blue-400 apple-pressable apple-btn-spring transition-all font-mono tabular-nums"
               >
                 +1.0 L
               </button>
@@ -994,16 +1174,16 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
       {/* MODAL DE AJUSTES DE PROTOCOLO */}
       {showProtocolModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-sm liquid-glass-card bg-[var(--glass-surface-thick)] p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 animate-apple-fade-in motion-reduce:transition-none">
+          <div className="w-full max-w-sm liquid-glass-sheet rounded-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto border-t border-t-white/30 dark:border-t-white/15 shadow-2xl animate-apple-scale-in">
             <div className="flex items-center justify-between border-b border-[var(--glass-border)] pb-3">
               <div className="flex items-center gap-2">
                 <Settings2 className="w-4 h-4 text-[#D97757]" />
-                <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
+                <h3 className="apple-title text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
                   Ajustes de Protocolo
                 </h3>
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#D97757]/15 text-[#D97757] font-bold">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#D97757]/15 text-[#D97757] font-bold font-mono">
                 Álvaro
               </span>
             </div>
@@ -1023,7 +1203,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                       setTargetProtein(Math.round(w * 1.7));
                     }
                   }}
-                  className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
+                  className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold font-mono tabular-nums outline-none"
                   required
                 />
               </div>
@@ -1063,7 +1243,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                     type="number"
                     value={targetCalories}
                     onChange={(e) => setTargetCalories(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
+                    className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold font-mono tabular-nums outline-none"
                     required
                   />
                 </div>
@@ -1073,7 +1253,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                     type="number"
                     value={targetProtein}
                     onChange={(e) => setTargetProtein(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
+                    className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold font-mono tabular-nums outline-none"
                     required
                   />
                 </div>
@@ -1087,7 +1267,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                     type="number"
                     value={targetCarbs}
                     onChange={(e) => setTargetCarbs(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
+                    className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold font-mono tabular-nums outline-none"
                     required
                   />
                 </div>
@@ -1097,7 +1277,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                     type="number"
                     value={targetFat}
                     onChange={(e) => setTargetFat(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
+                    className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold font-mono tabular-nums outline-none"
                     required
                   />
                 </div>
@@ -1111,7 +1291,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   step="250"
                   value={targetWater}
                   onChange={(e) => setTargetWater(Number(e.target.value))}
-                  className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
+                  className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold font-mono tabular-nums outline-none"
                   required
                 />
               </div>
@@ -1120,13 +1300,13 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowProtocolModal(false)}
-                  className="flex-1 py-2.5 rounded-xl liquid-glass-pill text-[var(--text-secondary)] font-bold text-xs"
+                  className="flex-1 py-2.5 rounded-xl liquid-glass-pill text-[var(--text-secondary)] font-bold text-xs apple-pressable active:scale-95"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-[#D97757] text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-[#D97757]/20 active:scale-95"
+                  className="flex-1 py-2.5 rounded-xl bg-[#D97757] text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-[#D97757]/20 apple-pressable active:scale-95"
                 >
                   Guardar
                 </button>
@@ -1138,18 +1318,18 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
       {/* MODAL PARA AÑADIR COMIDA (MANUAL O PEGAR DE GEMINI / IA) */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md liquid-glass-card bg-[var(--glass-surface-thick)] p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 animate-apple-fade-in motion-reduce:transition-none">
+          <div className="w-full max-w-md liquid-glass-sheet rounded-3xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto border-t border-t-white/30 dark:border-t-white/15 shadow-2xl animate-apple-scale-in">
             <div className="flex items-center justify-between border-b border-[var(--glass-border)] pb-3">
               <div className="flex items-center gap-2">
                 <Utensils className="w-4 h-4 text-[#D97757]" />
-                <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
+                <h3 className="apple-title text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
                   Registrar Comida
                 </h3>
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-1 rounded-lg"
+                className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-1 rounded-lg apple-pressable active:scale-90"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1160,7 +1340,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
               <button
                 type="button"
                 onClick={() => setAddMealTab('manual')}
-                className={`flex-1 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5 apple-pressable ${
                   addMealTab === 'manual'
                     ? 'bg-[#D97757] text-white shadow-sm'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -1172,7 +1352,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
               <button
                 type="button"
                 onClick={() => setAddMealTab('gemini')}
-                className={`flex-1 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5 apple-pressable ${
                   addMealTab === 'gemini'
                     ? 'bg-[#D97757] text-white shadow-sm'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -1218,7 +1398,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                       type="number"
                       value={calories}
                       onChange={(e) => setCalories(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
+                      className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold font-mono tabular-nums outline-none"
                       required
                     />
                   </div>
@@ -1229,7 +1409,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                       step="0.1"
                       value={protein}
                       onChange={(e) => setProtein(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
+                      className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold font-mono tabular-nums outline-none"
                       required
                     />
                   </div>
@@ -1243,7 +1423,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                       step="0.1"
                       value={carbs}
                       onChange={(e) => setCarbs(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
+                      className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold font-mono tabular-nums outline-none"
                       required
                     />
                   </div>
@@ -1254,7 +1434,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                       step="0.1"
                       value={fat}
                       onChange={(e) => setFat(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
+                      className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold font-mono tabular-nums outline-none"
                       required
                     />
                   </div>
@@ -1264,14 +1444,14 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowAddModal(false)}
-                    className="flex-1 py-2.5 rounded-xl liquid-glass-pill text-[var(--text-secondary)] font-bold text-xs"
+                    className="flex-1 py-2.5 rounded-xl liquid-glass-pill text-[var(--text-secondary)] font-bold text-xs apple-pressable active:scale-95"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 py-2.5 rounded-xl bg-[#D97757] text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-[#D97757]/20 active:scale-95"
+                    className="flex-1 py-2.5 rounded-xl bg-[#D97757] text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-[#D97757]/20 apple-pressable active:scale-95"
                   >
                     Guardar Plato Exacto
                   </button>
@@ -1343,7 +1523,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                         onClick={() => {
                           setGeminiPasteText('');
                         }}
-                        className="py-2.5 px-3 rounded-xl liquid-glass-pill text-[var(--text-secondary)] font-bold text-xs"
+                        className="py-2.5 px-3 rounded-xl liquid-glass-pill text-[var(--text-secondary)] font-bold text-xs apple-pressable active:scale-95"
                       >
                         Limpiar
                       </button>
@@ -1351,7 +1531,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                         type="button"
                         onClick={handleSaveGeminiDishes}
                         disabled={isSavingGeminiDishes}
-                        className="flex-1 py-2.5 rounded-xl bg-[#D97757] text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-[#D97757]/20 active:scale-95 flex items-center justify-center gap-1.5"
+                        className="flex-1 py-2.5 rounded-xl bg-[#D97757] text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-[#D97757]/20 apple-pressable active:scale-95 flex items-center justify-center gap-1.5"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>Guardar {parsedGeminiDishes.length} {parsedGeminiDishes.length === 1 ? 'Plato' : 'Platos'} Exactos</span>
@@ -1376,18 +1556,18 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
       {/* MODAL DE CONFIRMACIÓN: DÍA TÍPICO CUMPLIDO */}
       {showTypicalConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-sm liquid-glass-card bg-[var(--glass-surface-thick)] p-5 space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 animate-apple-fade-in motion-reduce:transition-none">
+          <div className="w-full max-w-sm liquid-glass-sheet rounded-3xl p-5 space-y-4 border-t border-t-white/30 dark:border-t-white/15 shadow-2xl animate-apple-scale-in">
             <div className="flex items-center justify-between border-b border-[var(--glass-border)] pb-3">
               <div className="flex items-center gap-2">
                 <Zap className="w-4 h-4 text-[#D97757]" />
-                <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
+                <h3 className="apple-title text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
                   Confirmar Día Típico
                 </h3>
               </div>
               <button
                 onClick={() => setShowTypicalConfirm(false)}
-                className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-1 rounded-lg"
+                className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-1 rounded-lg apple-pressable active:scale-90"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1395,13 +1575,13 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
             <div className="space-y-2 text-xs">
               <p className="text-[var(--text-primary)] font-medium">
-                Ya tienes <strong className="text-[#D97757]">{displayedMeals.length}</strong> tomas registradas en {selectedDate === todayStr ? 'el día de hoy' : selectedDate}:
+                Ya tienes <strong className="text-[#D97757] font-mono tabular-nums">{displayedMeals.length}</strong> tomas registradas en {selectedDate === todayStr ? 'el día de hoy' : selectedDate}:
               </p>
               <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
                 {displayedMeals.map((m) => (
                   <span
                     key={m.id}
-                    className="px-2 py-0.5 rounded-lg liquid-glass-pill text-[10px] font-mono text-[var(--text-secondary)]"
+                    className="px-2 py-0.5 rounded-lg liquid-glass-pill text-[10px] font-mono tabular-nums text-[var(--text-secondary)]"
                   >
                     {m.meal_type}: {m.calories} kcal
                   </span>
@@ -1414,7 +1594,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 <button
                   onClick={() => handleExecuteBatch(missingTypicalMeals)}
                   disabled={isApplyingBatch}
-                  className="w-full py-2.5 px-3 rounded-xl bg-[#D97757] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-[#D97757]/20 active:scale-95 transition-all"
+                  className="w-full py-2.5 px-3 rounded-xl bg-[#D97757] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-[#D97757]/20 apple-pressable active:scale-95 transition-all"
                 >
                   <Zap className="w-3.5 h-3.5 fill-current" />
                   <span>Añadir solo las {missingTypicalMeals.length} tomas pendientes (Recomendado)</span>
@@ -1428,7 +1608,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
               <button
                 onClick={() => handleExecuteBatch(typicalMealsForDay)}
                 disabled={isApplyingBatch}
-                className="w-full py-2.5 px-3 rounded-xl liquid-glass-pill text-[var(--text-primary)] font-bold text-xs flex items-center justify-center gap-1.5 hover:border-[#D97757]/40 active:scale-95 transition-all"
+                className="w-full py-2.5 px-3 rounded-xl liquid-glass-pill text-[var(--text-primary)] font-bold text-xs flex items-center justify-center gap-1.5 hover:border-[#D97757]/40 apple-pressable active:scale-95 transition-all"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Añadir las 4 tomas completas (+2.400 kcal)</span>
@@ -1436,7 +1616,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
               <button
                 onClick={() => setShowTypicalConfirm(false)}
-                className="w-full py-2 rounded-xl text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] text-xs font-semibold"
+                className="w-full py-2 rounded-xl text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] text-xs font-semibold apple-pressable active:scale-95"
               >
                 Cancelar
               </button>
@@ -1447,18 +1627,18 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
       {/* MODAL SELECTOR DE PLANTILLAS FRECUENTES (8 BLOQUES) */}
       {showPresetsModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md liquid-glass-card bg-[var(--glass-surface-thick)] p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 animate-apple-fade-in motion-reduce:transition-none">
+          <div className="w-full max-w-md liquid-glass-sheet rounded-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto border-t border-t-white/30 dark:border-t-white/15 shadow-2xl animate-apple-scale-in">
             <div className="flex items-center justify-between border-b border-[var(--glass-border)] pb-3">
               <div className="flex items-center gap-2">
                 <Bookmark className="w-4 h-4 text-[#D97757]" />
-                <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
+                <h3 className="apple-title text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
                   Plantillas de Comidas Frecuentes
                 </h3>
               </div>
               <button
                 onClick={() => setShowPresetsModal(false)}
-                className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-1 rounded-lg"
+                className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-1 rounded-lg apple-pressable active:scale-90"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1470,7 +1650,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 <button
                   key={tab}
                   onClick={() => setSelectedPresetTab(tab)}
-                  className={`flex-1 py-1 rounded-lg text-center transition-all ${
+                  className={`flex-1 py-1 rounded-lg text-center apple-pressable transition-all ${
                     selectedPresetTab === tab
                       ? 'bg-[#D97757] text-white shadow-sm'
                       : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -1497,7 +1677,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                         {preset.name}
                       </span>
                     </div>
-                    <span className="text-xs font-mono font-bold text-[#D97757]">
+                    <span className="text-xs font-mono font-bold text-[#D97757] tabular-nums">
                       {preset.calories} kcal
                     </span>
                   </div>
@@ -1507,7 +1687,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                   </p>
 
                   <div className="flex items-center justify-between pt-1 border-t border-[var(--glass-border)]">
-                    <div className="flex items-center gap-2 text-[10px] font-mono text-[var(--text-secondary)]">
+                    <div className="flex items-center gap-2 text-[10px] font-mono tabular-nums text-[var(--text-secondary)]">
                       <span>P: <strong className="text-rose-500">{preset.protein_g}g</strong></span>
                       <span>C: <strong className="text-amber-500">{preset.carbs_g}g</strong></span>
                       <span>G: <strong className="text-emerald-500">{preset.fat_g}g</strong></span>
@@ -1517,7 +1697,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                         await handleAddPresetMeal(preset);
                         setShowPresetsModal(false);
                       }}
-                      className="py-1 px-2.5 rounded-xl bg-[#D97757] text-white font-bold text-[10px] flex items-center gap-1 active:scale-95 transition-all shadow-sm shadow-[#D97757]/20"
+                      className="py-1 px-2.5 rounded-xl bg-[#D97757] text-white font-bold text-[10px] flex items-center gap-1 apple-pressable active:scale-95 transition-all shadow-sm shadow-[#D97757]/20"
                     >
                       <Plus className="w-3 h-3 stroke-[2.5]" />
                       Añadir a {selectedDate === todayStr ? 'Hoy' : selectedDate}

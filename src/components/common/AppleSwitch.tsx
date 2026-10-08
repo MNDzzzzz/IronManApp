@@ -78,15 +78,17 @@ export const AppleSwitch: React.FC<AppleSwitchProps> = ({
         id={id}
         tabIndex={disabled ? -1 : 0}
         onKeyDown={handleKeyDown}
-        className={`relative inline-flex items-center rounded-full transition-colors duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#D97757] active:scale-[0.96] ${trackWidthClass} ${
+        className={`group relative inline-flex items-center rounded-full transition-colors duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#D97757] active:scale-[0.96] touch-manipulation ${trackWidthClass} ${
           checked
             ? activeBgClass
             : 'bg-[var(--glass-surface-thick)] border border-[var(--glass-border)]'
         }`}
       >
-        {/* Thumb circular con sombra de elevación física y bisel especular */}
+        {/* Thumb circular con sombra de elevación física, bisel especular y deformación táctil */}
         <span
-          className={`pointer-events-none inline-block rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,0.2),0_0_1px_rgba(0,0,0,0.25)] ring-0 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${thumbSizeClass} ${translateClass}`}
+          className={`pointer-events-none inline-block rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,0.2),0_0_1px_rgba(0,0,0,0.25)] ring-0 transition-all duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] ${thumbSizeClass} ${translateClass} ${
+            isSm ? 'group-active:w-[23px]' : 'group-active:w-[27px]'
+          }`}
         />
       </button>
 

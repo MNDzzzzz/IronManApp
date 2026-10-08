@@ -85,7 +85,7 @@ export const DailyBriefingCard: React.FC<DailyBriefingCardProps> = ({
 
           <h2
             onClick={onNavigateToWorkout}
-            className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] tracking-tight cursor-pointer hover:text-[#D97757] dark:hover:text-[#E28464] transition-colors leading-tight"
+            className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] apple-title tracking-tight cursor-pointer hover:text-[#D97757] dark:hover:text-[#E28464] transition-colors leading-tight"
           >
             {effectiveRoutine.routine.title}
           </h2>
@@ -94,7 +94,7 @@ export const DailyBriefingCard: React.FC<DailyBriefingCardProps> = ({
         <button
           onClick={onOpenScheduleModal}
           aria-label="Cambiar o mover sesión de hoy"
-          className="shrink-0 px-3.5 py-1.5 rounded-full bg-white/50 dark:bg-white/[0.08] border border-white/60 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_0.5px_rgba(255,255,255,0.15)] text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/70 dark:hover:bg-white/12 transition-all flex items-center gap-1.5 apple-btn-spring"
+          className="shrink-0 px-3.5 py-1.5 rounded-full bg-white/50 dark:bg-white/[0.08] border border-white/60 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_0.5px_rgba(255,255,255,0.15)] text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/70 dark:hover:bg-white/12 transition-all flex items-center gap-1.5 touch-manipulation apple-pressable apple-btn-spring active:scale-[0.97]"
         >
           <ArrowLeftRight className="w-3.5 h-3.5 text-[#D97757] dark:text-[#E28464]" />
           <span>Mover</span>
@@ -102,7 +102,7 @@ export const DailyBriefingCard: React.FC<DailyBriefingCardProps> = ({
       </div>
 
       {/* 2. Descripción de la sesión y Meta de Pasos estilo Apple Fitness */}
-      <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed">
+      <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed apple-subhead">
         {effectiveRoutine.routine.description}
       </p>
 
@@ -120,7 +120,7 @@ export const DailyBriefingCard: React.FC<DailyBriefingCardProps> = ({
 
         <button
           onClick={onNavigateToWorkout}
-          className="text-xs font-semibold text-[#D97757] dark:text-[#E28464] flex items-center gap-0.5 hover:opacity-80 transition-opacity"
+          className="text-xs font-semibold text-[#D97757] dark:text-[#E28464] flex items-center gap-0.5 hover:opacity-80 transition-opacity touch-manipulation apple-pressable active:scale-[0.97]"
         >
           <span>Ir al entreno</span>
           <ChevronRight className="w-3.5 h-3.5" />
@@ -185,7 +185,7 @@ export const DailyBriefingCard: React.FC<DailyBriefingCardProps> = ({
           {selectedDiscomfortLevel && (
             <button
               onClick={() => onSelectDiscomfortLevel(null)}
-              className="text-[11px] text-[var(--text-tertiary)] hover:text-rose-500 flex items-center gap-1 font-medium transition-colors active:scale-95"
+              className="text-[11px] text-[var(--text-tertiary)] hover:text-rose-500 flex items-center gap-1 font-medium transition-colors touch-manipulation apple-pressable active:scale-[0.97]"
             >
               <RotateCcw className="w-3 h-3" />
               <span>Restablecer</span>
@@ -208,7 +208,7 @@ export const DailyBriefingCard: React.FC<DailyBriefingCardProps> = ({
               <button
                 key={lvl}
                 onClick={() => onSelectDiscomfortLevel(isSelected ? null : lvl)}
-                className={`py-2 sm:py-2.5 rounded-xl text-center text-xs font-mono font-bold apple-btn-spring border ${
+                className={`py-2 sm:py-2.5 rounded-xl text-center text-xs font-mono font-bold touch-manipulation apple-pressable apple-btn-spring active:scale-[0.97] border ${
                   isSelected
                     ? `${activeBg} border-transparent shadow-lg scale-[1.02]`
                     : 'bg-white/40 dark:bg-white/[0.04] text-[var(--text-secondary)] border-[var(--glass-border)] hover:border-[#D97757]/40 hover:text-[var(--text-primary)] hover:bg-white/60 dark:hover:bg-white/10'
