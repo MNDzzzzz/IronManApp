@@ -1,21 +1,36 @@
 // ====================================================================
-// COMPONENTE: UserProfileModal.tsx (Apple Modal & Auth Switcher)
-// Permite ver tu perfil de atleta, nivel, XP, copiar enlace de invitación,
-// cambiar de usuario o iniciar sesión con Magic Link / Email
+// COMPONENTE: UserProfileModal.tsx (Apple Profile & Session Sheet)
+// Ficha del Atleta Activo, Estadísticas, Medallas y Gestión de Sesión
+// Cero datos ficticios. Perfil 100% genuino y opciones de cierre de sesión.
 // ====================================================================
 
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, User, Flame, Sparkles, Copy, Check, LogIn, Shield, Users, Mail, ArrowRight } from 'lucide-react';
+import {
+  X,
+  User,
+  Flame,
+  Sparkles,
+  Copy,
+  Check,
+  LogOut,
+  Shield,
+  Trophy,
+  Target,
+  Calendar,
+  Share2,
+  Lock,
+} from 'lucide-react';
 import { UserProfile } from '@/types/social';
-import { initialProfiles } from '@/lib/socialManager';
+import { ATHLETE_STORAGE_KEY } from '@/lib/socialManager';
 
 interface UserProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentProfile: UserProfile | null;
-  onSelectProfile: (profile: UserProfile) => void;
+  onLogout: () => void;
+  onOpenSwitchAccount?: () => void;
   inviteCode?: string;
 }
 
@@ -23,18 +38,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   isOpen,
   onClose,
   currentProfile,
-  onSelectProfile,
+  onLogout,
+  onOpenSwitchAccount,
   inviteCode = 'IRON27',
 }) => {
   const [copied, setCopied] = useState(false);
-  const [emailInput, setEmailInput] = useState('');
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       setCopied(false);
-      setMagicLinkSent(false);
     } else {
       document.body.style.overflow = '';
     }
@@ -49,10 +62,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleSendMagicLink = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailInput.trim()) return;
-    setMagicLinkSent(true);
+  const handleLogoutClick = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(ATHLETE_STORAGE_KEY);
+    }
+    onLogout();
+    onClose();
   };
 
   if (!isOpen || !currentProfile) return null;
@@ -78,10 +93,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         <div className="flex items-center justify-between px-5 pt-3 pb-3 border-b border-[var(--glass-border)] shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono uppercase tracking-wider text-[var(--accent-coral)] font-semibold">
-              Atleta & Sesión
+              Perfil de Atleta
             </span>
             <span className="w-1 h-1 rounded-full bg-emerald-400" />
-            <span className="text-[10px] text-[var(--text-tertiary)]">Apple ID Style</span>
+            <span className="text-[10px] text-[var(--text-tertiary)]">Sesión Activa</span>
           </div>
           <button
             onClick={onClose}
@@ -114,21 +129,76 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </p>
               <div className="flex items-center gap-2 mt-2">
                 <span className="px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 text-[10px] font-semibold flex items-center gap-1">
-                  <Flame className="w-3 h-3" /> {currentProfile.current_streak_days} días
+                  <Flame className="w-3 h-3" /> {currentProfile.current_streak_days} días de racha
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-semibold flex items-center gap-1">
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-semibold flex items-center gap-1 font-mono">
                   <Sparkles className="w-3 h-3" /> {currentProfile.total_xp} XP
                 </span>
               </div>
             </div>
           </div>
 
+          {/* Estadísticas de Disciplina y Metas */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="p-3.5 rounded-2xl bg-black/20 dark:bg-white/[0.03] border border-[var(--glass-border)]">
+              <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-tertiary)] uppercase font-semibold">
+                <Target className="w-3.5 h-3.5 text-sky-400" />
+                <span>Meta Semanal</span>
+              </div>
+              <p className="text-base font-bold text-white mt-1 apple-title font-mono">
+                {currentProfile.weekly_workout_goal} días / sem
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-black/20 dark:bg-white/[0.03] border border-[var(--glass-border)]">
+              <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-tertiary)] uppercase font-semibold">
+                <Flame className="w-3.5 h-3.5 text-orange-400" />
+                <span>Récord Racha</span>
+              </div>
+              <p className="text-base font-bold text-white mt-1 apple-title font-mono">
+                {currentProfile.best_streak_days} días
+              </p>
+            </div>
+          </div>
+
+          {/* Objetivo Deportivo */}
+          {currentProfile.target_race_name && (
+            <div className="p-3.5 rounded-2xl bg-black/20 dark:bg-white/[0.03] border border-[var(--glass-border)] flex items-center justify-between">
+              <div>
+                <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] font-bold">
+                  Objetivo Principal
+                </span>
+                <h4 className="text-xs font-bold text-white mt-0.5">
+                  {currentProfile.target_race_name}
+                </h4>
+              </div>
+              {currentProfile.target_race_date && (
+                <div className="flex items-center gap-1 text-[11px] font-mono text-amber-300 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20">
+                  <Calendar className="w-3 h-3" />
+                  <span>{currentProfile.target_race_date}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Biografía */}
+          {currentProfile.bio && (
+            <div className="p-3.5 rounded-2xl bg-black/20 dark:bg-white/[0.03] border border-[var(--glass-border)]">
+              <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] font-bold">
+                Lema o Biografía
+              </span>
+              <p className="text-xs text-[var(--text-secondary)] mt-1 italic leading-relaxed">
+                "{currentProfile.bio}"
+              </p>
+            </div>
+          )}
+
           {/* Código de Invitación a tu Tribu */}
           <div className="p-4 rounded-2xl bg-black/20 dark:bg-white/[0.04] border border-[var(--glass-border)]">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-white flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
-                Invita a tus Amigos a la Tribu
+                <Share2 className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
+                <span>Invita a Amigos a tu Tribu</span>
               </span>
               <span className="text-[10px] text-[var(--text-tertiary)]">Código de 6 letras</span>
             </div>
@@ -144,105 +214,36 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 <span>{copied ? 'Copiado' : 'Copiar'}</span>
               </button>
             </div>
-            <p className="text-[10px] text-[var(--text-tertiary)] mt-2 leading-relaxed">
-              Tus amigos pueden introducir este código en la sección de Tribu para unirse a tu grupo y competir en el podio semanal.
-            </p>
           </div>
 
-          {/* Selector de Atletas Demo (Simulación multi-usuario inmediata) */}
-          <div>
-            <h4 className="text-xs font-semibold text-[var(--text-secondary)] mb-2 flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5" />
-              <span>Cambiar de Atleta (Modo Demo / Local)</span>
-            </h4>
-            <div className="space-y-1.5">
-              {initialProfiles.map((p) => {
-                const isSelected = p.id === currentProfile.id;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => {
-                      onSelectProfile(p);
-                      onClose();
-                    }}
-                    className={`w-full p-2.5 rounded-xl border flex items-center justify-between text-left transition-all apple-pressable ${
-                      isSelected
-                        ? 'bg-[#D97757]/15 border-[#D97757]/50 text-white shadow-sm'
-                        : 'bg-white/[0.03] border-white/10 text-[var(--text-secondary)] hover:text-white hover:bg-white/[0.06]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center font-bold text-xs text-white">
-                        {p.display_name.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                          {p.display_name}
-                          {isSelected && (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-normal">
-                              Activo
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[10px] text-[var(--text-tertiary)] font-mono">
-                          @{p.username} · Nv.{p.current_level}
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-xs font-mono text-amber-300 font-semibold">
-                      {p.total_xp} XP
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Formulario de Login con Magic Link */}
-          <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10">
-            <h4 className="text-xs font-semibold text-white mb-1.5 flex items-center gap-1.5">
-              <LogIn className="w-3.5 h-3.5 text-emerald-400" />
-              Iniciar Sesión en Otro Dispositivo
-            </h4>
-            <p className="text-[11px] text-[var(--text-secondary)] mb-3 leading-relaxed">
-              Introduce tu correo para recibir un enlace de acceso seguro sin contraseñas (Magic Link / Supabase Auth).
-            </p>
-
-            {magicLinkSent ? (
-              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-center gap-2">
-                <Check className="w-4 h-4 shrink-0 text-emerald-400" />
-                <span>¡Enlace mágico enviado a {emailInput}! Revisa tu bandeja de entrada.</span>
-              </div>
-            ) : (
-              <form onSubmit={handleSendMagicLink} className="space-y-2">
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Mail className="w-4 h-4 absolute left-3 top-2.5 text-[var(--text-tertiary)]" />
-                    <input
-                      type="email"
-                      required
-                      placeholder="atleta@ejemplo.com"
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-coral)]"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="px-3.5 py-2 rounded-xl bg-emerald-500 text-black font-bold text-xs flex items-center gap-1 hover:bg-emerald-400 transition-all apple-pressable"
-                  >
-                    <span>Enviar</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
-              </form>
+          {/* Acciones de Sesión Reales */}
+          <div className="space-y-2 pt-2 border-t border-[var(--glass-border)]">
+            {onOpenSwitchAccount && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenSwitchAccount();
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white flex items-center justify-center gap-2 transition-all apple-pressable"
+              >
+                <User className="w-3.5 h-3.5 text-amber-400" />
+                <span>Cambiar de Cuenta o Iniciar Otra Sesión</span>
+              </button>
             )}
+
+            <button
+              onClick={handleLogoutClick}
+              className="w-full py-2.5 px-4 rounded-xl bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 text-xs font-semibold text-red-300 flex items-center justify-center gap-2 transition-all apple-pressable"
+            >
+              <LogOut className="w-3.5 h-3.5 text-red-400" />
+              <span>Cerrar Sesión en este Dispositivo</span>
+            </button>
           </div>
 
-          {/* Garantía de Seguridad */}
+          {/* Garantía de Seguridad y Privacidad */}
           <div className="flex items-center gap-2 text-[10px] text-[var(--text-tertiary)] justify-center">
             <Shield className="w-3 h-3 text-emerald-400" />
-            <span>Tus datos de salud están protegidos con cifrado y RLS en base de datos.</span>
+            <span>Tus datos corporales y calorías están 100% aislados y protegidos.</span>
           </div>
         </div>
       </div>

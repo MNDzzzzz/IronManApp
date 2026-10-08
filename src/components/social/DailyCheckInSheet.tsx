@@ -8,18 +8,33 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Camera, Sparkles, CheckCircle2, Flame, Dumbbell, Route, ShieldAlert, Loader2 } from 'lucide-react';
-import { CheckInActivityType, WorkoutCheckIn } from '@/types/social';
+import { CheckInActivityType, WorkoutCheckIn, UserProfile } from '@/types/social';
+
+export interface DailyCheckInInitialData {
+  activityType?: CheckInActivityType;
+  title?: string;
+  metricsNote?: string;
+  volume_sets?: number;
+  distance_km?: number;
+  duration_min?: number | null;
+  avg_hr?: number | null;
+  badge_label?: string;
+}
 
 interface DailyCheckInSheetProps {
   isOpen: boolean;
   onClose: () => void;
   onCheckInCreated: (checkin: WorkoutCheckIn) => void;
+  initialData?: DailyCheckInInitialData | null;
+  currentProfile?: UserProfile | null;
 }
 
 export const DailyCheckInSheet: React.FC<DailyCheckInSheetProps> = ({
   isOpen,
   onClose,
   onCheckInCreated,
+  initialData,
+  currentProfile,
 }) => {
   const [activityType, setActivityType] = useState<CheckInActivityType>('strength');
   const [title, setTitle] = useState('');
@@ -36,8 +51,12 @@ export const DailyCheckInSheet: React.FC<DailyCheckInSheetProps> = ({
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-      // Sugerencia de título inicial según tipo
-      if (!title) {
+      if (initialData) {
+        if (initialData.activityType) setActivityType(initialData.activityType);
+        if (initialData.title) setTitle(initialData.title);
+        if (initialData.metricsNote) setMetricsNote(initialData.metricsNote);
+      } else if (!title) {
+        // Sugerencia de título inicial según tipo
         setTitle(
           activityType === 'strength'
             ? 'Entreno de Fuerza en Sala'
@@ -55,7 +74,7 @@ export const DailyCheckInSheet: React.FC<DailyCheckInSheetProps> = ({
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isOpen, activityType]);
+  }, [isOpen, initialData, activityType]);
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -111,15 +130,18 @@ export const DailyCheckInSheet: React.FC<DailyCheckInSheetProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          userId: currentProfile?.id,
           activityType,
           title: title.trim(),
           metrics: {
             notes: metricsNote.trim() || undefined,
-            volume_sets: activityType === 'strength' ? 14 : undefined,
-            distance_km: activityType === 'running' ? 7.5 : undefined,
+            volume_sets: activityType === 'strength' ? initialData?.volume_sets : undefined,
+            distance_km: activityType === 'running' ? initialData?.distance_km : undefined,
+            duration_min: initialData?.duration_min,
+            avg_hr: initialData?.avg_hr,
           },
           hasPhoto: Boolean(photoBase64),
-          photoUrl: photoBase64 ? 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=600' : undefined,
+          photoUrl: photoBase64 || undefined,
           isGoldCheckin: isGold,
           geminiDetectedEquipment: photoVerificationResult?.equipmentName,
         }),
@@ -177,6 +199,13 @@ export const DailyCheckInSheet: React.FC<DailyCheckInSheetProps> = ({
 
         {/* Formulario */}
         <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4">
+          {initialData && (
+            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center gap-2.5 text-xs text-amber-300">
+              <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>{initialData.badge_label || 'Datos reales de tu sesión completada precargados automáticamente.'}</span>
+            </div>
+          )}
+
           {errorMsg && (
             <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 flex items-center gap-2">
               <ShieldAlert className="w-4 h-4 shrink-0" />

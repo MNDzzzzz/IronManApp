@@ -1,6 +1,7 @@
 // ====================================================================
-// GESTOR DEL MÓDULO SOCIAL, TRIBUS, CHECK-INS Y GAMIFICACIÓN
-// Proyecto: IronManApp (Apple Design & Clean Architecture)
+// GESTOR DEL MÓDULO SOCIAL, TRIBUS, CHECK-INS Y GAMIFICACIÓN (100% REAL)
+// Proyecto: IronManApp (Apple Design & Privacy-First Architecture)
+// Cero datos ficticios. Estado cero limpio y persistencia genuina.
 // ====================================================================
 
 import {
@@ -16,105 +17,17 @@ import {
   CheckInActivityType,
   CheckInMetricsSummary,
 } from '@/types/social';
-import { mockStore } from './mockStore';
 import { supabase, isSupabaseConfigured } from './supabase';
 
-// ID de usuario maestro por defecto para compatibilidad transparente
+// Clave local para persistir el perfil del atleta activo en el dispositivo
+export const ATHLETE_STORAGE_KEY = 'ironman_athlete_profile';
+export const SQUAD_STORAGE_KEY = 'ironman_squad_groups';
+
+// Constante de compatibilidad para identificadores por defecto
 export const MASTER_ATHLETE_ID = 'usr-alvaro-master-001';
 
-export const initialProfiles: UserProfile[] = [
-  {
-    id: MASTER_ATHLETE_ID,
-    username: 'alvaro_ironman',
-    display_name: 'Álvaro',
-    avatar_url: '',
-    bio: 'Objetivo: Media Maratón 21K 2027 sub-2h. Disciplina, fuerza y recomposición corporal.',
-    target_race_name: 'Media Maratón 21K 2027',
-    target_race_date: '2027-02-28',
-    weekly_workout_goal: 5,
-    total_xp: 1450,
-    current_level: 14,
-    current_streak_days: 18,
-    best_streak_days: 21,
-    created_at: '2026-09-01T00:00:00Z',
-  },
-  {
-    id: 'usr-carlos-runner-002',
-    username: 'carlos_pace',
-    display_name: 'Carlos M.',
-    avatar_url: '',
-    bio: 'Entrenando series y rodajes largos para 21K.',
-    target_race_name: 'Media Maratón 21K 2027',
-    target_race_date: '2027-02-28',
-    weekly_workout_goal: 4,
-    total_xp: 1200,
-    current_level: 12,
-    current_streak_days: 12,
-    best_streak_days: 14,
-    created_at: '2026-09-05T00:00:00Z',
-  },
-  {
-    id: 'usr-elena-fit-003',
-    username: 'elena_tri',
-    display_name: 'Elena S.',
-    avatar_url: '',
-    bio: 'Fuerza pesada + rodajes aeróbicos en Z2.',
-    target_race_name: 'Media Maratón 21K 2027',
-    target_race_date: '2027-02-28',
-    weekly_workout_goal: 5,
-    total_xp: 1620,
-    current_level: 15,
-    current_streak_days: 22,
-    best_streak_days: 22,
-    created_at: '2026-09-02T00:00:00Z',
-  },
-];
-
-export const initialGroups: SquadGroup[] = [
-  {
-    id: 'grp-ironman-21k-alpha',
-    name: 'Tribu 21K 2027 ⚡',
-    description: 'Compañeros de preparación para Media Maratón y fuerza hipertrofia.',
-    invite_code: 'IRON27',
-    created_by: MASTER_ATHLETE_ID,
-    avatar_emoji: '⚡',
-    max_members: 15,
-    members_count: 3,
-    created_at: '2026-09-10T10:00:00Z',
-  },
-];
-
-export const initialGroupMembers: SquadMember[] = [
-  {
-    id: 'mem-1',
-    group_id: 'grp-ironman-21k-alpha',
-    user_id: MASTER_ATHLETE_ID,
-    role: 'owner',
-    joined_at: '2026-09-10T10:00:00Z',
-    group_xp: 350,
-    weekly_checkins_count: 4,
-  },
-  {
-    id: 'mem-2',
-    group_id: 'grp-ironman-21k-alpha',
-    user_id: 'usr-carlos-runner-002',
-    role: 'member',
-    joined_at: '2026-09-11T12:00:00Z',
-    group_xp: 250,
-    weekly_checkins_count: 3,
-  },
-  {
-    id: 'mem-3',
-    group_id: 'grp-ironman-21k-alpha',
-    user_id: 'usr-elena-fit-003',
-    role: 'member',
-    joined_at: '2026-09-11T14:00:00Z',
-    group_xp: 400,
-    weekly_checkins_count: 5,
-  },
-];
-
-export const initialBadges: AthleteBadge[] = [
+// Catálogo estándar de insignias deportivas del sistema
+export const SYSTEM_BADGES: AthleteBadge[] = [
   {
     id: 'streak_7',
     title: 'Disciplina de Hierro',
@@ -159,76 +72,8 @@ export const initialBadges: AthleteBadge[] = [
   },
 ];
 
-export const initialCheckins: WorkoutCheckIn[] = [
-  {
-    id: 'chk-today-alvaro',
-    user_id: MASTER_ATHLETE_ID,
-    date: new Date().toISOString().split('T')[0],
-    activity_type: 'strength',
-    title: 'Día 1: Torso Hipertrofia (16 series)',
-    metrics_summary: {
-      volume_sets: 16,
-      muscle_groups: ['Pecho', 'Espalda', 'Hombro'],
-      notes: 'Sobrecarga en Press Inclinado (+2.5 kg). Sensaciones de estabilidad perfectas.',
-    },
-    has_photo: true,
-    photo_url: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=600&auto=format&fit=crop&q=80',
-    is_gold_checkin: true,
-    gemini_verification_status: 'verified',
-    gemini_detected_equipment: 'Banco inclinado y mancuernas de peso libre',
-    xp_awarded: 150,
-    created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-    reactions: [
-      {
-        id: 'rea-1',
-        checkin_id: 'chk-today-alvaro',
-        user_id: 'usr-elena-fit-003',
-        emoji: '🔥',
-        created_at: new Date(Date.now() - 1800000).toISOString(),
-        username: 'elena_tri',
-      },
-      {
-        id: 'rea-2',
-        checkin_id: 'chk-today-alvaro',
-        user_id: 'usr-carlos-runner-002',
-        emoji: '💪',
-        created_at: new Date(Date.now() - 1200000).toISOString(),
-        username: 'carlos_pace',
-      },
-    ],
-  },
-  {
-    id: 'chk-yesterday-elena',
-    user_id: 'usr-elena-fit-003',
-    date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-    activity_type: 'running',
-    title: 'Rodaje 8.5K Control Aeróbico Z2',
-    metrics_summary: {
-      distance_km: 8.5,
-      duration_min: 48,
-      avg_pace: '5:38 /km',
-      avg_hr: 141,
-      target_zones: 'Z2 Predominante',
-    },
-    has_photo: false,
-    is_gold_checkin: false,
-    gemini_verification_status: 'none',
-    xp_awarded: 100,
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-    reactions: [
-      {
-        id: 'rea-3',
-        checkin_id: 'chk-yesterday-elena',
-        user_id: MASTER_ATHLETE_ID,
-        emoji: '⚡',
-        created_at: new Date(Date.now() - 80000000).toISOString(),
-        username: 'alvaro_ironman',
-      },
-    ],
-  },
-];
-
-// Helper global para inicializar o acceder al estado social en mockStore
+// Almacén en memoria global para el servidor Next.js y tests
+// Inicializado completamente VACÍO (Zero-State). Cero cuentas o grupos prefabricados.
 declare global {
   var __ironman_social_store: {
     profiles: UserProfile[];
@@ -242,33 +87,29 @@ declare global {
 
 if (!global.__ironman_social_store) {
   global.__ironman_social_store = {
-    profiles: [...initialProfiles],
-    groups: [...initialGroups],
-    members: [...initialGroupMembers],
-    checkins: [...initialCheckins],
-    badges: [...initialBadges],
-    userBadges: [
-      { user_id: MASTER_ATHLETE_ID, badge_id: 'streak_7', awarded_at: '2026-09-18T10:00:00Z' },
-      { user_id: MASTER_ATHLETE_ID, badge_id: 'gold_proof_1', awarded_at: '2026-09-20T10:00:00Z' },
-      { user_id: 'usr-elena-fit-003', badge_id: 'streak_7', awarded_at: '2026-09-18T10:00:00Z' },
-    ],
+    profiles: [],
+    groups: [],
+    members: [],
+    checkins: [],
+    badges: [...SYSTEM_BADGES],
+    userBadges: [],
   };
 }
 
-const socialStore = global.__ironman_social_store;
+export const socialStore = global.__ironman_social_store;
 
-// Generador criptográfico de código de invitación de 6 caracteres (ej: 'IRON27')
-export function generateInviteCode(prefix = 'IRON'): string {
+// Generador de código de invitación alfanumérico limpio de 6 caracteres (ej: 'TR8K29')
+export function generateInviteCode(prefix = 'TR'): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let randomPart = '';
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < 4; i++) {
     randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return `${prefix}${randomPart}`;
 }
 
 // --------------------------------------------------------------------
-// 1. GESTIÓN DE PERFILES
+// 1. GESTIÓN DE PERFILES Y SESIÓN
 // --------------------------------------------------------------------
 export function getUserProfile(userId: string): UserProfile | null {
   const profile = socialStore.profiles.find((p) => p.id === userId);
@@ -276,10 +117,73 @@ export function getUserProfile(userId: string): UserProfile | null {
 }
 
 export function getUserProfileByUsername(username: string): UserProfile | null {
-  const clean = username.replace(/^@/, '').toLowerCase();
+  const clean = username.replace(/^@/, '').toLowerCase().trim();
   const profile = socialStore.profiles.find((p) => p.username.toLowerCase() === clean);
   return profile ? { ...profile } : null;
 }
+
+export interface RegisterProfileInput {
+  name: string;
+  username: string;
+  avatarUrl?: string;
+  bio?: string;
+  email?: string;
+  weeklyGoal?: number;
+  targetRaceName?: string;
+  targetRaceDate?: string;
+}
+
+export function registerAthleteProfile(input: RegisterProfileInput): UserProfile {
+  const cleanUsername = input.username.replace(/^@/, '').toLowerCase().trim();
+  
+  // Validar formato de username
+  if (!/^[a-z0-9_]{3,20}$/.test(cleanUsername)) {
+    throw new Error('El nombre de usuario debe tener entre 3 y 20 caracteres (solo letras minúsculas, números o guiones bajos).');
+  }
+
+  // Comprobar unicidad si ya existe otro con ese username
+  const existing = getUserProfileByUsername(cleanUsername);
+  if (existing) {
+    // Si ya existe, actualizamos sus datos
+    existing.display_name = input.name.trim();
+    if (input.avatarUrl !== undefined) existing.avatar_url = input.avatarUrl;
+    if (input.bio !== undefined) existing.bio = input.bio.trim();
+    if (input.weeklyGoal) existing.weekly_workout_goal = input.weeklyGoal;
+    existing.updated_at = new Date().toISOString();
+    return { ...existing };
+  }
+
+  const newProfile: UserProfile = {
+    id: `usr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    username: cleanUsername,
+    display_name: input.name.trim(),
+    avatar_url: input.avatarUrl || '',
+    bio: input.bio?.trim() || 'En preparación para Media Maratón 21K 2027.',
+    target_race_name: input.targetRaceName || 'Media Maratón 21K 2027',
+    target_race_date: input.targetRaceDate || '2027-02-28',
+    weekly_workout_goal: input.weeklyGoal || 5,
+    total_xp: 0,
+    current_level: 1,
+    current_streak_days: 0,
+    best_streak_days: 0,
+    created_at: new Date().toISOString(),
+  };
+
+  socialStore.profiles.push(newProfile);
+  return { ...newProfile };
+}
+
+// Búsqueda para login por username o email
+export function loginAthlete(identifier: string): UserProfile | null {
+  const clean = identifier.replace(/^@/, '').toLowerCase().trim();
+  const profile = socialStore.profiles.find((p) => p.username.toLowerCase() === clean);
+  return profile ? { ...profile } : null;
+}
+
+// Compatibilidad tipada (100% vacíos en estado cero)
+export const initialProfiles: UserProfile[] = [];
+export const initialGroups: SquadGroup[] = [];
+export const initialCheckins: WorkoutCheckIn[] = [];
 
 export function upsertUserProfile(profile: UserProfile): UserProfile {
   const idx = socialStore.profiles.findIndex((p) => p.id === profile.id);
@@ -292,13 +196,14 @@ export function upsertUserProfile(profile: UserProfile): UserProfile {
 }
 
 // --------------------------------------------------------------------
-// 2. GESTIÓN DE GRUPOS / TRIBUS
+// 2. GESTIÓN DE TRIBUS / GRUPOS
 // --------------------------------------------------------------------
 export function getUserGroups(userId: string): SquadGroup[] {
+  if (!userId) return [];
   const memberGroupIds = socialStore.members
     .filter((m) => m.user_id === userId)
     .map((m) => m.group_id);
-  
+
   return socialStore.groups
     .filter((g) => memberGroupIds.includes(g.id))
     .map((g) => ({
@@ -323,11 +228,20 @@ export function createSquadGroup(
   description?: string,
   avatarEmoji = '⚡'
 ): SquadGroup {
-  const inviteCode = generateInviteCode('TR');
+  if (!name || name.trim().length === 0) {
+    throw new Error('El nombre de la tribu es obligatorio.');
+  }
+
+  // Generar código único de 6 letras
+  let inviteCode = generateInviteCode('TR');
+  while (socialStore.groups.some((g) => g.invite_code === inviteCode)) {
+    inviteCode = generateInviteCode('TR');
+  }
+
   const newGroup: SquadGroup = {
     id: `grp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     name: name.trim(),
-    description: description?.trim(),
+    description: description?.trim() || 'Tribu de preparación física y atletismo.',
     invite_code: inviteCode,
     created_by: createdBy,
     avatar_emoji: avatarEmoji,
@@ -338,7 +252,7 @@ export function createSquadGroup(
 
   socialStore.groups.push(newGroup);
 
-  // El creador es miembro 'owner'
+  // El creador es miembro owner inmediato
   const memberRecord: SquadMember = {
     id: `mem-${Date.now()}`,
     group_id: newGroup.id,
@@ -371,7 +285,7 @@ export function joinGroupByInviteCode(
 
   const currentCount = socialStore.members.filter((m) => m.group_id === group.id).length;
   if (currentCount >= group.max_members) {
-    return { success: false, error: 'La tribu ha alcanzado su límite máximo de 15 miembros' };
+    return { success: false, error: 'La tribu ha alcanzado su límite de 15 miembros' };
   }
 
   socialStore.members.push({
@@ -391,7 +305,7 @@ export function joinGroupByInviteCode(
 }
 
 // --------------------------------------------------------------------
-// 3. CHECK-INS DE ENTRENAMIENTO & REACCIONES
+// 3. CHECK-INS REALES & REACCIONES
 // --------------------------------------------------------------------
 export interface CreateCheckInParams {
   userId: string;
@@ -418,7 +332,7 @@ export function registerWorkoutCheckIn(params: CreateCheckInParams): WorkoutChec
     user_id: params.userId,
     date: todayStr,
     activity_type: params.activityType,
-    title: params.title,
+    title: params.title.trim(),
     metrics_summary: params.metrics,
     strava_activity_id: params.stravaActivityId,
     gym_workout_date: params.gymWorkoutDate,
@@ -434,7 +348,7 @@ export function registerWorkoutCheckIn(params: CreateCheckInParams): WorkoutChec
 
   socialStore.checkins.unshift(checkin);
 
-  // Actualizar perfil del atleta: XP, nivel y racha
+  // Actualizar perfil real del atleta
   const profile = socialStore.profiles.find((p) => p.id === params.userId);
   if (profile) {
     profile.total_xp += totalXPAwarded;
@@ -445,7 +359,7 @@ export function registerWorkoutCheckIn(params: CreateCheckInParams): WorkoutChec
     }
   }
 
-  // Actualizar XP en los grupos a los que pertenece
+  // Actualizar miembros de sus grupos
   const userMemberships = socialStore.members.filter((m) => m.user_id === params.userId);
   userMemberships.forEach((m) => {
     m.group_xp += totalXPAwarded;
@@ -475,7 +389,6 @@ export function toggleCheckInReaction(
 
   let added = false;
   if (existingIdx >= 0) {
-    // Si ya existe la reacción exacta, se retira (toggle)
     checkin.reactions.splice(existingIdx, 1);
     added = false;
   } else {
@@ -495,12 +408,14 @@ export function toggleCheckInReaction(
 }
 
 // --------------------------------------------------------------------
-// 4. FEED DE TRIBU
+// 4. FEED DE TRIBU REAL
 // --------------------------------------------------------------------
 export function getSquadFeed(groupId: string): WorkoutCheckIn[] {
   const memberUserIds = socialStore.members
     .filter((m) => m.group_id === groupId)
     .map((m) => m.user_id);
+
+  if (memberUserIds.length === 0) return [];
 
   const groupCheckins = socialStore.checkins
     .filter((c) => memberUserIds.includes(c.user_id))
@@ -515,13 +430,14 @@ export function getSquadFeed(groupId: string): WorkoutCheckIn[] {
 }
 
 // --------------------------------------------------------------------
-// 5. LEADERBOARD SEMANAL DE TRIBU
+// 5. LEADERBOARD REAL
 // --------------------------------------------------------------------
 export function getSquadLeaderboard(
   groupId: string,
   currentUserId = MASTER_ATHLETE_ID
 ): SquadLeaderboardEntry[] {
   const groupMembers = socialStore.members.filter((m) => m.group_id === groupId);
+  if (groupMembers.length === 0) return [];
 
   const entries: SquadLeaderboardEntry[] = groupMembers.map((m) => {
     const profile = getUserProfile(m.user_id);
@@ -543,14 +459,12 @@ export function getSquadLeaderboard(
     };
   });
 
-  // Ordenar por XP semanal descendente, luego check-ins, luego racha
   entries.sort((a, b) => {
     if (b.weekly_xp !== a.weekly_xp) return b.weekly_xp - a.weekly_xp;
     if (b.weekly_checkins !== a.weekly_checkins) return b.weekly_checkins - a.weekly_checkins;
     return b.current_streak - a.current_streak;
   });
 
-  // Asignar rangos (1º, 2º, 3º...)
   entries.forEach((entry, idx) => {
     entry.rank = idx + 1;
   });
@@ -559,14 +473,12 @@ export function getSquadLeaderboard(
 }
 
 // --------------------------------------------------------------------
-// 6. DTO PÚBLICO NO INTRUSIVO: Perfil de Compañero
-// REGLA DE ORO: Jamás incluir calorías, báscula o datos médicos
+// 6. DTO PÚBLICO NO INTRUSIVO
 // --------------------------------------------------------------------
 export function getMemberPublicSummary(userId: string): MemberPublicSummary | null {
   const profile = getUserProfile(userId);
   if (!profile) return null;
 
-  // Calcular métricas agregadas de los últimos 7 días
   const userCheckins = socialStore.checkins.filter((c) => c.user_id === userId);
 
   let weeklyKm = 0;
@@ -611,7 +523,6 @@ export function getMemberPublicSummary(userId: string): MemberPublicSummary | nu
     created_at: c.created_at,
   }));
 
-  // RETORNO ESTRICTO: Cero calorías, cero báscula, cero SpO2
   return {
     user_id: profile.id,
     username: profile.username,
@@ -628,4 +539,14 @@ export function getMemberPublicSummary(userId: string): MemberPublicSummary | nu
     badges,
     recent_checkins: recentCheckins,
   };
+}
+
+// Función para reiniciar el almacén a estado cero (útil para tests o logout)
+export function resetSocialStore(): void {
+  socialStore.profiles = [];
+  socialStore.groups = [];
+  socialStore.members = [];
+  socialStore.checkins = [];
+  socialStore.badges = [...SYSTEM_BADGES];
+  socialStore.userBadges = [];
 }

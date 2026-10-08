@@ -20,6 +20,7 @@ interface TopBarProps {
   isReportOpen?: boolean;
   athleteName?: string;
   athleteLevel?: number;
+  isAuthenticated?: boolean;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -35,8 +36,9 @@ export const TopBar: React.FC<TopBarProps> = ({
   onSelectTab,
   coachStatusMessage,
   isReportOpen = false,
-  athleteName = 'Álvaro',
-  athleteLevel = 14,
+  athleteName,
+  athleteLevel,
+  isAuthenticated = false,
 }) => {
   const todayFormatted = new Intl.DateTimeFormat('es-ES', {
     weekday: 'short',
@@ -125,19 +127,34 @@ export const TopBar: React.FC<TopBarProps> = ({
             <button
               onClick={onOpenProfile}
               aria-label="Perfil y Sesión"
-              title="Perfil de Atleta y Tribu"
-              className="h-8 sm:h-9 px-2 sm:px-2.5 rounded-full bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-500/30 flex items-center gap-1.5 text-white apple-pressable apple-btn-spring touch-manipulation transition-all duration-200"
+              title={isAuthenticated ? 'Perfil de Atleta y Tribu' : 'Iniciar Sesión o Registrarse'}
+              className={`h-8 sm:h-9 px-2 sm:px-2.5 rounded-full border flex items-center gap-1.5 apple-pressable apple-btn-spring touch-manipulation transition-all duration-200 ${
+                isAuthenticated
+                  ? 'bg-gradient-to-r from-orange-500/20 to-amber-500/20 border-orange-500/30 text-white'
+                  : 'bg-white/40 dark:bg-white/[0.06] border-white/60 dark:border-white/10 text-[var(--accent-coral)] hover:bg-orange-500/10'
+              }`}
             >
-              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#D97757] to-amber-500 flex items-center justify-center text-[10px] font-bold">
-                {athleteName ? athleteName.charAt(0) : 'A'}
-              </div>
-              <span className="hidden sm:inline text-[11px] font-semibold truncate max-w-[80px]">
-                {athleteName}
-              </span>
-              {athleteLevel && (
-                <span className="text-[9px] px-1 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-bold">
-                  Nv.{athleteLevel}
-                </span>
+              {isAuthenticated ? (
+                <>
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#D97757] to-amber-500 flex items-center justify-center text-[10px] font-bold text-white">
+                    {athleteName ? athleteName.charAt(0) : 'A'}
+                  </div>
+                  <span className="hidden sm:inline text-[11px] font-semibold truncate max-w-[80px]">
+                    {athleteName}
+                  </span>
+                  {typeof athleteLevel === 'number' && (
+                    <span className="text-[9px] px-1 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-bold">
+                      Nv.{athleteLevel}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Users className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
+                  <span className="hidden sm:inline text-[11px] font-semibold text-white">
+                    Acceder
+                  </span>
+                </>
               )}
             </button>
           )}

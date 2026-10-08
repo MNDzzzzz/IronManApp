@@ -37,6 +37,7 @@ import {
   OverloadActionType,
 } from '@/lib/gymOverload';
 import dynamic from 'next/dynamic';
+import { DailyCheckInSheet, DailyCheckInInitialData } from '@/components/social/DailyCheckInSheet';
 
 const ScheduleManagerModal = dynamic(
   () => import('@/components/schedule/ScheduleManagerModal').then((m) => m.ScheduleManagerModal),
@@ -79,6 +80,16 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
 
   // Pestaña principal: 'routine' o 'history'
   const [activeTab, setActiveTab] = useState<'routine' | 'history'>('routine');
+
+  // Estado para la hoja de Check-in en Tribu
+  const [isCheckInSheetOpen, setIsCheckInSheetOpen] = useState(false);
+
+  // Series completadas hoy y volumen acumulado
+  const todayLogs = useMemo(() => logs.filter((l) => l.date === todayStr), [logs, todayStr]);
+  const todayTotalVolume = useMemo(
+    () => todayLogs.reduce((acc, l) => acc + (l.weight_kg * l.reps), 0),
+    [todayLogs]
+  );
 
   // Filtro de fecha para el historial de series ('all' o fecha 'YYYY-MM-DD')
   const [historyDateFilter, setHistoryDateFilter] = useState<string>('all');
@@ -407,6 +418,38 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
               <span className="editorial-heading">Personalizar Ejercicios</span>
             </button>
           </div>
+        </div>
+      )}
+
+      {/* BANNER SUTIL APPLE: PUBLICAR CHECK-IN EN TU TRIBU ⚡ */}
+      {todayLogs.length > 0 && (
+        <div className="p-4 rounded-3xl bg-gradient-to-r from-orange-500/15 via-amber-500/10 to-[#2D68C4]/15 border border-[#2D68C4]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg shadow-blue-500/5 animate-apple-fade-in apple-interactive-card">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#2D68C4] via-blue-600 to-amber-500 flex items-center justify-center text-white shrink-0 shadow-md shadow-blue-500/20">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs sm:text-sm font-bold text-white apple-title">
+                  Publicar Check-in en tu Tribu ⚡
+                </h4>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+                  +100 XP
+                </span>
+              </div>
+              <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                {todayLogs.length} series completadas hoy • {Math.round(todayTotalVolume).toLocaleString()} kg de volumen
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsCheckInSheetOpen(true)}
+            className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#D97757] via-amber-500 to-[#FC5200] text-white font-bold text-xs shadow-md shadow-orange-500/20 flex items-center gap-1.5 apple-pressable active:scale-97 self-stretch sm:self-auto justify-center shrink-0"
+          >
+            <span>Publicar Check-in ⚡</span>
+            <Sparkles className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
@@ -1058,6 +1101,20 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
           onSelectExercise={(ex) => handleSelectExercise(ex.id)}
         />
       )}
+
+      {/* Modal de Check-in en Tribu con datos de fuerza precargados */}
+      <DailyCheckInSheet
+        isOpen={isCheckInSheetOpen}
+        onClose={() => setIsCheckInSheetOpen(false)}
+        onCheckInCreated={() => setIsCheckInSheetOpen(false)}
+        initialData={{
+          activityType: 'strength',
+          title: `Fuerza: ${selectedDay !== 'Todos' ? selectedDay : 'Sesión en Sala'} (${todayLogs.length} series)`,
+          volume_sets: todayLogs.length,
+          metricsNote: `Sesión de fuerza completada hoy en sala. ${todayLogs.length} series registradas y ${Math.round(todayTotalVolume).toLocaleString()} kg de volumen total acumulado.`,
+          badge_label: `Entreno de fuerza finalizado: ${todayLogs.length} series • ${Math.round(todayTotalVolume).toLocaleString()} kg`,
+        }}
+      />
     </div>
   );
 };

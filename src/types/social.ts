@@ -7,6 +7,7 @@ export interface UserProfile {
   id: string; // UUID de auth.users
   username: string; // ej: 'alvaro_ironman' (sin arroba en base de datos)
   display_name: string; // ej: 'Álvaro'
+  email?: string;
   avatar_url?: string;
   bio?: string;
   target_race_name: string; // ej: 'Media Maratón 21K 2027'

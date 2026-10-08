@@ -27,9 +27,13 @@ const UserProfileModal = dynamic(
   () => import('@/components/social/UserProfileModal').then((m) => m.UserProfileModal),
   { ssr: false }
 );
+const AuthModal = dynamic(
+  () => import('@/components/social/AuthModal').then((m) => m.AuthModal),
+  { ssr: false }
+);
 import { useOfflineSync } from '@/lib/offline/useOfflineSync';
 import { getCachedTelemetry, setCachedTelemetry } from '@/lib/offline/offlineStore';
-import { initialProfiles } from '@/lib/socialManager';
+import { ATHLETE_STORAGE_KEY } from '@/lib/socialManager';
 import { UserProfile } from '@/types/social';
 import {
   DailyHealthMetric,
@@ -47,11 +51,42 @@ export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [currentProfile, setCurrentProfile] = useState<UserProfile>(initialProfiles[0]);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [currentProfile, setCurrentProfile] = useState<UserProfile | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<StravaActivity | null>(null);
   const [coachStatusMessage, setCoachStatusMessage] = useState<string>(
     'Head Coach listo. Habla o escribe para registrar comidas o mover entrenos.'
   );
+
+  // Carga y sincronización de sesión de atleta activa (Offline-First)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(ATHLETE_STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.id) {
+            setCurrentProfile(parsed);
+          }
+        } catch {
+          // Ignorar JSON corrupto
+        }
+      }
+    }
+
+    // Comprobar si hay sesión en servidor
+    fetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (json && json.authenticated && json.data) {
+          setCurrentProfile(json.data);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(ATHLETE_STORAGE_KEY, JSON.stringify(json.data));
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Hook de gestión de Modo Claro / Oscuro Liquid Glass
   const { isDark, toggleTheme } = useTheme();
@@ -336,9 +371,16 @@ export default function Home() {
         }}
         coachStatusMessage={coachStatusMessage}
         isReportOpen={isReportOpen}
-        athleteName={currentProfile.display_name}
-        athleteLevel={currentProfile.current_level}
-        onOpenProfile={() => setIsProfileModalOpen(true)}
+        athleteName={currentProfile?.display_name}
+        athleteLevel={currentProfile?.current_level}
+        isAuthenticated={Boolean(currentProfile)}
+        onOpenProfile={() => {
+          if (currentProfile) {
+            setIsProfileModalOpen(true);
+          } else {
+            setIsAuthModalOpen(true);
+          }
+        }}
       />
 
       {/* Contenido Principal con Bento Grid Responsive de Alta Gama (Móvil a 4K) */}
@@ -404,7 +446,10 @@ export default function Home() {
             )}
 
             {currentTab === 'tribu' && (
-              <SquadView currentProfile={currentProfile} />
+              <SquadView
+                currentProfile={currentProfile}
+                onOpenAuthModal={() => setIsAuthModalOpen(true)}
+              />
             )}
           </div>
         )}
@@ -422,7 +467,24 @@ export default function Home() {
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
         currentProfile={currentProfile}
-        onSelectProfile={setCurrentProfile}
+        onLogout={() => {
+          setCurrentProfile(null);
+          setIsProfileModalOpen(false);
+        }}
+        onOpenSwitchAccount={() => {
+          setIsProfileModalOpen(false);
+          setIsAuthModalOpen(true);
+        }}
+      />
+
+      {/* Modal de Registro e Inicio de Sesión Apple ID Real */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={(profile) => {
+          setCurrentProfile(profile);
+          setIsAuthModalOpen(false);
+        }}
       />
 
       {/* Barra de Navegación Inferior Flotante de 5 Pestañas */}

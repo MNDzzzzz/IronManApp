@@ -17,6 +17,7 @@ import {
   Award,
   ShieldCheck,
   Scale,
+  Sparkles,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -30,6 +31,7 @@ import { CardioActivity } from '@/types/database';
 import { StravaUploadModal } from '@/components/workout/StravaUploadModal';
 import { simulateHalfMarathon2027 } from '@/lib/cardio/raceSimulatorEngine';
 import dynamic from 'next/dynamic';
+import { DailyCheckInSheet, DailyCheckInInitialData } from '@/components/social/DailyCheckInSheet';
 
 const RaceSimulatorModal = dynamic(
   () => import('@/components/cardio/RaceSimulatorModal').then((m) => m.RaceSimulatorModal),
@@ -54,6 +56,27 @@ export const CardioView: React.FC<CardioViewProps> = ({
   const [isStravaModalOpen, setIsStravaModalOpen] = useState(false);
   const [isSimulatorModalOpen, setIsSimulatorModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Estados de Check-in en Tribu
+  const [isCheckInOpen, setIsCheckInOpen] = useState(false);
+  const [checkInInitialData, setCheckInInitialData] = useState<DailyCheckInInitialData | null>(null);
+
+  const handleOpenCheckIn = (activity?: CardioActivity | null) => {
+    const target = activity || activities[0];
+    if (!target) return;
+    const distKm = parseFloat((target.distance / 1000).toFixed(1));
+    const durMin = Math.round((target.elapsed_time || target.moving_time || 0) / 60);
+    setCheckInInitialData({
+      activityType: 'running',
+      title: target.name ? `Rodaje: ${target.name}` : `Rodaje Aeróbico Z2 (${distKm} km)`,
+      distance_km: distKm,
+      duration_min: durMin,
+      avg_hr: target.avg_hr ?? undefined,
+      metricsNote: `Rodaje aeróbico finalizado con ${distKm} km en ${durMin} min.${target.avg_hr ? ` FC media: ${target.avg_hr} bpm.` : ''}`,
+      badge_label: `Rodaje finalizado: ${distKm} km • ${durMin} min`,
+    });
+    setIsCheckInOpen(true);
+  };
 
   // Bloquear scroll de fondo cuando hay un modal abierto (UX fluida estilo Apple Bottom Sheet)
   useEffect(() => {
@@ -118,6 +141,21 @@ export const CardioView: React.FC<CardioViewProps> = ({
       if (res.ok) {
         setIsAddModalOpen(false);
         if (onRefresh) onRefresh();
+
+        // Precargar y abrir check-in en tribu automáticamente
+        const distKm = parseFloat(formDistanceKm);
+        const durMin = parseInt(formDurationMin, 10);
+        const avgHr = formAvgHr ? parseInt(formAvgHr, 10) : undefined;
+        setCheckInInitialData({
+          activityType: 'running',
+          title: `Rodaje: ${formName}`,
+          distance_km: distKm,
+          duration_min: durMin,
+          avg_hr: avgHr,
+          metricsNote: formNotes,
+          badge_label: `Rodaje Galaxy Fit3 registrado: ${distKm} km • ${durMin} min`,
+        });
+        setIsCheckInOpen(true);
       }
     } catch (err) {
       console.error('Error registrando rodaje:', err);
@@ -301,6 +339,38 @@ export const CardioView: React.FC<CardioViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* BANNER SUTIL APPLE: PUBLICAR CHECK-IN EN TU TRIBU ⚡ */}
+      {activities.length > 0 && (
+        <div className="p-4 rounded-3xl bg-gradient-to-r from-orange-500/15 via-amber-500/10 to-[#FC5200]/15 border border-[#FC5200]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg shadow-orange-500/5 animate-apple-fade-in apple-interactive-card">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#FC5200] via-orange-600 to-amber-500 flex items-center justify-center text-white shrink-0 shadow-md shadow-orange-500/20">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs sm:text-sm font-bold text-white apple-title">
+                  Publicar Check-in en tu Tribu ⚡
+                </h4>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+                  +100 XP
+                </span>
+              </div>
+              <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                Último rodaje: {(activities[0].distance / 1000).toFixed(1)} km • {Math.round(activities[0].elapsed_time / 60)} min {activities[0].avg_hr ? `• ${activities[0].avg_hr} bpm` : ''}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => handleOpenCheckIn(activities[0])}
+            className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#FC5200] via-orange-500 to-amber-500 text-white font-bold text-xs shadow-md shadow-orange-500/20 flex items-center gap-1.5 apple-pressable active:scale-97 self-stretch sm:self-auto justify-center shrink-0"
+          >
+            <span>Publicar Check-in ⚡</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* LISTA DE ACTIVIDADES ESTILO TARJETA DE HOY */}
       {activities.length === 0 ? (
@@ -574,6 +644,15 @@ export const CardioView: React.FC<CardioViewProps> = ({
               </div>
             </div>
 
+            {/* Botón Publicar Check-in en tu Tribu desde Detalle */}
+            <button
+              onClick={() => handleOpenCheckIn(selectedActivity)}
+              className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-[#FC5200] via-orange-500 to-amber-500 text-white font-bold text-xs shadow-md shadow-orange-500/20 flex items-center justify-center gap-2 apple-pressable active:scale-97"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Publicar Check-in en tu Tribu ⚡ (+100 XP)</span>
+            </button>
+
             {/* Notas Biomecánicas (Contenedor con fondo completo sin desbordamiento) */}
             {selectedActivity.notes && (
               <div className="liquid-glass-card border border-[var(--glass-border)] rounded-2xl p-4 w-full break-words text-xs text-[var(--text-secondary)] space-y-1">
@@ -650,6 +729,14 @@ export const CardioView: React.FC<CardioViewProps> = ({
           onClose={() => setIsSimulatorModalOpen(false)}
         />
       )}
+
+      {/* Modal de Check-in en Tribu con datos de carrera precargados */}
+      <DailyCheckInSheet
+        isOpen={isCheckInOpen}
+        onClose={() => setIsCheckInOpen(false)}
+        onCheckInCreated={() => setIsCheckInOpen(false)}
+        initialData={checkInInitialData}
+      />
     </div>
   );
 };

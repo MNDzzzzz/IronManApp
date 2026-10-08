@@ -1,12 +1,15 @@
 // ====================================================================
-// SUITE DE TESTS: MÓDULO SOCIAL, TRIBUS, CHECK-INS Y GAMIFICACIÓN
+// SUITE DE TESTS: MÓDULO SOCIAL, TRIBUS, CHECK-INS Y GAMIFICACIÓN (100% REAL)
 // Proyecto: IronManApp (Apple Design & Privacy-First Architecture)
+// Validación completa del ciclo de vida desde Estado Cero (Zero-State)
 // ====================================================================
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  registerAthleteProfile,
+  loginAthlete,
   getUserProfile,
   getUserProfileByUsername,
   createSquadGroup,
@@ -18,10 +21,10 @@ import {
   getSquadLeaderboard,
   getMemberPublicSummary,
   generateInviteCode,
-  MASTER_ATHLETE_ID,
+  resetSocialStore,
 } from '../src/lib/socialManager';
 
-import { GET as getAuthMe } from '../src/app/api/auth/me/route';
+import { GET as getAuthMe, POST as postAuthMe } from '../src/app/api/auth/me/route';
 import { GET as getGroups, POST as postGroups } from '../src/app/api/groups/route';
 import { POST as postJoinGroup } from '../src/app/api/groups/join/route';
 import { GET as getFeed } from '../src/app/api/groups/[id]/feed/route';
@@ -45,8 +48,57 @@ function createMockRequest(url: string, method = 'GET', body?: unknown): NextReq
   });
 }
 
+// Variables compartidas para el flujo de prueba
+let testMasterAthleteId: string;
+let testFriendAthleteId: string;
+let testSquadGroupId: string;
+let testCheckInId: string;
+
+test('ESTADO CERO & REGISTRO REAL: Comienza vacío y registra perfiles auténticos', () => {
+  resetSocialStore();
+
+  // 1. Registro del atleta principal
+  const master = registerAthleteProfile({
+    name: 'Álvaro',
+    username: 'alvaro_ironman',
+    bio: 'Objetivo: Media Maratón 21K 2027 sub-2h. Disciplina de hierro.',
+    weeklyGoal: 5,
+    targetRaceName: 'Media Maratón 21K 2027',
+  });
+
+  assert.ok(master.id.startsWith('usr-'));
+  assert.equal(master.username, 'alvaro_ironman');
+  assert.equal(master.display_name, 'Álvaro');
+  assert.equal(master.current_level, 1);
+  assert.equal(master.total_xp, 0);
+  assert.equal(master.current_streak_days, 0);
+  testMasterAthleteId = master.id;
+
+  // 2. Registro del compañero
+  const friend = registerAthleteProfile({
+    name: 'Elena',
+    username: 'elena_triatlon',
+    bio: 'Entrenando para triatlón olímpico y fondos.',
+    weeklyGoal: 4,
+  });
+
+  assert.ok(friend.id.startsWith('usr-'));
+  assert.equal(friend.username, 'elena_triatlon');
+  testFriendAthleteId = friend.id;
+
+  // 3. Login por username
+  const loggedIn = loginAthlete('alvaro_ironman');
+  assert.ok(loggedIn);
+  assert.equal(loggedIn?.id, master.id);
+
+  // 4. Validación de username estricto
+  assert.throws(() => {
+    registerAthleteProfile({ name: 'Invalido', username: 'us er con espacios' });
+  }, /nombre de usuario debe tener entre 3 y 20 caracteres/);
+});
+
 test('PRIVACIDAD ESTRICTA: getMemberPublicSummary NUNCA expone datos íntimos de báscula, calorías o salud médica', () => {
-  const summary = getMemberPublicSummary(MASTER_ATHLETE_ID);
+  const summary = getMemberPublicSummary(testMasterAthleteId);
   assert.ok(summary, 'Debe devolver el resumen del atleta maestro');
 
   // Propiedades públicas válidas
@@ -86,39 +138,45 @@ test('PRIVACIDAD ESTRICTA: getMemberPublicSummary NUNCA expone datos íntimos de
 test('TRIBUS & INVITACIONES: Creación de grupo, código único de 6 caracteres y canje de invitación', () => {
   const code = generateInviteCode('TR');
   assert.ok(code.startsWith('TR'), 'El código debe comenzar con el prefijo');
-  assert.equal(code.length, 4, 'Código con prefijo de 2 letras y 2 caracteres aleatorios');
+  assert.equal(code.length, 6, 'Código con prefijo de 2 letras y 4 caracteres aleatorios (6 total)');
 
   const groupName = 'Runners del Retiro 21K';
-  const newGroup = createSquadGroup(groupName, MASTER_ATHLETE_ID, 'Grupo de entreno matutino');
+  const newGroup = createSquadGroup(groupName, testMasterAthleteId, 'Grupo de entreno matutino', '⚡');
 
   assert.ok(newGroup.id.startsWith('grp-'));
   assert.equal(newGroup.name, groupName);
-  assert.ok(newGroup.invite_code.length >= 4);
+  assert.equal(newGroup.invite_code.length, 6);
+  assert.equal(newGroup.avatar_emoji, '⚡');
+  testSquadGroupId = newGroup.id;
 
-  // Unirse al grupo recién creado con otro usuario
-  const testUserId = 'usr-test-runner-999';
-  const joinResult = joinGroupByInviteCode(newGroup.invite_code, testUserId);
+  // El creador debe pertenecer al grupo
+  const masterGroups = getUserGroups(testMasterAthleteId);
+  assert.equal(masterGroups.length, 1);
+  assert.equal(masterGroups[0].id, newGroup.id);
 
+  // Unirse al grupo recién creado con el segundo usuario (Elena)
+  const joinResult = joinGroupByInviteCode(newGroup.invite_code, testFriendAthleteId);
   assert.equal(joinResult.success, true);
   assert.ok(joinResult.group);
+  assert.equal(joinResult.group?.members_count, 2);
 
-  // Idempotencia: unirse de nuevo con el mismo usuario debe ser exitoso sin duplicar
-  const repeatJoin = joinGroupByInviteCode(newGroup.invite_code, testUserId);
+  // Idempotencia: unirse de nuevo con el mismo usuario debe ser exitoso sin duplicar miembros
+  const repeatJoin = joinGroupByInviteCode(newGroup.invite_code, testFriendAthleteId);
   assert.equal(repeatJoin.success, true);
 
   // Código inexistente debe fallar elegantemente
-  const invalidJoin = joinGroupByInviteCode('INVALID_CODE_XYZ', testUserId);
+  const invalidJoin = joinGroupByInviteCode('INVALID_CODE_XYZ', testFriendAthleteId);
   assert.equal(invalidJoin.success, false);
 });
 
 test('CHECK-IN DUAL & XP: Check-in base otorga 100 XP y Check-in de Oro con foto otorga 150 XP', () => {
-  const initialProfile = getUserProfile(MASTER_ATHLETE_ID);
+  const initialProfile = getUserProfile(testMasterAthleteId);
   const initialXP = initialProfile?.total_xp || 0;
   const initialStreak = initialProfile?.current_streak_days || 0;
 
   // 1. Check-in Base (sin foto)
   const baseCheckin = registerWorkoutCheckIn({
-    userId: MASTER_ATHLETE_ID,
+    userId: testMasterAthleteId,
     activityType: 'running',
     title: 'Rodaje 6K Ritmo Cómodo Z2',
     metrics: { distance_km: 6.0, duration_min: 34, avg_pace: '5:40 /km' },
@@ -128,19 +186,20 @@ test('CHECK-IN DUAL & XP: Check-in base otorga 100 XP y Check-in de Oro con foto
 
   assert.equal(baseCheckin.xp_awarded, 100, 'Check-in base debe otorgar 100 XP');
   assert.equal(baseCheckin.is_gold_checkin, false);
+  testCheckInId = baseCheckin.id;
 
-  const updatedProfile1 = getUserProfile(MASTER_ATHLETE_ID);
+  const updatedProfile1 = getUserProfile(testMasterAthleteId);
   assert.equal(updatedProfile1?.total_xp, initialXP + 100);
   assert.equal(updatedProfile1?.current_streak_days, initialStreak + 1);
 
   // 2. Check-in de Oro (con foto de máquina validada)
   const goldCheckin = registerWorkoutCheckIn({
-    userId: MASTER_ATHLETE_ID,
+    userId: testMasterAthleteId,
     activityType: 'strength',
     title: 'Día 2: Pierna y Prensa Inclinada',
     metrics: { volume_sets: 14, muscle_groups: ['Cuádriceps', 'Isquios'] },
     hasPhoto: true,
-    photoUrl: 'https://images.unsplash.com/gym-proof.jpg',
+    photoUrl: 'data:image/jpeg;base64,mock_photo_data',
     isGoldCheckin: true,
     geminiDetectedEquipment: 'Prensa de piernas 45 grados',
   });
@@ -149,37 +208,35 @@ test('CHECK-IN DUAL & XP: Check-in base otorga 100 XP y Check-in de Oro con foto
   assert.equal(goldCheckin.is_gold_checkin, true);
   assert.equal(goldCheckin.gemini_verification_status, 'verified');
 
-  const updatedProfile2 = getUserProfile(MASTER_ATHLETE_ID);
+  const updatedProfile2 = getUserProfile(testMasterAthleteId);
   assert.equal(updatedProfile2?.total_xp, initialXP + 100 + 150);
 });
 
 test('REACCIONES HÁPTICAS: Alternar (toggle) reacciones en tarjetas de check-in sin duplicados', () => {
-  const checkins = getSquadFeed('grp-ironman-21k-alpha');
+  const checkins = getSquadFeed(testSquadGroupId);
   assert.ok(checkins.length > 0, 'Debe haber check-ins en la tribu');
   const targetCheckin = checkins[0];
 
-  const testUser = 'usr-tester-react-01';
-
-  // 1. Añadir reacción '🔥'
-  const result1 = toggleCheckInReaction(targetCheckin.id, testUser, '🔥');
+  // 1. Añadir reacción '🔥' de Elena
+  const result1 = toggleCheckInReaction(targetCheckin.id, testFriendAthleteId, '🔥');
   assert.equal(result1.added, true, 'Debe haber añadido la reacción');
   const foundReaction = result1.checkin.reactions?.find(
-    (r) => r.user_id === testUser && r.emoji === '🔥'
+    (r) => r.user_id === testFriendAthleteId && r.emoji === '🔥'
   );
   assert.ok(foundReaction, 'La reacción debe estar presente en la lista');
 
   // 2. Pulsar de nuevo el mismo emoji debe retirarlo (toggle off)
-  const result2 = toggleCheckInReaction(targetCheckin.id, testUser, '🔥');
+  const result2 = toggleCheckInReaction(targetCheckin.id, testFriendAthleteId, '🔥');
   assert.equal(result2.added, false, 'Debe haber retirado la reacción al pulsar de nuevo');
   const notFound = result2.checkin.reactions?.find(
-    (r) => r.user_id === testUser && r.emoji === '🔥'
+    (r) => r.user_id === testFriendAthleteId && r.emoji === '🔥'
   );
   assert.equal(notFound, undefined, 'La reacción no debe existir tras el toggle');
 });
 
 test('LEADERBOARD SEMANAL: Clasificación ordenada por XP semanal y formato de podio', () => {
-  const leaderboard = getSquadLeaderboard('grp-ironman-21k-alpha', MASTER_ATHLETE_ID);
-  assert.ok(leaderboard.length >= 3, 'Debe contener los miembros de la tribu');
+  const leaderboard = getSquadLeaderboard(testSquadGroupId, testMasterAthleteId);
+  assert.ok(leaderboard.length >= 2, 'Debe contener los miembros de la tribu');
 
   // Comprobar orden descendente de XP semanal
   for (let i = 0; i < leaderboard.length - 1; i++) {
@@ -187,49 +244,61 @@ test('LEADERBOARD SEMANAL: Clasificación ordenada por XP semanal y formato de p
       leaderboard[i].weekly_xp >= leaderboard[i + 1].weekly_xp,
       'Los miembros deben estar ordenados de mayor a menor XP semanal'
     );
-    assert.equal(leaderboard[i].rank, i + 1, 'Los rangos deben ser correlativos 1, 2, 3...');
+    assert.equal(leaderboard[i].rank, i + 1, 'Los rangos deben ser correlativos 1, 2...');
   }
 
   // Comprobar que el usuario activo está correctamente señalado
-  const currentUserEntry = leaderboard.find((e) => e.user_id === MASTER_ATHLETE_ID);
+  const currentUserEntry = leaderboard.find((e) => e.user_id === testMasterAthleteId);
   assert.ok(currentUserEntry);
   assert.equal(currentUserEntry?.is_current_user, true);
 });
 
 test('API ROUTES SOCIALES: Verificación de contratos HTTP 200 y DTOs seguros', async () => {
-  // 1. GET /api/auth/me
-  const reqAuth = createMockRequest('http://localhost:3000/api/auth/me');
+  // 1. GET /api/auth/me (con ID explícito)
+  const reqAuth = createMockRequest(`http://localhost:3000/api/auth/me?userId=${testMasterAthleteId}`);
   const resAuth = await getAuthMe(reqAuth);
   const dataAuth = await resAuth.json();
   assert.equal(resAuth.status, 200);
   assert.equal(dataAuth.success, true);
   assert.equal(dataAuth.data.username, 'alvaro_ironman');
 
-  // 2. GET /api/groups
-  const reqGroups = createMockRequest('http://localhost:3000/api/groups');
+  // 2. POST /api/auth/me (Registro de nuevo atleta vía API)
+  const reqPostAuth = createMockRequest('http://localhost:3000/api/auth/me', 'POST', {
+    name: 'Carlos Runner',
+    username: 'carlos_speed',
+    bio: 'Fondista 10K',
+    weeklyGoal: 4,
+  });
+  const resPostAuth = await postAuthMe(reqPostAuth);
+  const dataPostAuth = await resPostAuth.json();
+  assert.equal(resPostAuth.status, 201);
+  assert.equal(dataPostAuth.data.username, 'carlos_speed');
+
+  // 3. GET /api/groups
+  const reqGroups = createMockRequest(`http://localhost:3000/api/groups?userId=${testMasterAthleteId}`);
   const resGroups = await getGroups(reqGroups);
   const dataGroups = await resGroups.json();
   assert.equal(resGroups.status, 200);
   assert.ok(Array.isArray(dataGroups.data));
 
-  // 3. GET /api/groups/[id]/feed
-  const reqFeed = createMockRequest('http://localhost:3000/api/groups/grp-ironman-21k-alpha/feed');
-  const resFeed = await getFeed(reqFeed, { params: { id: 'grp-ironman-21k-alpha' } });
+  // 4. GET /api/groups/[id]/feed
+  const reqFeed = createMockRequest(`http://localhost:3000/api/groups/${testSquadGroupId}/feed`);
+  const resFeed = await getFeed(reqFeed, { params: { id: testSquadGroupId } });
   const dataFeed = await resFeed.json();
   assert.equal(resFeed.status, 200);
   assert.ok(Array.isArray(dataFeed.data));
 
-  // 4. GET /api/groups/[id]/leaderboard
-  const reqLead = createMockRequest('http://localhost:3000/api/groups/grp-ironman-21k-alpha/leaderboard');
-  const resLead = await getLeaderboard(reqLead, { params: { id: 'grp-ironman-21k-alpha' } });
+  // 5. GET /api/groups/[id]/leaderboard
+  const reqLead = createMockRequest(`http://localhost:3000/api/groups/${testSquadGroupId}/leaderboard?userId=${testMasterAthleteId}`);
+  const resLead = await getLeaderboard(reqLead, { params: { id: testSquadGroupId } });
   const dataLead = await resLead.json();
   assert.equal(resLead.status, 200);
   assert.ok(Array.isArray(dataLead.data));
 
-  // 5. GET /api/groups/[id]/members/[userId] (Perfil no intrusivo)
-  const reqMember = createMockRequest(`http://localhost:3000/api/groups/grp-ironman-21k-alpha/members/${MASTER_ATHLETE_ID}`);
+  // 6. GET /api/groups/[id]/members/[userId] (Perfil no intrusivo)
+  const reqMember = createMockRequest(`http://localhost:3000/api/groups/${testSquadGroupId}/members/${testMasterAthleteId}`);
   const resMember = await getMemberSummary(reqMember, {
-    params: { id: 'grp-ironman-21k-alpha', userId: MASTER_ATHLETE_ID },
+    params: { id: testSquadGroupId, userId: testMasterAthleteId },
   });
   const dataMember = await resMember.json();
   assert.equal(resMember.status, 200);
@@ -237,8 +306,9 @@ test('API ROUTES SOCIALES: Verificación de contratos HTTP 200 y DTOs seguros', 
   assert.equal(dataMember.data.weight_kg, undefined);
   assert.equal(dataMember.data.calories, undefined);
 
-  // 6. POST /api/checkins
+  // 7. POST /api/checkins
   const reqPostCheckin = createMockRequest('http://localhost:3000/api/checkins', 'POST', {
+    userId: testMasterAthleteId,
     activityType: 'strength',
     title: 'Test Workout API Series',
     metrics: { volume_sets: 12 },
@@ -248,10 +318,10 @@ test('API ROUTES SOCIALES: Verificación de contratos HTTP 200 y DTOs seguros', 
   assert.equal(resPostCheckin.status, 201);
   assert.equal(dataPostCheckin.success, true);
 
-  // 7. POST /api/checkins/reactions
+  // 8. POST /api/checkins/reactions
   const reqPostReac = createMockRequest('http://localhost:3000/api/checkins/reactions', 'POST', {
     checkinId: dataPostCheckin.data.id,
-    userId: MASTER_ATHLETE_ID,
+    userId: testMasterAthleteId,
     emoji: '💪',
   });
   const resPostReac = await postReaction(reqPostReac);
@@ -259,7 +329,7 @@ test('API ROUTES SOCIALES: Verificación de contratos HTTP 200 y DTOs seguros', 
   assert.equal(resPostReac.status, 200);
   assert.equal(dataPostReac.success, true);
 
-  // 8. POST /api/checkins/verify-photo (Fallback / Mock dev)
+  // 9. POST /api/checkins/verify-photo (Fallback / Mock dev)
   const reqVerifyPhoto = createMockRequest('http://localhost:3000/api/checkins/verify-photo', 'POST', {
     imageBase64: 'mock_base64_gym_photo_data',
     mimeType: 'image/jpeg',
