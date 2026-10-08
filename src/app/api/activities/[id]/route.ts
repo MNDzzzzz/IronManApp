@@ -8,7 +8,13 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    if (!params.id || params.id === 'strava-upload') {
+      return NextResponse.json({ error: 'Endpoint strava-upload requiere método POST' }, { status: 405 });
+    }
     const activityId = Number(params.id);
+    if (isNaN(activityId)) {
+      return NextResponse.json({ error: 'ID de actividad no válido' }, { status: 400 });
+    }
 
     if (isSupabaseConfigured && supabaseAdmin) {
       const { data, error } = await supabaseAdmin

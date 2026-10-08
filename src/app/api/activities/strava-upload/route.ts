@@ -7,6 +7,14 @@ function getSpainTodayStr(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date());
 }
 
+export async function GET(): Promise<NextResponse> {
+  return NextResponse.json({
+    status: 'online',
+    service: 'IronMan Strava AI Vision OCR & Biomechanical Assessment',
+    models: ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite'],
+  });
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
@@ -89,40 +97,69 @@ Si la imagen NO es de deporte o carrera, devuelve:
 { "is_cardio_screenshot": false }
 `;
 
-    const resGemini = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(6000),
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: prompt },
+    // Modelos oficiales de visión multimodal activos con respaldo en cascada
+    const visionModels = [
+      'gemini-3.5-flash',
+      'gemini-3.8-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-flash-latest',
+    ];
+
+    let analysis: any = null;
+    let lastError: string = '';
+
+    for (const model of visionModels) {
+      try {
+        const resGemini = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: AbortSignal.timeout(15000),
+            body: JSON.stringify({
+              contents: [
                 {
-                  inline_data: {
-                    mime_type: mimeType,
-                    data: imageBase64,
-                  },
+                  parts: [
+                    { text: prompt },
+                    {
+                      inline_data: {
+                        mime_type: mimeType,
+                        data: imageBase64,
+                      },
+                    },
+                  ],
                 },
               ],
-            },
-          ],
-          generationConfig: {
-            responseMimeType: 'application/json',
-          },
-        }),
-      }
-    );
+              generationConfig: {
+                temperature: 0.1,
+                responseMimeType: 'application/json',
+              },
+            }),
+          }
+        );
 
-    if (!resGemini.ok) {
-      throw new Error(`Fallo en Gemini Vision API: HTTP ${resGemini.status}`);
+        if (!resGemini.ok) {
+          lastError = `Modelo ${model}: HTTP ${resGemini.status}`;
+          console.warn(`Aviso Gemini Vision (${model}): HTTP ${resGemini.status}`);
+          continue;
+        }
+
+        const dataGemini = await resGemini.json();
+        const rawText = dataGemini.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (rawText) {
+          const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+          analysis = JSON.parse(cleanJson);
+          if (analysis) break;
+        }
+      } catch (geminiErr: any) {
+        lastError = geminiErr?.message || String(geminiErr);
+        console.warn(`Fallo intentando analizar captura con ${model}:`, lastError);
+      }
     }
 
-    const dataGemini = await resGemini.json();
-    const rawText = dataGemini.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    const analysis = JSON.parse(rawText);
+    if (!analysis) {
+      throw new Error(`Fallo en Gemini Vision API (${lastError || 'todos los modelos no disponibles'})`);
+    }
 
     if (!analysis.is_cardio_screenshot) {
       return NextResponse.json({

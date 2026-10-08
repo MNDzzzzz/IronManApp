@@ -193,7 +193,7 @@ async function analyzeStravaScreenshotWithGemini(
   elevation_profile?: string;
   coach_assessment?: string;
 } | null> {
-  const visionModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
+  const visionModels = ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
   const todayStr = getSpainTodayStr();
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
@@ -304,7 +304,7 @@ async function transcribeAudioWithGemini(
   audioData: { base64: string; mimeType: string },
   apiKey: string
 ): Promise<string | null> {
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+  const models = ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
 
   for (const model of models) {
     try {
@@ -1169,7 +1169,7 @@ DEVUELVE EXCLUSIVAMENTE UN OBJETO JSON VÁLIDO CON ESTE FORMATO EXACTO (sin mark
 `;
 
   // Modelos oficiales de ultra-baja latencia (prioridad Flash 2.0 y 1.5)
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+  const models = ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
 
   for (const model of models) {
     try {

@@ -178,8 +178,8 @@ export async function transcribeAudioWithGemini(
     rawMime = 'audio/mp4';
   }
 
-  // Modelos oficiales de ultra-baja latencia y fidelidad auditiva
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+  // Modelos oficiales de ultra-baja latencia y fidelidad auditiva activos
+  const models = ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
 
   for (const model of models) {
     try {
@@ -642,7 +642,7 @@ Analiza el mensaje o audio y responde EXCLUSIVAMENTE un objeto JSON válido con 
 }
 `;
 
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+  const models = ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
 
   for (const model of models) {
     try {
