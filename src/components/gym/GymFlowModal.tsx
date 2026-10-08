@@ -160,7 +160,7 @@ export const GymFlowModal: React.FC<GymFlowModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="gym-flow-title"
-      className="fixed inset-0 z-50 bg-[#0A0D14]/95 backdrop-blur-xl text-white flex flex-col justify-between p-4 sm:p-6 overflow-y-auto select-none"
+      className="fixed inset-0 z-50 bg-[#0A0D14]/95 backdrop-blur-xl text-white flex flex-col justify-between p-4 sm:p-6 overflow-y-auto select-none animate-apple-fade-in"
     >
       {/* Barra Superior de Control */}
       <div className="flex items-center justify-between border-b border-white/10 pb-3">

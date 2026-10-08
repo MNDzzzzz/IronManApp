@@ -7,12 +7,30 @@
 // Idioma: Español (Strict TypeScript / Clean Architecture)
 // ====================================================================
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Wifi, WifiOff, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { useOfflineSync } from '@/lib/offline/useOfflineSync';
 
 export const SyncStatusPill: React.FC = () => {
+  const [isMounted, setIsMounted] = useState(false);
   const { isOnline, isSyncing, pendingCount, syncNow } = useOfflineSync();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Durante la hidratación SSR, renderizar un placeholder estricto idéntico al servidor
+  if (!isMounted) {
+    return (
+      <div
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium liquid-glass-pill text-emerald-600 dark:text-emerald-400 select-none transition-all"
+        title="Todos los datos están sincronizados en la nube"
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        <span className="hidden sm:inline font-mono text-[10px]">Al día</span>
+      </div>
+    );
+  }
 
   // Si está online y sin cambios pendientes, mostrar indicador de sincronizado minimalista
   if (isOnline && pendingCount === 0 && !isSyncing) {

@@ -18,6 +18,16 @@ interface StravaUploadModalProps {
   onActivitySaved?: (activity: CardioActivity) => void;
 }
 
+interface StravaUploadResult {
+  success: boolean;
+  activity: CardioActivity;
+  analysis?: {
+    paceStr?: string;
+    coachAssessment?: string;
+    splits?: Array<{ km: number; pace: string; elevation_diff_m?: number }>;
+  };
+}
+
 export const StravaUploadModal: React.FC<StravaUploadModalProps> = ({
   isOpen,
   onClose,
@@ -27,7 +37,7 @@ export const StravaUploadModal: React.FC<StravaUploadModalProps> = ({
   const [mimeType, setMimeType] = useState<string>('image/jpeg');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<any | null>(null);
+  const [result, setResult] = useState<StravaUploadResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -76,8 +86,9 @@ export const StravaUploadModal: React.FC<StravaUploadModalProps> = ({
       if (onActivitySaved && data.activity) {
         onActivitySaved(data.activity);
       }
-    } catch (err: any) {
-      setError(err.message || 'Error de conexión analizando la captura');
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Error de conexión analizando la captura';
+      setError(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -91,8 +102,8 @@ export const StravaUploadModal: React.FC<StravaUploadModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-lg rounded-3xl liquid-glass-card border border-[var(--glass-border)] shadow-2xl overflow-hidden p-6 max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-apple-fade-in">
+      <div className="relative w-full max-w-lg rounded-3xl liquid-glass-card border border-[var(--glass-border)] shadow-2xl overflow-hidden p-6 max-h-[90vh] flex flex-col animate-apple-scale-in">
         {/* Cabecera */}
         <div className="flex items-center justify-between pb-4 border-b border-[var(--glass-border)]">
           <div className="flex items-center gap-2.5">
@@ -248,7 +259,7 @@ export const StravaUploadModal: React.FC<StravaUploadModalProps> = ({
                     Parciales km a km
                   </span>
                   <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
-                    {result.analysis.splits.map((s: any, idx: number) => (
+                    {result.analysis.splits.map((s, idx: number) => (
                       <div
                         key={idx}
                         className="flex items-center justify-between p-2 rounded-xl liquid-glass-pill text-xs font-mono"

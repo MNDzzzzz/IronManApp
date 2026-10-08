@@ -166,7 +166,15 @@ export async function transcribeAudioWithGemini(
   audioData: { base64: string; mimeType: string },
   apiKey: string
 ): Promise<string | null> {
-  // Modelos oficiales de ultra-baja latencia y fidelidad auditiva (prioridad Flash 2.0 y 1.5)
+  if (!apiKey || !audioData.base64) return null;
+
+  // Normalizar mimeType para compatibilidad estricta con Google Gemini API
+  let rawMime = (audioData.mimeType || 'audio/webm').split(';')[0].trim().toLowerCase();
+  if (rawMime === 'audio/x-m4a' || rawMime === 'audio/m4a') {
+    rawMime = 'audio/mp4';
+  }
+
+  // Modelos oficiales de ultra-baja latencia y fidelidad auditiva
   const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
 
   for (const model of models) {
@@ -176,14 +184,14 @@ export async function transcribeAudioWithGemini(
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(3500),
+          signal: AbortSignal.timeout(8000),
           body: JSON.stringify({
             contents: [{
               parts: [
                 { text: 'Transcribe este audio palabra por palabra en español sin inventar nada. Devuelve solo la transcripción literal exacta.' },
                 {
                   inline_data: {
-                    mime_type: audioData.mimeType,
+                    mime_type: rawMime,
                     data: audioData.base64,
                   },
                 },
@@ -605,9 +613,11 @@ Analiza el mensaje o audio y responde EXCLUSIVAMENTE un objeto JSON válido con 
     try {
       const parts: any[] = [{ text: prompt }];
       if (audioData) {
+        let rawMime = (audioData.mimeType || 'audio/webm').split(';')[0].trim().toLowerCase();
+        if (rawMime === 'audio/x-m4a' || rawMime === 'audio/m4a') rawMime = 'audio/mp4';
         parts.push({
           inline_data: {
-            mime_type: audioData.mimeType,
+            mime_type: rawMime,
             data: audioData.base64,
           },
         });
@@ -620,7 +630,7 @@ Analiza el mensaje o audio y responde EXCLUSIVAMENTE un objeto JSON válido con 
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(4000),
+          signal: AbortSignal.timeout(8000),
           body: JSON.stringify({
             contents: [{ parts }],
             generationConfig: {

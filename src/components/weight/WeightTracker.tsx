@@ -162,7 +162,7 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
   };
 
   return (
-    <div className="p-4 rounded-3xl liquid-glass-card border border-[var(--glass-border)] shadow-xl space-y-4">
+    <div className="liquid-glass-card p-4 sm:p-6 rounded-3xl space-y-4">
       {/* Encabezado con KPI de Peso y Botón */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
@@ -187,39 +187,39 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
       </div>
 
       {/* Tarjetas de Resumen KPI */}
-      <div className="grid grid-cols-3 gap-2 pt-1">
-        <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left">
-          <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Actual</span>
-          <div className="text-lg font-black text-[var(--text-primary)] mt-0.5 font-mono">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 pt-1">
+        <div className="p-2.5 sm:p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left min-w-0">
+          <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[var(--text-secondary)] block truncate">Actual</span>
+          <div className="text-base sm:text-lg font-black text-[var(--text-primary)] mt-0.5 font-mono truncate data-tabular">
             {latestWeight.toFixed(1)} <span className="text-[10px] font-normal text-[var(--text-secondary)]">kg</span>
           </div>
-          <span className="text-[10px] text-[var(--text-tertiary)]">Registro</span>
+          <span className="text-[9px] sm:text-[10px] text-[var(--text-tertiary)] block truncate">Registro</span>
         </div>
 
-        <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left">
-          <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Variación</span>
+        <div className="p-2.5 sm:p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left min-w-0">
+          <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[var(--text-secondary)] block truncate">Variación</span>
           <div
-            className={`text-lg font-black mt-0.5 flex items-center gap-0.5 font-mono ${
+            className={`text-base sm:text-lg font-black mt-0.5 flex items-center gap-0.5 font-mono truncate data-tabular ${
               totalChangeKg <= 0 ? 'text-emerald-500' : 'text-amber-500'
             }`}
           >
             {totalChangeKg <= 0 ? (
-              <TrendingDown className="w-4 h-4 inline" />
+              <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline shrink-0" />
             ) : (
-              <TrendingUp className="w-4 h-4 inline" />
+              <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 inline shrink-0" />
             )}
             <span>{totalChangeKg > 0 ? `+${totalChangeKg}` : totalChangeKg}</span>
             <span className="text-[10px] font-normal text-[var(--text-secondary)]">kg</span>
           </div>
-          <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Recomposición</span>
+          <span className="text-[9px] sm:text-[10px] text-emerald-600 dark:text-emerald-400 block truncate">Recomposición</span>
         </div>
 
-        <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left">
-          <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block">Inicio</span>
-          <div className="text-lg font-black text-[var(--text-primary)] mt-0.5 font-mono">
+        <div className="p-2.5 sm:p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left min-w-0">
+          <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[var(--text-secondary)] block truncate">Inicio</span>
+          <div className="text-base sm:text-lg font-black text-[var(--text-primary)] mt-0.5 font-mono truncate data-tabular">
             {initialWeight.toFixed(1)} <span className="text-[10px] font-normal text-[var(--text-secondary)]">kg</span>
           </div>
-          <span className="text-[10px] text-[var(--text-tertiary)]">Punto de partida</span>
+          <span className="text-[9px] sm:text-[10px] text-[var(--text-tertiary)] block truncate">Punto de partida</span>
         </div>
       </div>
 
@@ -248,7 +248,7 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
       </div>
 
       {/* Gráfica Recharts */}
-      <div className="w-full h-56 pt-2">
+      <div className="w-full min-w-0 overflow-hidden h-56 pt-2">
         {isMounted ? (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 10, right: 8, left: -22, bottom: 0 }}>

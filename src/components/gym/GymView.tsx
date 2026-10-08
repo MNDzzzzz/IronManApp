@@ -308,10 +308,10 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
         <div className="space-y-2">
           <button
             onClick={() => setIsGymFlowOpen(true)}
-            className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-teal-500/15 to-emerald-500/20 border border-emerald-500/40 hover:border-emerald-500 text-xs font-black text-emerald-600 dark:text-emerald-400 transition-all flex items-center justify-center gap-2 active:scale-98 shadow-md"
+            className="w-full py-3 px-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 hover:border-emerald-500/50 text-xs font-bold text-emerald-600 dark:text-emerald-400 transition-all flex items-center justify-center gap-2 active:scale-98 shadow-sm"
           >
-            <Flame className="w-4 h-4 text-emerald-500 animate-pulse" />
-            <span>ACTIVAR MODO EN SALA (GYM FLOW) • TEMPORIZADOR HÁPTICO</span>
+            <Flame className="w-4 h-4 text-emerald-500" />
+            <span className="editorial-heading">Modo en Sala (Gym Flow) • Temporizador Háptico</span>
           </button>
 
           <div className="flex items-center gap-2">
@@ -320,14 +320,14 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
               className="flex-1 py-2.5 px-3 rounded-2xl liquid-glass-card border border-[var(--glass-border)] hover:border-[#2D68C4]/40 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex items-center justify-center gap-1.5 active:scale-98 shadow-sm"
             >
               <ArrowLeftRight className="w-3.5 h-3.5 text-[#D97757]" />
-              <span>Reorganizar Días</span>
+              <span className="editorial-heading">Reorganizar Días</span>
             </button>
             <button
               onClick={() => setIsExerciseModalOpen(true)}
               className="flex-1 py-2.5 px-3 rounded-2xl liquid-glass-card border border-[var(--glass-border)] hover:border-[#2D68C4]/40 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex items-center justify-center gap-1.5 active:scale-98 shadow-sm"
             >
               <Sliders className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Personalizar Ejercicios</span>
+              <span className="editorial-heading">Personalizar Ejercicios</span>
             </button>
           </div>
         </div>
@@ -335,232 +335,157 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
 
       {activeTab === 'routine' ? (
         <>
-          {/* PANEL DE REGISTRO RÁPIDO DE SERIE */}
-          <div className="p-4 rounded-3xl liquid-glass-card border border-[var(--glass-border)] shadow-xl space-y-3.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs uppercase font-bold tracking-wider text-[#2D68C4] dark:text-[#5B95E0] flex items-center gap-1.5">
-                <Dumbbell className="w-3.5 h-3.5" /> Registrar Serie #{nextSetNumber}
-              </span>
-              <span className="text-[10px] text-[var(--text-tertiary)] font-mono">
-                {currentExerciseLogs.length} series registradas hoy
-              </span>
-            </div>
+          {/* PANEL DE REGISTRO RÁPIDO DE SERIE (APPLE BENTO) */}
+          <div className="liquid-glass-card p-5 sm:p-6 rounded-3xl space-y-4">
+            {/* Cabecera del panel con selector de ejercicio */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase font-bold tracking-wider text-[#2D68C4] dark:text-[#5B95E0] flex items-center gap-1.5 editorial-heading">
+                  <Dumbbell className="w-3.5 h-3.5" /> Serie #{nextSetNumber}
+                </span>
+                <span className="text-[11px] text-[var(--text-tertiary)] font-mono data-tabular">
+                  {currentExerciseLogs.length} registradas hoy
+                </span>
+              </div>
 
-            {/* Selector de Ejercicio */}
-            <div>
-              <label className="text-[11px] text-[var(--text-secondary)] block mb-1 font-medium">Ejercicio a registrar</label>
+              {/* Selector de Ejercicio Minimalista */}
               <select
                 value={selectedExerciseId}
                 onChange={(e) => handleSelectExercise(e.target.value)}
-                className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-semibold focus:outline-none focus:border-[#2D68C4]"
+                className="w-full p-3 rounded-2xl bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#2D68C4] transition-all"
               >
                 {filteredExercises.map((ex) => (
                   <option key={ex.id} value={ex.id}>
-                    {ex.name} ({ex.current_weight_kg !== undefined ? (ex.current_weight_kg > 0 ? `${ex.current_weight_kg}kg` : 'PC') : 'Por determinar'})
+                    {ex.name} • {ex.target_sets || 3}x{ex.target_reps || '8-10'} {ex.current_weight_kg !== undefined && ex.current_weight_kg > 0 ? `(${ex.current_weight_kg}kg)` : ''}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Tarjeta de Especificación y Enfoque del Ejercicio */}
-            {selectedExercise && (
-              <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] space-y-1 text-xs">
-                <div className="flex items-center justify-between text-[var(--text-secondary)]">
-                  <span className="font-semibold text-[#2D68C4] dark:text-[#5B95E0]">
-                    Objetivo: {selectedExercise.target_sets || 3}x {selectedExercise.target_reps || '8-10 reps'}
-                  </span>
-                  {selectedExercise.rest_time && (
-                    <span className="text-[10px] text-[var(--text-tertiary)] flex items-center gap-1 font-mono">
-                      <Clock className="w-3 h-3 text-[var(--text-tertiary)]" /> {selectedExercise.rest_time}
-                    </span>
-                  )}
-                </div>
-                {selectedExercise.notes && (
-                  <p className="text-[11px] text-[var(--text-secondary)] leading-snug">
-                    <span className="text-[var(--text-tertiary)] font-medium">Clave:</span> {selectedExercise.notes}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Banner de Referencia de Sobrecarga Progresiva */}
+            {/* Referencia previa sutil (1 sola línea) */}
             {referenceSet.source === 'today_previous_set' ? (
-              <div className="p-3 rounded-2xl bg-[#2D68C4]/10 border border-[#2D68C4]/20 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-[#2D68C4]/20 text-[#2D68C4] dark:text-[#5B95E0] flex items-center justify-center shrink-0">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-[#2D68C4] dark:text-[#5B95E0] font-bold uppercase tracking-wider">
-                      {referenceSet.label}
-                    </div>
-                    <div className="text-[var(--text-primary)] font-black text-sm">
-                      {referenceSet.reps} reps @{' '}
-                      {referenceSet.weight_kg > 0 ? `${referenceSet.weight_kg} kg` : 'Peso Corporal'}
-                      <span className="text-[10px] font-normal text-[var(--text-tertiary)] ml-1.5 font-mono">
-                        (RPE {referenceSet.rpe})
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#2D68C4]/20 text-[#2D68C4] dark:text-[#5B95E0] font-bold border border-[#2D68C4]/30">
-                    Hoy
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#2D68C4]/10 border border-[#2D68C4]/20 text-xs">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-3.5 h-3.5 text-[#2D68C4]" />
+                  <span className="text-[11px] font-semibold text-[var(--text-primary)]">
+                    Previa hoy: <strong className="font-mono text-[#2D68C4]">{referenceSet.reps} reps @ {referenceSet.weight_kg > 0 ? `${referenceSet.weight_kg} kg` : 'PC'}</strong> (RPE {referenceSet.rpe})
                   </span>
-                  <p className="text-[9px] text-[var(--text-tertiary)] mt-0.5">Serie previa</p>
                 </div>
+                <span className="text-[10px] font-mono text-[#2D68C4] font-bold">Hoy</span>
               </div>
             ) : referenceSet.source === 'last_session_benchmark' ? (
-              <div className="p-3 rounded-2xl bg-[#D97757]/10 border border-[#D97757]/20 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-[#D97757]/20 text-[#D97757] flex items-center justify-center shrink-0">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-[#D97757] font-bold uppercase tracking-wider">
-                      {referenceSet.label}
-                    </div>
-                    <div className="text-[var(--text-primary)] font-black text-sm">
-                      {referenceSet.reps} reps @{' '}
-                      {referenceSet.weight_kg > 0 ? `${referenceSet.weight_kg} kg` : 'Peso Corporal'}
-                      <span className="text-[10px] font-normal text-[var(--text-tertiary)] ml-1.5 font-mono">
-                        (RPE {referenceSet.rpe})
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#D97757]/20 text-[#D97757] font-bold border border-[#D97757]/30">
-                    Sobrecarga +
-                  </span>
-                  <p className="text-[9px] text-[var(--text-tertiary)] mt-0.5">Preestablecido</p>
-                </div>
-              </div>
-            ) : referenceSet.source === 'exercise_target' ? (
-              <div className="p-2.5 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs text-[var(--text-secondary)] flex items-center justify-between">
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#D97757]/10 border border-[#D97757]/20 text-xs">
                 <div className="flex items-center gap-2">
-                  <Info className="w-4 h-4 text-[#2D68C4] shrink-0" />
-                  <span>Objetivo inicial: {referenceSet.reps} reps @ {referenceSet.weight_kg > 0 ? `${referenceSet.weight_kg} kg` : 'Peso Corporal'}</span>
+                  <TrendingUp className="w-3.5 h-3.5 text-[#D97757]" />
+                  <span className="text-[11px] font-semibold text-[var(--text-primary)]">
+                    Récord previo: <strong className="font-mono text-[#D97757]">{referenceSet.reps} reps @ {referenceSet.weight_kg > 0 ? `${referenceSet.weight_kg} kg` : 'PC'}</strong> (RPE {referenceSet.rpe})
+                  </span>
                 </div>
-                <span className="text-[9px] text-[var(--text-tertiary)]">Catálogo</span>
+                <span className="text-[10px] font-mono text-[#D97757] font-bold">Histórico</span>
               </div>
-            ) : (
-              <div className="p-2.5 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs text-[var(--text-secondary)] flex items-center gap-2">
-                <Info className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" />
-                <span>Sin registros previos. Registra tu carga base de partida.</span>
-              </div>
-            )}
+            ) : null}
 
-            {/* Botones de Acción de Sobrecarga Progresiva a 1-Tap */}
-            <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-[#D97757]" /> Sobrecarga Progresiva a 1-Tap
+            {/* Fila de Sobrecarga Progresiva a 1-Tap */}
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => handleApplyOverload('same')}
+                className={`p-2.5 rounded-2xl border text-center transition-all apple-btn-spring flex flex-col items-center justify-between ${
+                  activeOverloadPreset === 'same' ||
+                  (weightKg === overloadOptions.same.weight_kg && reps === overloadOptions.same.reps)
+                    ? 'bg-[#2D68C4]/20 border-[#2D68C4] ring-1 ring-[#2D68C4] text-[var(--text-primary)] shadow-sm'
+                    : 'bg-[var(--glass-surface)] border-[var(--glass-border)] text-[var(--text-primary)] hover:border-[#2D68C4]/40'
+                }`}
+                title="Repetir serie previa"
+              >
+                <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                  {overloadOptions.same.badgeText}
                 </span>
-                <span className="text-[9px] text-[var(--text-tertiary)]">Pre-llena al instante</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {/* 1. = Serie previa */}
-                <button
-                  type="button"
-                  onClick={() => handleApplyOverload('same')}
-                  className={`p-2.5 rounded-xl border text-center transition-all active:scale-95 flex flex-col items-center justify-between ${
-                    activeOverloadPreset === 'same' ||
-                    (weightKg === overloadOptions.same.weight_kg && reps === overloadOptions.same.reps)
-                      ? 'bg-[#2D68C4]/20 border-[#2D68C4] ring-1 ring-[#2D68C4] text-[var(--text-primary)] shadow-sm'
-                      : 'bg-[var(--glass-surface-thick)] border-[var(--glass-border)] text-[var(--text-primary)] hover:border-[#2D68C4]/50'
-                  }`}
-                  title="Pre-llenar con la misma carga y repeticiones"
-                >
-                  <span className="text-[8px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                    {overloadOptions.same.badgeText}
-                  </span>
-                  <span className="text-xs font-black my-0.5 text-[var(--text-primary)]">
-                    {overloadOptions.same.label}
-                  </span>
-                  <span className="text-[10px] font-mono text-[#2D68C4] dark:text-[#5B95E0] font-bold">
-                    {overloadOptions.same.displayText}
-                  </span>
-                </button>
+                <span className="text-xs font-bold my-0.5 text-[var(--text-primary)]">
+                  {overloadOptions.same.label}
+                </span>
+                <span className="text-[10px] font-mono text-[#2D68C4] font-bold data-tabular">
+                  {overloadOptions.same.displayText}
+                </span>
+              </button>
 
-                {/* 2. +2.5 kg */}
-                <button
-                  type="button"
-                  onClick={() => handleApplyOverload('weight_plus')}
-                  className={`p-2.5 rounded-xl border text-center transition-all active:scale-95 flex flex-col items-center justify-between ${
-                    activeOverloadPreset === 'weight_plus' ||
-                    (weightKg === overloadOptions.weight_plus.weight_kg && reps === overloadOptions.weight_plus.reps)
-                      ? 'bg-[#D97757]/20 border-[#D97757] ring-1 ring-[#D97757] text-[var(--text-primary)] shadow-sm'
-                      : 'bg-[var(--glass-surface-thick)] border-[var(--glass-border)] text-[var(--text-primary)] hover:border-[#D97757]/50'
-                  }`}
-                  title="Incrementar 2.5 kg sobre la serie de referencia"
-                >
-                  <span className="text-[8px] font-bold uppercase tracking-wider text-[#D97757]">
-                    {overloadOptions.weight_plus.badgeText}
-                  </span>
-                  <span className="text-xs font-black my-0.5 text-[var(--text-primary)]">
-                    {overloadOptions.weight_plus.label}
-                  </span>
-                  <span className="text-[10px] font-mono text-[#D97757] font-bold">
-                    {overloadOptions.weight_plus.displayText}
-                  </span>
-                </button>
+              <button
+                type="button"
+                onClick={() => handleApplyOverload('weight_plus')}
+                className={`p-2.5 rounded-2xl border text-center transition-all apple-btn-spring flex flex-col items-center justify-between ${
+                  activeOverloadPreset === 'weight_plus' ||
+                  (weightKg === overloadOptions.weight_plus.weight_kg && reps === overloadOptions.weight_plus.reps)
+                    ? 'bg-[#D97757]/20 border-[#D97757] ring-1 ring-[#D97757] text-[var(--text-primary)] shadow-sm'
+                    : 'bg-[var(--glass-surface)] border-[var(--glass-border)] text-[var(--text-primary)] hover:border-[#D97757]/40'
+                }`}
+                title="Incrementar 2.5 kg"
+              >
+                <span className="text-[9px] font-bold uppercase tracking-wider text-[#D97757]">
+                  {overloadOptions.weight_plus.badgeText}
+                </span>
+                <span className="text-xs font-bold my-0.5 text-[var(--text-primary)]">
+                  {overloadOptions.weight_plus.label}
+                </span>
+                <span className="text-[10px] font-mono text-[#D97757] font-bold data-tabular">
+                  {overloadOptions.weight_plus.displayText}
+                </span>
+              </button>
 
-                {/* 3. +1 rep */}
-                <button
-                  type="button"
-                  onClick={() => handleApplyOverload('rep_plus')}
-                  className={`p-2.5 rounded-xl border text-center transition-all active:scale-95 flex flex-col items-center justify-between ${
-                    activeOverloadPreset === 'rep_plus' ||
-                    (weightKg === overloadOptions.rep_plus.weight_kg && reps === overloadOptions.rep_plus.reps)
-                      ? 'bg-emerald-500/20 border-emerald-500 ring-1 ring-emerald-500 text-[var(--text-primary)] shadow-sm'
-                      : 'bg-[var(--glass-surface-thick)] border-[var(--glass-border)] text-[var(--text-primary)] hover:border-emerald-500/50'
-                  }`}
-                  title="Incrementar 1 repetición conservando la carga"
-                >
-                  <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-400">
-                    {overloadOptions.rep_plus.badgeText}
-                  </span>
-                  <span className="text-xs font-black my-0.5 text-[var(--text-primary)]">
-                    {overloadOptions.rep_plus.label}
-                  </span>
-                  <span className="text-[10px] font-mono text-emerald-400 font-bold">
-                    {overloadOptions.rep_plus.displayText}
-                  </span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => handleApplyOverload('rep_plus')}
+                className={`p-2.5 rounded-2xl border text-center transition-all apple-btn-spring flex flex-col items-center justify-between ${
+                  activeOverloadPreset === 'rep_plus' ||
+                  (weightKg === overloadOptions.rep_plus.weight_kg && reps === overloadOptions.rep_plus.reps)
+                    ? 'bg-emerald-500/20 border-emerald-500 ring-1 ring-emerald-500 text-[var(--text-primary)] shadow-sm'
+                    : 'bg-[var(--glass-surface)] border-[var(--glass-border)] text-[var(--text-primary)] hover:border-emerald-500/40'
+                }`}
+                title="Incrementar 1 rep"
+              >
+                <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">
+                  {overloadOptions.rep_plus.badgeText}
+                </span>
+                <span className="text-xs font-bold my-0.5 text-[var(--text-primary)]">
+                  {overloadOptions.rep_plus.label}
+                </span>
+                <span className="text-[10px] font-mono text-emerald-400 font-bold data-tabular">
+                  {overloadOptions.rep_plus.displayText}
+                </span>
+              </button>
             </div>
 
-            {/* Controles Manuales de Carga (kg) y Repeticiones */}
+            {/* Controles de Carga y Repeticiones (Apple Health Big Numbers) */}
             <div className="grid grid-cols-2 gap-3">
-              {/* Carga en kg */}
-              <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
-                <span className="text-[10px] text-[var(--text-secondary)] block font-medium">Carga (kg)</span>
-                <div className="flex items-center justify-between mt-1">
+              {/* Carga (kg) */}
+              <div className="p-3.5 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] flex flex-col items-center justify-between">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-secondary)]">Carga (kg)</span>
+                <div className="flex items-center justify-between w-full my-2 px-1">
                   <button
                     type="button"
                     onClick={() => {
                       setWeightKg((w) => Math.max(0, Math.round((w - 2.5) * 10) / 10));
                       setActiveOverloadPreset(null);
                     }}
-                    className="w-8 h-8 rounded-xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold active:scale-95 transition-all flex items-center justify-center border border-[var(--glass-border)]"
+                    className="w-9 h-9 rounded-xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold apple-btn-spring flex items-center justify-center border border-[var(--glass-border)] text-base"
                   >
                     -
                   </button>
-                  <span className="text-xl font-black text-[var(--text-primary)] font-mono">{weightKg}</span>
+                  <span className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] font-mono data-tabular tracking-tight">
+                    {weightKg}
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
                       setWeightKg((w) => Math.round((w + 2.5) * 10) / 10);
                       setActiveOverloadPreset(null);
                     }}
-                    className="w-8 h-8 rounded-xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold active:scale-95 transition-all flex items-center justify-center border border-[var(--glass-border)]"
+                    className="w-9 h-9 rounded-xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold apple-btn-spring flex items-center justify-center border border-[var(--glass-border)] text-base"
                   >
                     +
                   </button>
                 </div>
-                <div className="flex justify-center gap-1 mt-2">
-                  {[-5, 2.5, 5, 10].map((inc) => (
+                <div className="flex gap-1 w-full justify-center">
+                  {[-5, 2.5, 5].map((inc) => (
                     <button
                       key={inc}
                       type="button"
@@ -568,7 +493,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                         setWeightKg((w) => Math.max(0, Math.round((w + inc) * 10) / 10));
                         setActiveOverloadPreset(null);
                       }}
-                      className="text-[9px] px-1.5 py-0.5 rounded-lg bg-[var(--glass-surface-thick)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--glass-border)] active:scale-95 transition-all"
+                      className="text-[9px] font-mono px-2 py-0.5 rounded-lg bg-[var(--glass-surface-thick)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--glass-border)] apple-btn-spring"
                     >
                       {inc > 0 ? `+${inc}` : inc}
                     </button>
@@ -577,62 +502,50 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
               </div>
 
               {/* Repeticiones */}
-              <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
-                <span className="text-[10px] text-[var(--text-secondary)] block font-medium">Repeticiones</span>
-                <div className="flex items-center justify-between mt-1">
+              <div className="p-3.5 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] flex flex-col items-center justify-between">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-secondary)]">Repeticiones</span>
+                <div className="flex items-center justify-between w-full my-2 px-1">
                   <button
                     type="button"
                     onClick={() => {
                       setReps((r) => Math.max(1, r - 1));
                       setActiveOverloadPreset(null);
                     }}
-                    className="w-8 h-8 rounded-xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold active:scale-95 transition-all flex items-center justify-center border border-[var(--glass-border)]"
+                    className="w-9 h-9 rounded-xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold apple-btn-spring flex items-center justify-center border border-[var(--glass-border)] text-base"
                   >
                     -
                   </button>
-                  <span className="text-xl font-black text-[var(--text-primary)] font-mono">{reps}</span>
+                  <span className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] font-mono data-tabular tracking-tight">
+                    {reps}
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
                       setReps((r) => r + 1);
                       setActiveOverloadPreset(null);
                     }}
-                    className="w-8 h-8 rounded-xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold active:scale-95 transition-all flex items-center justify-center border border-[var(--glass-border)]"
+                    className="w-9 h-9 rounded-xl bg-[var(--glass-surface-thick)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] font-bold apple-btn-spring flex items-center justify-center border border-[var(--glass-border)] text-base"
                   >
                     +
                   </button>
                 </div>
-                <div className="flex items-center justify-center mt-2 text-[10px] text-[var(--text-secondary)] font-mono">
-                  <span>Objetivo: {selectedExercise?.target_reps || '8-10'}</span>
+                <div className="text-[10px] font-mono text-[var(--text-secondary)] py-0.5">
+                  Meta: {selectedExercise?.target_reps || '8-10'} reps
                 </div>
               </div>
             </div>
 
-            {/* Selector Táctil de RPE Ergonómico (Escala Completa 6-10 con RIR) */}
-            <div className="p-3.5 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-wider block">
-                    Esfuerzo Percibido (RPE)
-                  </span>
-                  <span className="text-[9px] text-[var(--text-tertiary)]">
-                    {currentRpeItem.description}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-black font-mono text-[var(--text-primary)]">
-                    RPE {rpe}
-                  </span>
-                  <span
-                    className={`text-[9px] px-2 py-0.5 rounded-md font-bold ${currentRpeItem.colorClasses.badgeBg} ${currentRpeItem.colorClasses.badgeText} border ${currentRpeItem.colorClasses.border}`}
-                  >
-                    {currentRpeItem.badge}
-                  </span>
-                </div>
+            {/* Selector de RPE Compacto */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                  Esfuerzo Percibido (RPE)
+                </span>
+                <span className="font-mono text-xs font-bold text-[var(--text-primary)]">
+                  RPE {rpe} <span className="text-[10px] text-[var(--text-secondary)] font-normal font-sans">({currentRpeItem.rir})</span>
+                </span>
               </div>
-
-              {/* Banda Táctil de 8 Posiciones */}
-              <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+              <div className="grid grid-cols-4 sm:grid-cols-8 gap-1">
                 {RPE_SCALE.map((scaleItem) => {
                   const isSelected = rpe === scaleItem.value;
                   return (
@@ -640,60 +553,42 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                       key={scaleItem.value}
                       type="button"
                       onClick={() => setRpe(scaleItem.value)}
-                      className={`h-11 rounded-xl flex flex-col items-center justify-center transition-all active:scale-95 border ${
+                      className={`h-9 rounded-xl flex flex-col items-center justify-center transition-all apple-btn-spring border ${
                         isSelected
-                          ? `${scaleItem.colorClasses.activeBg} ${scaleItem.colorClasses.activeText} font-bold shadow-md ${scaleItem.colorClasses.glow} border-transparent`
-                          : `bg-[var(--glass-surface-thick)] border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--glass-border)]`
+                          ? `${scaleItem.colorClasses.activeBg} ${scaleItem.colorClasses.activeText} font-bold shadow-sm border-transparent`
+                          : `bg-[var(--glass-surface)] border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]`
                       }`}
-                      title={`RPE ${scaleItem.value} - ${scaleItem.rir}: ${scaleItem.description}`}
                     >
-                      <span className="text-xs font-black leading-none font-mono">
-                        {scaleItem.label}
-                      </span>
-                      <span
-                        className={`text-[8px] font-medium leading-tight mt-0.5 ${
-                          isSelected ? 'opacity-90' : 'text-[var(--text-tertiary)]'
-                        }`}
-                      >
-                        {scaleItem.rir}
-                      </span>
+                      <span className="text-xs font-black font-mono leading-none">{scaleItem.label}</span>
+                      <span className="text-[8px] opacity-75 mt-0.5 leading-none">{scaleItem.rir}</span>
                     </button>
                   );
                 })}
               </div>
-
-              {/* Nota Biomecánica / Prevención Articular */}
-              <div className="pt-1 border-t border-[var(--glass-border)]/50">
-                <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed italic">
-                  💡 {getRpeClinicalNote(rpe)}
-                </p>
-              </div>
             </div>
 
-            {/* Botón Guardar Serie Manual */}
+            {/* Botón Guardar Serie */}
             <button
               onClick={handleSaveSet}
               disabled={isSaving}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#2D68C4] to-[#1E4E96] text-white font-black text-xs uppercase tracking-wider active:scale-98 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 disabled:opacity-50"
+              className="w-full py-3.5 rounded-2xl bg-[#2D68C4] hover:bg-[#2557a7] text-white font-bold text-xs uppercase tracking-wider apple-btn-spring flex items-center justify-center gap-2 shadow-md shadow-[#2D68C4]/20 disabled:opacity-50 transition-all"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 stroke-[2.5]" />
               {isSaving
-                ? 'Guardando serie...'
-                : `Guardar Serie ${nextSetNumber}: ${weightKg > 0 ? `${weightKg} kg` : 'PC'} × ${reps} reps (RPE ${rpe})`}
+                ? 'Guardando...'
+                : `Guardar Serie: ${weightKg > 0 ? `${weightKg} kg` : 'PC'} × ${reps} reps (RPE ${rpe})`}
             </button>
 
             {/* Resumen de series de hoy y opción de deshacer */}
             {currentExerciseLogs.length > 0 && (
-              <div className="flex items-center justify-between pt-1 text-[11px] text-[var(--text-secondary)]">
+              <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] pt-1 px-1">
                 <span>
-                  Hoy: <strong className="text-[var(--text-primary)]">{currentExerciseLogs.length}</strong> {currentExerciseLogs.length === 1 ? 'serie' : 'series'} (
-                  {currentExerciseLogs.map((l) => `${l.reps}x${l.weight_kg > 0 ? `${l.weight_kg}k` : 'PC'}`).join(', ')})
+                  Hoy: <strong className="text-[var(--text-primary)] font-mono">{currentExerciseLogs.length}</strong> series ({currentExerciseLogs.map((l) => `${l.reps}x${l.weight_kg > 0 ? `${l.weight_kg}k` : 'PC'}`).join(', ')})
                 </span>
                 {onDeleteSet && (
                   <button
                     onClick={() => onDeleteSet(currentExerciseLogs[currentExerciseLogs.length - 1].id)}
-                    className="text-xs text-rose-500 hover:text-rose-600 flex items-center gap-1 font-semibold transition-colors active:scale-95"
-                    title="Deshacer última serie guardada"
+                    className="text-xs text-rose-500 hover:text-rose-600 flex items-center gap-1 font-semibold transition-colors apple-btn-spring"
                   >
                     <RotateCcw className="w-3 h-3" /> Deshacer
                   </button>
@@ -703,23 +598,22 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
           </div>
 
           {/* CHECKLIST DE LA RUTINA */}
-          <div className="p-4 rounded-3xl liquid-glass-card border border-[var(--glass-border)] space-y-3">
+          <div className="liquid-glass-card p-5 sm:p-6 rounded-3xl space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
-                {selectedDay === 'Todos' ? 'Todos los Ejercicios' : `Ejercicios ${selectedDay}`}
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] editorial-heading">
+                {selectedDay === 'Todos' ? 'Todos los Ejercicios' : `Ejercicios • ${selectedDay}`}
               </h3>
-              <span className="text-[10px] text-[var(--text-tertiary)] font-mono">
+              <span className="text-[11px] text-[var(--text-tertiary)] font-mono data-tabular">
                 {filteredExercises.length} ejercicios
               </span>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {filteredExercises.map((ex) => {
                 const completedSets = logs.filter((l) => l.exercise_id === ex.id && l.date === todayStr);
                 const targetSets = ex.target_sets || 3;
                 const isDone = completedSets.length >= targetSets;
 
-                // Buscar serie de referencia de la última sesión
                 const prevExLogs = logs
                   .filter((l) => l.exercise_id === ex.id && l.date !== todayStr)
                   .sort((a, b) => b.date.localeCompare(a.date) || b.set_number - a.set_number);
@@ -735,15 +629,15 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                   <div
                     key={ex.id}
                     onClick={() => handleSelectExercise(ex.id)}
-                    className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
+                    className={`p-3 rounded-2xl border transition-all flex items-center justify-between cursor-pointer apple-btn-spring ${
                       isSelected
-                        ? 'bg-[var(--glass-surface-thick)] border-[#2D68C4] ring-1 ring-[#2D68C4]/40 shadow-sm'
-                        : 'bg-[var(--glass-surface)] border-[var(--glass-border)] hover:border-[#2D68C4]/40'
+                        ? 'bg-[var(--glass-surface-thick)] border-[#2D68C4] ring-1 ring-[#2D68C4]/30 shadow-sm'
+                        : 'bg-[var(--glass-surface)] border-[var(--glass-border)] hover:border-[#2D68C4]/30'
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                        className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold font-mono ${
                           isDone ? 'bg-emerald-500/20 text-emerald-500' : 'bg-[var(--glass-surface-thick)] text-[var(--text-tertiary)]'
                         }`}
                       >
@@ -751,22 +645,22 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                       </div>
                       <div>
                         <h4 className="text-xs font-bold text-[var(--text-primary)]">{ex.name}</h4>
-                        <p className="text-[10px] text-[var(--text-secondary)]">
-                          {ex.target_sets || 3}x {ex.target_reps || '8-10'} • {ex.category}
+                        <p className="text-[10px] text-[var(--text-secondary)] font-mono">
+                          {ex.target_sets || 3}x{ex.target_reps || '8-10'} • {ex.category}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-xs font-black text-[#2D68C4] dark:text-[#5B95E0] block font-mono">
+                      <span className="text-xs font-bold text-[#2D68C4] dark:text-[#5B95E0] block font-mono data-tabular">
                         {prevBestSet
                           ? prevBestSet.weight_kg > 0
                             ? `${prevBestSet.weight_kg} kg`
-                            : 'Peso Corp.'
+                            : 'PC'
                           : ex.current_weight_kg !== undefined && ex.current_weight_kg > 0
                           ? `${ex.current_weight_kg} kg`
-                          : 'Por determinar'}
+                          : '-'}
                       </span>
-                      <span className="text-[9px] text-[var(--text-tertiary)]">
+                      <span className="text-[9px] text-[var(--text-tertiary)] font-mono">
                         {completedSets.length > 0
                           ? `${completedSets.length}/${targetSets} hoy`
                           : prevBestSet
@@ -780,15 +674,15 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
             </div>
           </div>
 
-          {/* RUTINA DE ESTIRAMIENTOS Y PREVENCIÓN RUNNING */}
-          <div className="p-4 rounded-3xl liquid-glass-card border border-[var(--glass-border)] space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" /> Movilidad & Prevención Lesiones Running
-            </h3>
-            <p className="text-[11px] text-[var(--text-secondary)]">
-              Protocolo para blindar Aquiles, rodilla (cintilla iliotibial) y fascia plantar tras el asfalto y las pesas.
-            </p>
-            <div className="space-y-2 pt-1">
+          {/* RUTINA DE MOVILIDAD & FLEXIBILIDAD */}
+          <div className="liquid-glass-card p-5 sm:p-6 rounded-3xl space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-500 flex items-center gap-1.5 editorial-heading">
+                <Sparkles className="w-3.5 h-3.5" /> Movilidad & Prevención Articular
+              </h3>
+              <span className="text-[10px] font-mono text-[var(--text-tertiary)]">Post-entreno</span>
+            </div>
+            <div className="space-y-1.5">
               {stretchExercises.map((st) => (
                 <div
                   key={st.id}
@@ -798,8 +692,8 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                     <span className="text-[var(--text-primary)] font-semibold block">{st.name}</span>
                     {st.notes && <span className="text-[10px] text-[var(--text-secondary)]">{st.notes}</span>}
                   </div>
-                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap ml-2 border border-emerald-500/20">
-                    60 seg
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap ml-2 border border-emerald-500/20 font-mono">
+                    60s
                   </span>
                 </div>
               ))}
@@ -808,22 +702,22 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
         </>
       ) : (
         /* HISTORIAL DE SERIES REGISTRADAS */
-        <div className="p-4 rounded-3xl liquid-glass-card border border-[var(--glass-border)] space-y-3.5">
+        <div className="liquid-glass-card p-5 sm:p-6 rounded-3xl space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] editorial-heading">
                 Historial de Series ({logs.length})
               </h3>
-              <span className="text-[10px] text-[var(--text-tertiary)] font-mono">
-                {sessionDates.length} sesiones registradas
+              <span className="text-[11px] text-[var(--text-tertiary)] font-mono data-tabular">
+                {sessionDates.length} sesiones
               </span>
             </div>
 
-            {/* Selector dinámico con todas las fechas reales en BBDD */}
+            {/* Selector dinámico con todas las fechas */}
             <div className="flex gap-1.5 p-1 rounded-2xl liquid-glass-pill border border-[var(--glass-border)] text-[10px] overflow-x-auto scrollbar-thin">
               <button
                 onClick={() => setHistoryDateFilter('all')}
-                className={`px-3 py-1.5 rounded-xl whitespace-nowrap font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-xl whitespace-nowrap font-bold transition-all apple-btn-spring ${
                   historyDateFilter === 'all'
                     ? 'bg-[#2D68C4] text-white shadow-sm'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -843,7 +737,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                   <button
                     key={dStr}
                     onClick={() => setHistoryDateFilter(dStr)}
-                    className={`px-2.5 py-1.5 rounded-xl whitespace-nowrap font-bold transition-all flex items-center gap-1.5 ${
+                    className={`px-2.5 py-1.5 rounded-xl whitespace-nowrap font-bold transition-all apple-btn-spring flex items-center gap-1.5 ${
                       historyDateFilter === dStr
                         ? 'bg-[#2D68C4] text-white shadow-sm ring-1 ring-blue-400'
                         : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -864,14 +758,14 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
 
             {/* Tarjeta de métricas de la sesión seleccionada */}
             {displayedHistoryLogs.length > 0 && (
-              <div className="grid grid-cols-3 gap-2 p-2.5 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-center text-xs">
+              <div className="grid grid-cols-3 gap-2 p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-center text-xs">
                 <div>
-                  <span className="text-[9px] text-[var(--text-tertiary)] block uppercase">Series</span>
-                  <span className="font-black text-[var(--text-primary)] font-mono">{displayedHistoryLogs.length}</span>
+                  <span className="text-[9px] text-[var(--text-tertiary)] block uppercase tracking-wider">Series</span>
+                  <span className="font-bold text-[var(--text-primary)] font-mono text-base data-tabular">{displayedHistoryLogs.length}</span>
                 </div>
                 <div>
-                  <span className="text-[9px] text-[var(--text-tertiary)] block uppercase">Volumen</span>
-                  <span className="font-black text-[#2D68C4] dark:text-[#5B95E0] font-mono">
+                  <span className="text-[9px] text-[var(--text-tertiary)] block uppercase tracking-wider">Volumen</span>
+                  <span className="font-bold text-[#2D68C4] dark:text-[#5B95E0] font-mono text-base data-tabular">
                     {Math.round(
                       displayedHistoryLogs.reduce((sum, l) => sum + l.weight_kg * l.reps, 0)
                     ).toLocaleString()}{' '}
@@ -879,8 +773,8 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
                   </span>
                 </div>
                 <div>
-                  <span className="text-[9px] text-[var(--text-tertiary)] block uppercase">Ejercicios</span>
-                  <span className="font-black text-amber-500 font-mono">
+                  <span className="text-[9px] text-[var(--text-tertiary)] block uppercase tracking-wider">Ejercicios</span>
+                  <span className="font-bold text-amber-500 font-mono text-base data-tabular">
                     {new Set(displayedHistoryLogs.map((l) => l.exercise_id)).size}
                   </span>
                 </div>

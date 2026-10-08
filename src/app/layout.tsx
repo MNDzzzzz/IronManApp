@@ -27,13 +27,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className="dark bg-black text-white antialiased">
+    <html lang="es" suppressHydrationWarning className="dark antialiased">
       <head>
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
-      <body className="min-h-screen bg-black text-white selection:bg-orange-500 selection:text-black">
+      <body className="min-h-screen bg-[var(--background)] text-[var(--foreground)] selection:bg-[#D97757] selection:text-white transition-colors duration-300">
         {children}
       </body>
     </html>

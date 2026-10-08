@@ -145,8 +145,9 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
         message: `¡Sesiones intercambiadas con éxito entre ${swapDate1} y ${swapDate2}!`,
       });
       if (onScheduleUpdated) onScheduleUpdated();
-    } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'Error de conexión' });
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Error de conexión';
+      setFeedback({ type: 'error', message: errorMsg });
     } finally {
       setIsSubmitting(false);
     }
@@ -178,8 +179,9 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
         message: `¡Sesión del ${reassignDate} adaptada a "${ROUTINE_OPTIONS.find((r) => r.key === selectedRoutineKey)?.label}"!`,
       });
       if (onScheduleUpdated) onScheduleUpdated();
-    } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'Error de conexión' });
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Error de conexión';
+      setFeedback({ type: 'error', message: errorMsg });
     } finally {
       setIsSubmitting(false);
     }
@@ -209,16 +211,17 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
         message: `¡Sesión del ${reassignDate} restaurada al plan oficial original!`,
       });
       if (onScheduleUpdated) onScheduleUpdated();
-    } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'Error de conexión' });
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Error de conexión';
+      setFeedback({ type: 'error', message: errorMsg });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
-      <div className="liquid-glass-card bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-apple-fade-in">
+      <div className="liquid-glass-card bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-apple-scale-in">
         {/* Cabecera del Modal */}
         <div className="p-5 border-b border-[var(--glass-border)] flex items-center justify-between bg-[var(--glass-surface)]">
           <div className="flex items-center gap-3">
