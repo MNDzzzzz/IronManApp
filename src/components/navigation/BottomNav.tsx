@@ -22,9 +22,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
     <nav
       role="navigation"
       aria-label="Navegación principal"
-      className="fixed bottom-3 left-0 right-0 z-50 flex justify-center pointer-events-none px-4 pb-[env(safe-area-inset-bottom,0px)]"
+      className="fixed bottom-3 sm:bottom-4 left-0 right-0 z-50 flex justify-center pointer-events-none px-4 pb-[max(env(safe-area-inset-bottom,0px),8px)]"
     >
-      <div className="pointer-events-auto max-w-sm w-full liquid-glass-dock px-2 py-1.5 flex items-center justify-between transition-all duration-300">
+      <div className="pointer-events-auto max-w-[360px] sm:max-w-sm w-full rounded-full bg-white/75 dark:bg-[#121622]/80 backdrop-blur-3xl border border-white/40 dark:border-white/10 shadow-[0_20px_45px_-8px_rgba(0,0,0,0.18),inset_0_1px_1.5px_0_rgba(255,255,255,0.6)] dark:shadow-[0_24px_50px_-10px_rgba(0,0,0,0.65),inset_0_1px_0.5px_0_rgba(255,255,255,0.2)] p-1.5 flex items-center justify-between transition-all duration-300">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;
@@ -35,19 +35,25 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
               aria-selected={isActive}
               aria-label={tab.label}
               onClick={() => onSelectTab(tab.id)}
-              className={`relative flex flex-col items-center justify-center flex-1 py-1.5 px-2 rounded-full transition-all duration-200 active:scale-95 ${
+              className={`relative flex flex-col items-center justify-center flex-1 min-h-[44px] py-1 px-1.5 sm:px-2 rounded-full transition-all duration-200 active:scale-95 ${
                 isActive
-                  ? 'text-[#D97757] dark:text-[#E28464] font-semibold'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  ? 'bg-white/60 dark:bg-white/10 text-[#D97757] dark:text-[#E28464] font-semibold shadow-[0_0_14px_rgba(217,119,87,0.25),inset_0_1px_0.5px_rgba(255,255,255,0.5)] dark:shadow-[0_0_18px_rgba(226,132,100,0.3),inset_0_1px_0.5px_rgba(255,255,255,0.15)]'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/30 dark:hover:bg-white/5'
               }`}
             >
               <div className="relative flex items-center justify-center">
-                <Icon className={`w-4 h-4 transition-transform duration-200 ${isActive ? 'scale-110 stroke-[2.2]' : 'stroke-[1.75]'}`} />
-                {isActive && (
-                  <span className="absolute -bottom-1.5 w-1 h-1 bg-[#D97757] dark:bg-[#E28464] rounded-full" />
-                )}
+                <Icon
+                  className={`w-4 h-4 transition-transform duration-200 ${
+                    isActive ? 'scale-110 stroke-[2.2]' : 'stroke-[1.75]'
+                  }`}
+                />
               </div>
-              <span className="text-[10px] mt-1 tracking-tight editorial-heading">{tab.label}</span>
+              <span className="text-[10px] sm:text-[10.5px] mt-0.5 tracking-tight font-medium">
+                {tab.label}
+              </span>
+              {isActive && (
+                <span className="w-1 h-1 bg-[#D97757] dark:bg-[#E28464] rounded-full shadow-[0_0_6px_rgba(217,119,87,0.6)] mt-0.5" />
+              )}
             </button>
           );
         })}
@@ -55,3 +61,4 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
     </nav>
   );
 };
+

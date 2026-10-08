@@ -155,30 +155,36 @@ export const CoachCommandBar: React.FC<CoachCommandBarProps> = ({
   };
 
   return (
-    <div className="w-full space-y-2">
-      {/* Barra de Comandos Principal */}
-      <div className="relative w-full rounded-2xl liquid-glass-dock border border-[var(--glass-border)] p-1.5 sm:p-2 shadow-xl flex items-center gap-2 transition-all">
-        {/* Botón de Voz Izquierdo Háptico */}
+    <div className="w-full space-y-2.5">
+      {/* Barra de Comandos Principal estilo Spotlight / Siri de Apple */}
+      <div
+        className={`relative w-full rounded-2xl backdrop-blur-2xl backdrop-saturate-150 p-2 sm:p-2.5 flex items-center gap-2.5 transition-all duration-300 ${
+          isRecording
+            ? 'bg-white/80 dark:bg-[#111520]/90 border border-purple-500/40 shadow-[0_0_30px_rgba(217,119,87,0.3),inset_0_1px_1px_rgba(255,255,255,0.7)] ring-2 ring-[#D97757]/30'
+            : 'bg-white/70 dark:bg-[#111520]/80 border border-white/40 dark:border-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,0.6)] dark:shadow-[0_20px_45px_rgba(0,0,0,0.5),inset_0_1px_0.5px_rgba(255,255,255,0.15)]'
+        }`}
+      >
+        {/* Botón de Voz Izquierdo Háptico estilo Apple Action / Siri */}
         <button
           type="button"
           onClick={isRecording ? stopRecording : startRecording}
           disabled={isProcessing}
           aria-label={isRecording ? 'Detener grabación de voz' : 'Grabar mensaje de voz'}
-          className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 active:scale-95 ${
+          className={`shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all duration-300 active:scale-90 shadow-sm ${
             isRecording
-              ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30 animate-pulse'
+              ? 'bg-gradient-to-tr from-rose-600 to-red-500 text-white shadow-lg shadow-rose-500/40 animate-pulse'
               : feedbackState === 'success'
-              ? 'bg-emerald-600 text-white'
+              ? 'bg-emerald-600 text-white shadow-emerald-600/30'
               : feedbackState === 'error'
-              ? 'bg-amber-600 text-white'
-              : 'bg-[#D97757]/15 text-[#D97757] dark:text-[#E28464] hover:bg-[#D97757]/25'
+              ? 'bg-amber-600 text-white shadow-amber-600/30'
+              : 'bg-white/60 dark:bg-white/[0.08] text-[#D97757] dark:text-[#E28464] border border-white/60 dark:border-white/10 hover:bg-[#D97757]/15 hover:text-[#D97757]'
           }`}
-          title={isRecording ? 'Detener grabación' : 'Hablar por micrófono'}
+          title={isRecording ? 'Detener grabación' : 'Hablar por micrófono con el Coach'}
         >
           {isRecording ? (
             <Square className="w-4 h-4 fill-current" />
           ) : isProcessing ? (
-            <Loader2 className="w-4 h-4 animate-spin text-[#D97757]" />
+            <Loader2 className="w-4 h-4 animate-spin text-[#D97757] dark:text-[#E28464]" />
           ) : feedbackState === 'success' ? (
             <CheckCircle2 className="w-4 h-4" />
           ) : feedbackState === 'error' ? (
@@ -188,16 +194,33 @@ export const CoachCommandBar: React.FC<CoachCommandBarProps> = ({
           )}
         </button>
 
-        {/* Input de Texto Central o Visualizador de Onda */}
+        {/* Input de Texto Central O Visualizador de Onda Sonora Interactiva estilo Siri */}
         {isRecording ? (
-          <div className="flex-1 flex items-center justify-between px-3 text-rose-500 text-xs font-medium animate-pulse">
-            <span className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-              Escuchando tu voz... Habla con naturalidad
-            </span>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-rose-400">
-              Toca el botón rojo para parar
-            </span>
+          <div
+            onClick={stopRecording}
+            className="flex-1 flex items-center justify-between px-2 sm:px-3 py-1 cursor-pointer select-none group"
+            title="Toca para finalizar y procesar audio"
+          >
+            {/* Visualizador de Onda Sonora Espectral Siri */}
+            <div className="flex items-center gap-1 sm:gap-1.5 h-6">
+              <span className="w-1 h-5 rounded-full bg-gradient-to-b from-[#D97757] to-rose-500 animate-apple-wave-1" />
+              <span className="w-1 h-6 rounded-full bg-gradient-to-b from-purple-500 to-indigo-500 animate-apple-wave-2" />
+              <span className="w-1 h-4 rounded-full bg-gradient-to-b from-sky-400 to-blue-600 animate-apple-wave-3" />
+              <span className="w-1 h-6 rounded-full bg-gradient-to-b from-emerald-400 to-teal-600 animate-apple-wave-4" />
+              <span className="w-1 h-5 rounded-full bg-gradient-to-b from-amber-400 to-[#D97757] animate-apple-wave-5" />
+              <span className="w-1 h-3 rounded-full bg-gradient-to-b from-purple-400 to-rose-500 animate-apple-wave-2 hidden sm:block" />
+              <span className="w-1 h-5 rounded-full bg-gradient-to-b from-sky-400 to-indigo-500 animate-apple-wave-3 hidden sm:block" />
+            </div>
+
+            <div className="flex flex-col text-right">
+              <span className="text-xs font-semibold text-[var(--text-primary)] group-hover:text-rose-500 transition-colors flex items-center gap-1.5 justify-end">
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping inline-block" />
+                Escuchando...
+              </span>
+              <span className="text-[9.5px] font-mono text-[var(--text-tertiary)] uppercase tracking-wider">
+                Toca para enviar
+              </span>
+            </div>
           </div>
         ) : (
           <form
@@ -205,7 +228,7 @@ export const CoachCommandBar: React.FC<CoachCommandBarProps> = ({
               e.preventDefault();
               handleSendText();
             }}
-            className="flex-1 flex items-center gap-2"
+            className="flex-1 flex items-center gap-2 min-w-0"
           >
             <input
               type="text"
@@ -213,56 +236,56 @@ export const CoachCommandBar: React.FC<CoachCommandBarProps> = ({
               onChange={(e) => setInputText(e.target.value)}
               placeholder={placeholder}
               disabled={isProcessing}
-              className="w-full bg-transparent px-2 py-1.5 text-xs sm:text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none"
+              className="w-full bg-transparent px-2 py-1.5 text-xs sm:text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none font-sans"
             />
             <button
               type="submit"
               disabled={!inputText.trim() || isProcessing}
-              className="shrink-0 p-2 rounded-xl bg-[#D97757] text-white disabled:opacity-20 hover:opacity-90 transition-all active:scale-95 flex items-center justify-center"
+              className="shrink-0 p-2 sm:p-2.5 rounded-xl bg-[#D97757] text-white disabled:opacity-20 hover:opacity-90 transition-all active:scale-90 flex items-center justify-center shadow-sm"
               aria-label="Enviar al Coach"
               title="Enviar (Enter)"
             >
               {isProcessing ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <CornerDownLeft className="w-3.5 h-3.5" />
+                <CornerDownLeft className="w-4 h-4" />
               )}
             </button>
           </form>
         )}
       </div>
 
-      {/* Micro-Sugerencias de Entrada Rápida (Pills Inteligentes) */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-1">
-        <span className="text-[10px] font-medium text-[var(--text-tertiary)] shrink-0 flex items-center gap-1">
-          <Sparkles className="w-3 h-3 text-[#D97757]" />
+      {/* Micro-Sugerencias de Entrada Rápida (Pills de Cristal Líquido estilo Apple) */}
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5">
+        <span className="text-[10px] font-bold text-[var(--text-tertiary)] shrink-0 flex items-center gap-1 uppercase tracking-wider">
+          <Sparkles className="w-3 h-3 text-[#D97757] dark:text-[#E28464]" />
           Atajos:
         </span>
         <button
           type="button"
           onClick={() => handleSendText('Añadir 250ml de agua')}
-          className="shrink-0 text-[10px] px-2.5 py-1 rounded-full liquid-glass-pill text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[#D97757]/30 transition-all"
+          className="shrink-0 text-[10.5px] px-3 py-1 rounded-full bg-white/50 dark:bg-white/[0.05] border border-white/60 dark:border-white/10 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-sky-500/40 shadow-sm transition-all active:scale-95"
         >
           💧 +250ml agua
         </button>
         <button
           type="button"
           onClick={() => handleSendText('¿Qué toca entrenar hoy?')}
-          className="shrink-0 text-[10px] px-2.5 py-1 rounded-full liquid-glass-pill text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[#D97757]/30 transition-all"
+          className="shrink-0 text-[10.5px] px-3 py-1 rounded-full bg-white/50 dark:bg-white/[0.05] border border-white/60 dark:border-white/10 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[#D97757]/40 shadow-sm transition-all active:scale-95"
         >
           🏃 ¿Qué toca hoy?
         </button>
         <button
           type="button"
           onClick={() => handleSendText('Tengo molestia leve en la rodilla nivel 2')}
-          className="shrink-0 text-[10px] px-2.5 py-1 rounded-full liquid-glass-pill text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-amber-500/30 transition-all"
+          className="shrink-0 text-[10.5px] px-3 py-1 rounded-full bg-white/50 dark:bg-white/[0.05] border border-white/60 dark:border-white/10 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-amber-500/40 shadow-sm transition-all active:scale-95"
         >
           ⚡ Molestia leve rodilla
         </button>
         <button
           type="button"
           onClick={() => handleSendText('Comida: 200g pechuga de pollo y 150g arroz')}
-          className="shrink-0 text-[10px] px-2.5 py-1 rounded-full liquid-glass-pill text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-emerald-500/30 transition-all"
+          className="shrink-0 text-[10.5px] px-3 py-1 rounded-full bg-white/50 dark:bg-white/[0.05] border border-white/60 dark:border-white/10 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-emerald-500/40 shadow-sm transition-all active:scale-95"
         >
           🍗 Log pollo y arroz
         </button>

@@ -80,42 +80,66 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
   }, [calPercent, pPercent, wPercent]);
 
   return (
-    <div className="p-5 rounded-3xl liquid-glass-card border border-[var(--glass-border)] shadow-xl relative overflow-hidden transition-all">
-      {/* Cabecera de Sección */}
+    <div className="p-5 sm:p-6 rounded-3xl bg-[var(--glass-surface)] backdrop-blur-2xl backdrop-saturate-150 border border-[var(--glass-border)] shadow-[0_12px_32px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.5),inset_0_1px_0.5px_rgba(255,255,255,0.12)] relative overflow-hidden transition-all">
+      {/* Cabecera de Sección al estilo Apple Health */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold tracking-widest uppercase text-[#D97757] dark:text-[#E28464] editorial-heading">
+          <span className="text-[10px] sm:text-[11px] font-bold tracking-[0.16em] uppercase text-[#D97757] dark:text-[#E28464] editorial-heading">
             Nutrición & Balance
           </span>
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
         </div>
         <button
           onClick={onNavigateToDiet}
-          className="text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 transition-colors"
+          className="text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center gap-1 transition-colors active:scale-95"
           title="Ver registro completo de comidas"
         >
           <span>Dieta completa</span>
-          <ArrowUpRight className="w-3.5 h-3.5 text-[#D97757]" />
+          <ArrowUpRight className="w-3.5 h-3.5 text-[#D97757] dark:text-[#E28464]" />
         </button>
       </div>
 
-      {/* Cuerpo Principal: Anillos concéntricos Apple Fitness centrados + Desglose tabular debajo */}
+      {/* Cuerpo Principal: Anillos concéntricos Apple Fitness + Desglose tabular Apple Health */}
       <div className="flex flex-col items-center gap-5">
-        {/* Gráfico SVG de Anillos de Actividad Concéntricos */}
+        {/* Gráfico SVG de Anillos de Actividad Concéntricos con Gradientes Semánticos Apple */}
         <div className="relative flex items-center justify-center shrink-0">
           <svg
             width={rings.size}
             height={rings.size}
             viewBox="0 0 180 180"
-            className="rotate-[-90deg] drop-shadow-md"
+            className="rotate-[-90deg] drop-shadow-lg"
           >
-            {/* Pistas de Fondo (Faint background tracks) */}
+            {/* Definiciones de Gradientes Semánticos Apple Fitness */}
+            <defs>
+              {/* Anillo Move / Calorías: Terracota a Coral Luminoso */}
+              <linearGradient id="appleMoveGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#E0533C" />
+                <stop offset="60%" stopColor="#D97757" />
+                <stop offset="100%" stopColor="#FF7E5F" />
+              </linearGradient>
+
+              {/* Anillo Exercise / Proteína: Esmeralda a Menta Viva */}
+              <linearGradient id="appleExerciseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#059669" />
+                <stop offset="70%" stopColor="#10B981" />
+                <stop offset="100%" stopColor="#34D399" />
+              </linearGradient>
+
+              {/* Anillo Stand / Agua: Azul Océano a Celeste Eléctrico */}
+              <linearGradient id="appleStandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#0284C7" />
+                <stop offset="60%" stopColor="#3B82F6" />
+                <stop offset="100%" stopColor="#38BDF8" />
+              </linearGradient>
+            </defs>
+
+            {/* Pistas de Fondo con alta transmitancia OLED */}
             <circle
               cx={rings.center}
               cy={rings.center}
               r={rings.rCal}
               fill="none"
-              stroke="rgba(217, 119, 87, 0.15)"
+              stroke="rgba(224, 83, 60, 0.16)"
               strokeWidth={rings.strokeWidth}
             />
             <circle
@@ -123,7 +147,7 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
               cy={rings.center}
               r={rings.rProt}
               fill="none"
-              stroke="rgba(16, 185, 129, 0.15)"
+              stroke="rgba(16, 185, 129, 0.16)"
               strokeWidth={rings.strokeWidth}
             />
             <circle
@@ -131,17 +155,17 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
               cy={rings.center}
               r={rings.rWater}
               fill="none"
-              stroke="rgba(59, 130, 246, 0.15)"
+              stroke="rgba(2, 132, 199, 0.16)"
               strokeWidth={rings.strokeWidth}
             />
 
-            {/* Anillo de Calorías (Terracotta) */}
+            {/* Anillo de Calorías (Move / Terracotta Apple) */}
             <circle
               cx={rings.center}
               cy={rings.center}
               r={rings.rCal}
               fill="none"
-              stroke="#D97757"
+              stroke="url(#appleMoveGrad)"
               strokeWidth={rings.strokeWidth}
               strokeDasharray={rings.circCal}
               strokeDashoffset={rings.offsetCal}
@@ -149,13 +173,13 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
               className="transition-all duration-700 ease-out"
             />
 
-            {/* Anillo de Proteína (Emerald) */}
+            {/* Anillo de Proteína (Exercise / Emerald Apple) */}
             <circle
               cx={rings.center}
               cy={rings.center}
               r={rings.rProt}
               fill="none"
-              stroke="#10B981"
+              stroke="url(#appleExerciseGrad)"
               strokeWidth={rings.strokeWidth}
               strokeDasharray={rings.circProt}
               strokeDashoffset={rings.offsetProt}
@@ -163,13 +187,13 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
               className="transition-all duration-700 ease-out"
             />
 
-            {/* Anillo de Agua (Sky Blue) */}
+            {/* Anillo de Agua (Stand / Blue Apple) */}
             <circle
               cx={rings.center}
               cy={rings.center}
               r={rings.rWater}
               fill="none"
-              stroke="#3B82F6"
+              stroke="url(#appleStandGrad)"
               strokeWidth={rings.strokeWidth}
               strokeDasharray={rings.circWater}
               strokeDashoffset={rings.offsetWater}
@@ -178,27 +202,27 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
             />
           </svg>
 
-          {/* Núcleo Central: Porcentaje Calórico */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-xl font-bold font-mono data-tabular text-[var(--text-primary)]">
+          {/* Núcleo Central: Porcentaje Calórico con Tipografía SF Pro Display */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
+            <span className="text-2xl font-bold font-mono data-tabular text-[var(--text-primary)] tracking-tight">
               {calPercent}%
             </span>
-            <span className="text-[9px] uppercase tracking-wider text-[var(--text-tertiary)] font-medium">
-              Meta
+            <span className="text-[9.5px] uppercase tracking-wider text-[var(--text-tertiary)] font-bold">
+              Meta Diaria
             </span>
           </div>
         </div>
 
-        {/* Columna de Datos Tabulares */}
-        <div className="flex-1 w-full space-y-3">
-          {/* Fila 1: Calorías */}
-          <div className="p-2.5 rounded-2xl bg-white/40 dark:bg-white/[0.03] border border-[var(--glass-border-subtle)] flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-full bg-[#D97757]/15 text-[#D97757] flex items-center justify-center">
-                <Flame className="w-3.5 h-3.5" />
+        {/* Columna de Datos Tabulares al estilo Apple Health */}
+        <div className="flex-1 w-full space-y-2.5">
+          {/* Fila 1: Calorías (Move) */}
+          <div className="p-3 rounded-2xl bg-white/40 dark:bg-white/[0.03] border border-[var(--glass-border-subtle)] shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-[#E0533C]/15 text-[#E0533C] flex items-center justify-center shrink-0 shadow-inner">
+                <Flame className="w-4 h-4" />
               </div>
-              <div>
-                <p className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">
                   Calorías
                 </p>
                 <p className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular">
@@ -209,24 +233,24 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
                 </p>
               </div>
             </div>
-            <div className="text-right">
-              <span className="text-xs font-mono font-semibold text-[#D97757] data-tabular">
-                {calRemaining > 0 ? `-${calRemaining}` : '✓ Límite'}
+            <div className="text-right shrink-0">
+              <span className="text-xs font-mono font-bold text-[#D97757] dark:text-[#E28464] data-tabular">
+                {calRemaining > 0 ? `-${calRemaining}` : '✓ Cubierto'}
               </span>
-              <p className="text-[9px] text-[var(--text-tertiary)]">
-                {calRemaining > 0 ? 'kcal rest.' : 'completado'}
+              <p className="text-[9px] text-[var(--text-tertiary)] font-medium">
+                {calRemaining > 0 ? 'kcal restantes' : 'completado'}
               </p>
             </div>
           </div>
 
-          {/* Fila 2: Proteína */}
-          <div className="p-2.5 rounded-2xl bg-white/40 dark:bg-white/[0.03] border border-[var(--glass-border-subtle)] flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-full bg-emerald-500/15 text-emerald-500 flex items-center justify-center">
-                <Dumbbell className="w-3.5 h-3.5" />
+          {/* Fila 2: Proteína (Exercise) */}
+          <div className="p-3 rounded-2xl bg-white/40 dark:bg-white/[0.03] border border-[var(--glass-border-subtle)] shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0 shadow-inner">
+                <Dumbbell className="w-4 h-4" />
               </div>
-              <div>
-                <p className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">
                   Proteína
                 </p>
                 <p className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular">
@@ -237,24 +261,24 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
                 </p>
               </div>
             </div>
-            <div className="text-right">
-              <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 data-tabular">
+            <div className="text-right shrink-0">
+              <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 data-tabular">
                 {pConsumed >= pTarget ? '100% ✓' : `${pPercent}%`}
               </span>
-              <p className="text-[9px] text-[var(--text-tertiary)]">
-                {pRemaining > 0 ? `${pRemaining.toFixed(0)}g rest.` : 'cubierta'}
+              <p className="text-[9px] text-[var(--text-tertiary)] font-medium">
+                {pRemaining > 0 ? `${pRemaining.toFixed(0)}g rest.` : 'óptima'}
               </p>
             </div>
           </div>
 
-          {/* Fila 3: Agua / Hidratación con Quick-Add */}
-          <div className="p-2.5 rounded-2xl bg-white/40 dark:bg-white/[0.03] border border-[var(--glass-border-subtle)] flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-full bg-blue-500/15 text-blue-500 flex items-center justify-center">
-                <Droplets className="w-3.5 h-3.5" />
+          {/* Fila 3: Agua / Hidratación (Stand) con Píldoras Táctiles Rápidas */}
+          <div className="p-3 rounded-2xl bg-white/40 dark:bg-white/[0.03] border border-[var(--glass-border-subtle)] shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-sky-500/15 text-sky-500 flex items-center justify-center shrink-0 shadow-inner">
+                <Droplets className="w-4 h-4" />
               </div>
-              <div>
-                <p className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">
                   Agua
                 </p>
                 <p className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular">
@@ -265,18 +289,18 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => onQuickAddWater(-250)}
                 aria-label="Restar 250ml de agua"
-                className="w-6 h-6 rounded-lg liquid-glass-pill text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center transition-all active:scale-90"
+                className="w-7 h-7 rounded-xl bg-white/50 dark:bg-white/[0.06] border border-white/60 dark:border-white/10 text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center transition-all active:scale-90 shadow-sm"
               >
-                <Minus className="w-3 h-3" />
+                <Minus className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => onQuickAddWater(250)}
                 aria-label="Añadir 250ml de agua"
-                className="px-2 py-1 rounded-lg bg-blue-500/15 text-blue-500 hover:bg-blue-500/25 text-xs font-mono font-bold flex items-center gap-0.5 transition-all active:scale-90"
+                className="px-2.5 py-1.5 rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400 hover:bg-sky-500/25 text-xs font-mono font-bold flex items-center gap-1 transition-all active:scale-90 border border-sky-500/20 shadow-sm"
               >
                 <Plus className="w-3 h-3" />
                 <span>250ml</span>
