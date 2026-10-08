@@ -178,7 +178,7 @@ export const HealthView: React.FC<HealthViewProps> = ({
   }, [hrSamples]);
 
   return (
-    <div className="space-y-4 pb-24 px-4 pt-2">
+    <div className="w-full max-w-4xl mx-auto space-y-5 pb-24 px-3.5 pt-1 font-sans animate-in fade-in duration-300">
       {/* Encabezado */}
       <div className="flex items-center justify-between">
         <div>
@@ -318,7 +318,7 @@ export const HealthView: React.FC<HealthViewProps> = ({
           )}
         </div>
 
-        <div className="h-44 w-full pt-1">
+        <div className="w-full min-w-0 overflow-hidden h-44 pt-1">
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
@@ -434,9 +434,9 @@ export const HealthView: React.FC<HealthViewProps> = ({
           </div>
 
           {/* 6. OXÍGENO EN SANGRE (SpO2), PULSO REPOSO & PASOS */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* SpO2 */}
-            <div className="p-4 rounded-3xl liquid-glass-card space-y-1 text-center">
+            <div className="p-3.5 sm:p-4 rounded-3xl liquid-glass-card space-y-1 text-center">
               <div className="flex items-center justify-between text-cyan-500 mb-1">
                 <Wind className="w-4 h-4" />
                 <span className="text-[9px] font-mono text-emerald-500 font-bold">Normal</span>
