@@ -189,11 +189,11 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
       </section>
 
       {/* 2. Bento Grid Principal Responsive (Apple x Anthropic) */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* ================================================================ */}
         {/* COLUMNA IZQUIERDA (7 COLS): DAILY BRIEFING + ACTIVIDAD RECIENTE   */}
         {/* ================================================================ */}
-        <div className="md:col-span-7 space-y-5">
+        <div className="lg:col-span-7 space-y-6">
           {/* Daily Briefing Card: Rutina + Carga ACWR + Check-in de Sensaciones */}
           <DailyBriefingCard
             effectiveRoutine={effectiveRoutine}
@@ -263,7 +263,7 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
         {/* ================================================================ */}
         {/* COLUMNA DERECHA (5 COLS): ANILLOS DE NUTRICIÓN + SALUD FIT3       */}
         {/* ================================================================ */}
-        <div className="md:col-span-5 space-y-5">
+        <div className="lg:col-span-5 space-y-6">
           {/* Anillos de Nutrición Apple Fitness */}
           <BiometricRingsHub
             nutritionTotals={nutritionTotals}

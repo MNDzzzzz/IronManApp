@@ -96,7 +96,7 @@ export const DynamicIslandCoach: React.FC<DynamicIslandCoachProps> = ({
     <section
       role="status"
       aria-live="polite"
-      className="w-full max-w-md mx-auto my-2 px-1"
+      className="w-full max-w-xl mx-auto my-2 px-1"
     >
       <div
         onClick={() => setIsExpanded(!isExpanded)}

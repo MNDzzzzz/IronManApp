@@ -48,7 +48,7 @@ export const AdaptiveWorkoutView: React.FC<AdaptiveWorkoutViewProps> = ({
   const [activeMode, setActiveMode] = useState<'running' | 'fuerza'>(detectedMode);
 
   return (
-    <div className="w-full max-w-md mx-auto pb-24 animate-in fade-in duration-300">
+    <div className="w-full max-w-4xl mx-auto pb-24 animate-in fade-in duration-300">
       {/* Selector de Modalidad Adaptativa Segmentado */}
       <div className="flex items-center justify-between p-1 mb-4 rounded-full liquid-glass-pill border border-[var(--glass-border)]">
         <button

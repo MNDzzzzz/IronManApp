@@ -99,8 +99,8 @@ export const BiometricRingsHub: React.FC<BiometricRingsHubProps> = ({
         </button>
       </div>
 
-      {/* Cuerpo Principal: Anillos a la izquierda + Desglose tabular a la derecha */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-5">
+      {/* Cuerpo Principal: Anillos concéntricos Apple Fitness centrados + Desglose tabular debajo */}
+      <div className="flex flex-col items-center gap-5">
         {/* Gráfico SVG de Anillos de Actividad Concéntricos */}
         <div className="relative flex items-center justify-center shrink-0">
           <svg

@@ -336,7 +336,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   };
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-4 pb-24 px-3.5 pt-1 font-sans animate-in fade-in duration-300">
+    <div className="w-full max-w-4xl mx-auto space-y-5 pb-24 px-3.5 pt-1 font-sans animate-in fade-in duration-300">
       {/* CABECERA Y BOTONES DE ACCIÓN */}
       <div className="flex items-center justify-between">
         <div>
