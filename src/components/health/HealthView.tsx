@@ -206,14 +206,14 @@ export const HealthView: React.FC<HealthViewProps> = ({
       {/* 2. SELECTOR DESLIZABLE DE FECHAS */}
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1">
-          <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+          <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] editorial-heading">
             Día Seleccionado
           </span>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-[var(--text-tertiary)] font-mono">
+            <span className="text-[10px] text-[var(--text-tertiary)] font-mono data-tabular">
               {selectedDate === todayStr ? 'Hoy' : selectedDate}
             </span>
-            <label className="relative p-1 px-2.5 rounded-xl liquid-glass-pill border border-[var(--glass-border)] text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all">
+            <label className="relative p-1 px-2.5 rounded-xl liquid-glass-pill border border-[var(--glass-border)] text-[10px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer flex items-center gap-1.5 apple-btn-spring transition-all">
               <input
                 type="date"
                 value={selectedDate}
@@ -241,18 +241,18 @@ export const HealthView: React.FC<HealthViewProps> = ({
               <button
                 key={dStr}
                 onClick={() => setSelectedDate(dStr)}
-                className={`py-1.5 px-3 rounded-xl text-center transition-all whitespace-nowrap flex flex-col items-center min-w-[68px] relative ${
+                className={`py-1.5 px-3 rounded-xl text-center transition-all whitespace-nowrap flex flex-col items-center min-w-[68px] relative apple-btn-spring ${
                   isSelected
-                    ? 'bg-[#2D68C4] text-white shadow-md font-black ring-1 ring-blue-400'
+                    ? 'bg-[#2D68C4] text-white shadow-md font-bold'
                     : 'bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 <span className="text-[9px] uppercase tracking-wider opacity-85">
                   {isToday ? 'Hoy' : dayOfWeek}
                 </span>
-                <span className="text-sm font-black mt-0.5 font-mono">{dayNum}</span>
+                <span className="text-sm font-bold mt-0.5 font-mono data-tabular">{dayNum}</span>
                 {metricForDay ? (
-                  <span className="text-[8px] font-bold text-emerald-500 block mt-0.5">
+                  <span className="text-[8px] font-bold text-emerald-500 block mt-0.5 font-mono">
                     {metricForDay.sleep_duration_minutes ? `${Math.round(metricForDay.sleep_duration_minutes / 60)}h` : 'Fit3'}
                   </span>
                 ) : (
@@ -266,29 +266,29 @@ export const HealthView: React.FC<HealthViewProps> = ({
 
       {/* 3. ÍNDICE DE DISPONIBILIDAD / READINESS SCORE */}
       {readiness && (
-        <div className="p-4 rounded-3xl liquid-glass-card border border-[var(--glass-border)] shadow-xl space-y-3">
+        <div className="liquid-glass-card p-5 sm:p-6 rounded-3xl space-y-3.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-500">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center">
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-xs uppercase font-bold tracking-wider text-[var(--text-primary)]">
+                <h2 className="text-xs uppercase font-bold tracking-wider text-[var(--text-primary)] editorial-heading">
                   Readiness Score (Recuperación)
                 </h2>
-                <p className="text-[10px] text-[var(--text-secondary)]">Cálculo biomecánico FC reposo + sueño + SpO2</p>
+                <p className="text-[10px] text-[var(--text-secondary)] font-mono">FC reposo + sueño + SpO2</p>
               </div>
             </div>
             <div className="text-right">
-              <span className="text-2xl font-black text-emerald-500 font-mono">{readiness.score}</span>
-              <span className="text-xs text-[var(--text-tertiary)]">/100</span>
+              <span className="text-3xl font-black text-emerald-500 font-mono data-tabular">{readiness.score}</span>
+              <span className="text-xs text-[var(--text-tertiary)] font-mono">/100</span>
             </div>
           </div>
 
-          <div className={`p-2.5 rounded-2xl border text-xs flex items-center gap-2 ${readiness.colorClass}`}>
+          <div className={`p-3 rounded-2xl border text-xs flex items-center gap-2.5 ${readiness.colorClass}`}>
             <Sparkles className="w-4 h-4 shrink-0" />
             <div>
-              <span className="font-black block">{readiness.statusText}</span>
+              <span className="font-bold block">{readiness.statusText}</span>
               <span className="text-[11px] opacity-90 leading-tight">{readiness.statusDesc}</span>
             </div>
           </div>
@@ -296,23 +296,23 @@ export const HealthView: React.FC<HealthViewProps> = ({
       )}
 
       {/* 4. TELEMETRÍA CONTINUA DE FRECUENCIA CARDÍACA (24H GALAXY FIT3) */}
-      <div className="p-4 rounded-3xl liquid-glass-card border border-[var(--glass-border)] shadow-xl space-y-3">
+      <div className="liquid-glass-card p-5 sm:p-6 rounded-3xl space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-500">
+            <div className="w-8 h-8 rounded-xl bg-rose-500/15 text-rose-500 flex items-center justify-center">
               <HeartPulse className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-xs uppercase font-bold tracking-wider text-[var(--text-primary)]">
+              <h2 className="text-xs uppercase font-bold tracking-wider text-[var(--text-primary)] editorial-heading">
                 Curva de Pulso 24h (Galaxy Fit3)
               </h2>
-              <p className="text-[10px] text-[var(--text-secondary)]">
-                {hrSamples.length > 0 ? `${hrSamples.length} muestras registradas` : 'Sin muestras detalladas para este día'}
+              <p className="text-[10px] text-[var(--text-secondary)] font-mono data-tabular">
+                {hrSamples.length > 0 ? `${hrSamples.length} muestras continuas` : 'Sin muestras detalladas para este día'}
               </p>
             </div>
           </div>
           {current?.resting_hr && (
-            <span className="text-xs font-mono px-2.5 py-1 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-rose-500 font-bold">
+            <span className="text-xs font-mono px-3 py-1 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-rose-500 font-bold data-tabular">
               Reposo: {current.resting_hr} bpm
             </span>
           )}
@@ -356,7 +356,6 @@ export const HealthView: React.FC<HealthViewProps> = ({
             <div className="h-full flex flex-col items-center justify-center text-[var(--text-tertiary)] text-xs space-y-1">
               <Activity className="w-5 h-5 text-[var(--text-tertiary)]" />
               <span>Muestras continuas no registradas para este día.</span>
-              <span className="text-[10px] text-[var(--text-tertiary)]">Consulta los días con sincronización de Fit3 para ver la gráfica.</span>
             </div>
           )}
         </div>
@@ -365,24 +364,23 @@ export const HealthView: React.FC<HealthViewProps> = ({
       {/* 5. SUEÑO Y RECUPERACIÓN (GALAXY FIT3) */}
       {current ? (
         <>
-          <div className="p-4 rounded-3xl liquid-glass-card border border-[var(--glass-border)] shadow-xl space-y-4">
+          <div className="liquid-glass-card p-5 sm:p-6 rounded-3xl space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-500">
+                <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-500 flex items-center justify-center">
                   <Moon className="w-4 h-4 fill-indigo-400/20" />
                 </div>
                 <div>
-                  <h2 className="text-xs uppercase font-bold tracking-wider text-[var(--text-primary)]">
-                    Fases de Sueño ({selectedDate})
+                  <h2 className="text-xs uppercase font-bold tracking-wider text-[var(--text-primary)] editorial-heading">
+                    Fases de Sueño ({selectedDate === todayStr ? 'Hoy' : selectedDate})
                   </h2>
-                  <p className="text-[10px] text-[var(--text-secondary)]">
+                  <p className="text-[10px] text-[var(--text-secondary)] font-mono data-tabular">
                     {Math.floor(totalSleepMinutes / 60)}h {totalSleepMinutes % 60}m de descanso total
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-[10px] text-[var(--text-secondary)] block">Puntuación</span>
-                <span className="text-xl font-black text-indigo-500 font-mono">
+                <span className="text-2xl font-black text-indigo-500 font-mono data-tabular">
                   {current.sleep_score || 88}
                   <span className="text-xs font-normal text-[var(--text-tertiary)]">/100</span>
                 </span>
@@ -391,100 +389,87 @@ export const HealthView: React.FC<HealthViewProps> = ({
 
             {/* Barra Visual de Fases de Sueño */}
             <div className="space-y-2">
-              <div className="flex justify-between text-[11px] text-[var(--text-secondary)]">
-                <span>Distribución Nocturna</span>
-                <span className="text-emerald-500 font-medium">Recuperación Fisiológica</span>
-              </div>
-
-              <div className="w-full h-3 bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] rounded-full overflow-hidden flex">
+              <div className="w-full h-2.5 bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] rounded-full overflow-hidden flex">
                 <div style={{ width: `${deepPct}%` }} className="bg-indigo-600 h-full" title="Profundo" />
                 <div style={{ width: `${remPct}%` }} className="bg-purple-500 h-full" title="REM" />
                 <div style={{ width: `${lightPct}%` }} className="bg-cyan-500 h-full" title="Ligero" />
                 <div style={{ width: `${awakePct}%` }} className="bg-amber-500/60 h-full" title="Despierto" />
               </div>
 
-              {/* Leyenda de Fases */}
-              <div className="grid grid-cols-2 gap-2 pt-2">
-                <div className="flex items-center gap-2 bg-[var(--glass-surface)] p-2.5 rounded-2xl border border-[var(--glass-border)]">
-                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
-                  <div>
-                    <span className="text-[10px] text-[var(--text-secondary)] block">Profundo (Físico)</span>
-                    <span className="text-xs font-bold text-[var(--text-primary)] font-mono">
-                      {current.deep_sleep_minutes || 0}m ({deepPct}%)
-                    </span>
-                  </div>
+              {/* Leyenda de Fases en 4 Columnas */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
+                <div className="bg-[var(--glass-surface)] p-2.5 rounded-2xl border border-[var(--glass-border)] text-center">
+                  <span className="text-[10px] text-[var(--text-secondary)] block font-medium">Profundo</span>
+                  <span className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular">
+                    {current.deep_sleep_minutes || 0}m
+                  </span>
+                  <span className="text-[9px] text-[var(--text-tertiary)] block font-mono">({deepPct}%)</span>
                 </div>
 
-                <div className="flex items-center gap-2 bg-[var(--glass-surface)] p-2.5 rounded-2xl border border-[var(--glass-border)]">
-                  <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-                  <div>
-                    <span className="text-[10px] text-[var(--text-secondary)] block">REM (Cognitivo)</span>
-                    <span className="text-xs font-bold text-[var(--text-primary)] font-mono">
-                      {current.rem_sleep_minutes || 0}m ({remPct}%)
-                    </span>
-                  </div>
+                <div className="bg-[var(--glass-surface)] p-2.5 rounded-2xl border border-[var(--glass-border)] text-center">
+                  <span className="text-[10px] text-[var(--text-secondary)] block font-medium">REM</span>
+                  <span className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular">
+                    {current.rem_sleep_minutes || 0}m
+                  </span>
+                  <span className="text-[9px] text-[var(--text-tertiary)] block font-mono">({remPct}%)</span>
                 </div>
 
-                <div className="flex items-center gap-2 bg-[var(--glass-surface)] p-2.5 rounded-2xl border border-[var(--glass-border)]">
-                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-500" />
-                  <div>
-                    <span className="text-[10px] text-[var(--text-secondary)] block">Ligero</span>
-                    <span className="text-xs font-bold text-[var(--text-primary)] font-mono">
-                      {current.light_sleep_minutes || 0}m ({lightPct}%)
-                    </span>
-                  </div>
+                <div className="bg-[var(--glass-surface)] p-2.5 rounded-2xl border border-[var(--glass-border)] text-center">
+                  <span className="text-[10px] text-[var(--text-secondary)] block font-medium">Ligero</span>
+                  <span className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular">
+                    {current.light_sleep_minutes || 0}m
+                  </span>
+                  <span className="text-[9px] text-[var(--text-tertiary)] block font-mono">({lightPct}%)</span>
                 </div>
 
-                <div className="flex items-center gap-2 bg-[var(--glass-surface)] p-2.5 rounded-2xl border border-[var(--glass-border)]">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
-                  <div>
-                    <span className="text-[10px] text-[var(--text-secondary)] block">Despierto</span>
-                    <span className="text-xs font-bold text-[var(--text-primary)] font-mono">
-                      {current.awake_minutes || 0}m ({awakePct}%)
-                    </span>
-                  </div>
+                <div className="bg-[var(--glass-surface)] p-2.5 rounded-2xl border border-[var(--glass-border)] text-center">
+                  <span className="text-[10px] text-[var(--text-secondary)] block font-medium">Despierto</span>
+                  <span className="text-sm font-bold text-[var(--text-primary)] font-mono data-tabular">
+                    {current.awake_minutes || 0}m
+                  </span>
+                  <span className="text-[9px] text-[var(--text-tertiary)] block font-mono">({awakePct}%)</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* 6. OXÍGENO EN SANGRE (SpO2), PULSO REPOSO & PASOS */}
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-3 gap-3">
             {/* SpO2 */}
-            <div className="p-3.5 rounded-3xl liquid-glass-card border border-[var(--glass-border)] space-y-1">
-              <div className="flex items-center justify-between text-cyan-500">
+            <div className="p-4 rounded-3xl liquid-glass-card space-y-1 text-center">
+              <div className="flex items-center justify-between text-cyan-500 mb-1">
                 <Wind className="w-4 h-4" />
                 <span className="text-[9px] font-mono text-emerald-500 font-bold">Normal</span>
               </div>
-              <span className="text-[10px] text-[var(--text-secondary)] block">SpO2 Nocturno</span>
-              <div className="text-xl font-black text-[var(--text-primary)] font-mono">{current.spo2_avg || 98.0}%</div>
-              <p className="text-[9px] text-[var(--text-tertiary)]">Mín: {current.spo2_min || 94.0}%</p>
+              <span className="text-[10px] text-[var(--text-secondary)] block uppercase tracking-wider">SpO2</span>
+              <div className="text-2xl font-black text-[var(--text-primary)] font-mono data-tabular">{current.spo2_avg || 98.0}%</div>
+              <p className="text-[9px] text-[var(--text-tertiary)] font-mono">Mín: {current.spo2_min || 94.0}%</p>
             </div>
 
             {/* FC Reposo */}
-            <div className="p-3.5 rounded-3xl liquid-glass-card border border-[var(--glass-border)] space-y-1">
-              <div className="flex items-center justify-between text-rose-500">
+            <div className="p-4 rounded-3xl liquid-glass-card space-y-1 text-center">
+              <div className="flex items-center justify-between text-rose-500 mb-1">
                 <HeartPulse className="w-4 h-4" />
                 <span className="text-[9px] font-mono text-emerald-500 font-bold">Atleta</span>
               </div>
-              <span className="text-[10px] text-[var(--text-secondary)] block">FC Reposo</span>
-              <div className="text-xl font-black text-[var(--text-primary)] font-mono">
+              <span className="text-[10px] text-[var(--text-secondary)] block uppercase tracking-wider">FC Reposo</span>
+              <div className="text-2xl font-black text-[var(--text-primary)] font-mono data-tabular">
                 {current.resting_hr || 40} <span className="text-xs font-normal text-[var(--text-tertiary)]">bpm</span>
               </div>
-              <p className="text-[9px] text-emerald-500">Excelente forma</p>
+              <p className="text-[9px] text-emerald-500 font-medium">Zona Óptima</p>
             </div>
 
             {/* Pasos Totales */}
-            <div className="p-3.5 rounded-3xl liquid-glass-card border border-[var(--glass-border)] space-y-1">
-              <div className="flex items-center justify-between text-amber-500">
+            <div className="p-4 rounded-3xl liquid-glass-card space-y-1 text-center">
+              <div className="flex items-center justify-between text-amber-500 mb-1">
                 <Footprints className="w-4 h-4" />
                 <span className="text-[9px] font-mono text-amber-500 font-bold">Activo</span>
               </div>
-              <span className="text-[10px] text-[var(--text-secondary)] block">Pasos Día</span>
-              <div className="text-xl font-black text-[var(--text-primary)] font-mono">
+              <span className="text-[10px] text-[var(--text-secondary)] block uppercase tracking-wider">Pasos</span>
+              <div className="text-2xl font-black text-[var(--text-primary)] font-mono data-tabular">
                 {(current.total_steps || 0).toLocaleString()}
               </div>
-              <p className="text-[9px] text-[var(--text-tertiary)]">Meta: 10.000</p>
+              <p className="text-[9px] text-[var(--text-tertiary)] font-mono">Meta: 10k</p>
             </div>
           </div>
         </>

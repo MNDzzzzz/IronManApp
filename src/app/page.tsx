@@ -194,7 +194,7 @@ export default function Home() {
     await executeOptimisticMutation(
       '/api/nutrition',
       'POST',
-      { action: 'add_water', amount_ml: amountMl, date },
+      { type: 'water', action: 'add_water', amount_ml: amountMl, date },
       () => {
         setNutritionTotals((prev) => ({
           ...prev,

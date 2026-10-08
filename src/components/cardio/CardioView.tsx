@@ -102,176 +102,143 @@ export const CardioView: React.FC<CardioViewProps> = ({
   };
 
   return (
-    <div className="space-y-4 pb-24 px-1 pt-1 font-sans">
-      {/* ENCABEZADO */}
+    <div className="space-y-6 pb-24 font-sans">
+      {/* ENCABEZADO MINIMALISTA ESTILO HOY */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight editorial-heading">Cardio & Rodajes</h1>
-            <span className="text-[10px] px-2 py-0.5 rounded-full liquid-glass-pill text-[#FC5200] font-bold font-mono data-tabular">
-              FIT3
-            </span>
-          </div>
-          <p className="text-xs text-[var(--text-secondary)] font-medium">Preparación Media Maratón 28 Feb 2027</p>
+          <span className="text-[11px] font-bold tracking-[0.16em] uppercase text-[#FC5200] editorial-heading">
+            Carrera & Aeróbico
+          </span>
+          <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] tracking-tight leading-tight">
+            Cardio & Resistencia
+          </h1>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setIsSimulatorModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-full liquid-glass-pill text-[#FC5200] border border-[#FC5200]/30 font-bold text-xs hover:bg-[#FC5200]/10 active:scale-95 transition-all shadow-sm"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/50 dark:bg-white/[0.08] border border-white/60 dark:border-white/10 shadow-sm text-xs font-semibold text-[#FC5200] hover:bg-[#FC5200]/10 apple-btn-spring"
             title="Simular ritmo y estrategia para la Media Maratón 2027"
           >
             <Award className="w-3.5 h-3.5" />
-            <span className="editorial-heading">Simulador 21K</span>
+            <span className="hidden sm:inline">Simulador 21K</span>
           </button>
           <button
             onClick={() => setIsStravaModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-full liquid-glass-pill text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-bold text-xs active:scale-95 transition-all"
-            title="Escanear captura de Strava o Garmin con IA"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/50 dark:bg-white/[0.08] border border-white/60 dark:border-white/10 shadow-sm text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] apple-btn-spring"
+            title="Escanear captura de Strava con IA"
           >
             <Camera className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline editorial-heading">Strava</span>
+            <span>Strava</span>
           </button>
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1 px-3 py-2 rounded-full bg-[#FC5200] text-white font-bold text-xs shadow-md shadow-[#FC5200]/25 active:scale-95 transition-all"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#FC5200] text-white font-bold text-xs shadow-md shadow-[#FC5200]/25 apple-btn-spring"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span className="editorial-heading">Manual</span>
+            <span>Añadir</span>
           </button>
         </div>
       </div>
 
-      {/* TARJETA BIOMECÁNICA: OBJETIVO ZONA 2 (101 KG) */}
-      <div className="p-4 rounded-3xl liquid-glass-card space-y-3 relative overflow-hidden">
+      {/* TARJETA FOCO AERÓBICO BENTO (1 BLOQUE LIMPIO SIN BORDES ANIDADOS) */}
+      <div className="p-5 sm:p-6 rounded-3xl liquid-glass-card shadow-lg space-y-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-2xl bg-[#FC5200]/15 flex items-center justify-center text-[#FC5200]">
-              <Gauge className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-xs uppercase font-bold tracking-wider text-[#FC5200]">
-                Fase 1: Base Aeróbica y CaCo
-              </span>
-              <p className="text-[11px] text-[var(--text-secondary)]">Control de impacto para peso de 101 kg</p>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#FC5200]" />
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] editorial-heading">
+              Zona 2 Aeróbica • 101 kg
+            </span>
           </div>
-          <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full liquid-glass-pill text-emerald-600 dark:text-emerald-400 font-bold">
-            Z2: 130-145 bpm
+          <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 data-tabular">
+            130-145 bpm
           </span>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 text-center pt-1">
-          <div className="liquid-glass-pill p-2">
-            <span className="text-[10px] text-[var(--text-tertiary)] block">Cadencia Meta</span>
-            <span className="text-xs font-bold text-[var(--text-primary)] font-mono">165-175</span>
-            <span className="text-[9px] text-[var(--text-secondary)] block">ppm (pasos cortos)</span>
+        <div className="grid grid-cols-3 gap-4 pt-1 border-t border-[var(--glass-border-subtle)]">
+          <div>
+            <p className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold">Cadencia</p>
+            <p className="text-lg sm:text-xl font-bold font-mono text-[var(--text-primary)] data-tabular">165-175 <span className="text-xs text-[var(--text-tertiary)] font-normal">ppm</span></p>
           </div>
-          <div className="liquid-glass-pill p-2">
-            <span className="text-[10px] text-[var(--text-tertiary)] block">Estrategia</span>
-            <span className="text-xs font-bold text-amber-500">Método CaCo</span>
-            <span className="text-[9px] text-[var(--text-secondary)] block">Caminar / Correr</span>
+          <div>
+            <p className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold">Método</p>
+            <p className="text-lg sm:text-xl font-bold font-mono text-amber-500 data-tabular">CaCo</p>
           </div>
-          <div className="liquid-glass-pill p-2">
-            <span className="text-[10px] text-[var(--text-tertiary)] block">Protección</span>
-            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Tendón / Rodilla</span>
-            <span className="text-[9px] text-[var(--text-secondary)] block">Impacto mínimo</span>
+          <div>
+            <p className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold">Cuidado</p>
+            <p className="text-lg sm:text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 data-tabular">Bajo Impacto</p>
           </div>
         </div>
       </div>
 
-      {/* LISTA DE ACTIVIDADES */}
+      {/* LISTA DE ACTIVIDADES ESTILO TARJETA DE HOY */}
       {activities.length === 0 ? (
-        <div className="p-8 rounded-3xl liquid-glass-card text-center space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-[#FC5200]/15 text-[#FC5200] flex items-center justify-center mx-auto text-2xl">
+        <div className="p-8 rounded-3xl liquid-glass-card text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-[#FC5200]/10 text-[#FC5200] flex items-center justify-center mx-auto text-xl">
             🏃
           </div>
-          <div className="space-y-1.5">
-            <h3 className="text-base font-bold text-[var(--text-primary)]">Sin rodajes registrados</h3>
-            <p className="text-xs text-[var(--text-secondary)] max-w-sm mx-auto leading-relaxed">
-              Tus rodajes y sesiones CaCo aparecerán aquí al escanear capturas de Strava con la IA, sincronizar tu pulsera o registrarlos manualmente.
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
-            <button
-              onClick={() => setIsStravaModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#FC5200] text-white font-bold text-xs shadow-md shadow-[#FC5200]/25 active:scale-95 transition-all"
-            >
-              <Camera className="w-4 h-4" />
-              <span>Escanear Captura Strava</span>
-            </button>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl liquid-glass-pill text-[var(--text-primary)] font-semibold text-xs border border-[var(--glass-border)] active:scale-95 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Registro Manual</span>
-            </button>
-          </div>
+          <h3 className="text-base font-bold text-[var(--text-primary)]">Sin rodajes registrados</h3>
+          <p className="text-xs text-[var(--text-secondary)] max-w-sm mx-auto">
+            Registra tu salida manualmente o escanea tu captura de Strava con IA.
+          </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] editorial-heading">
+              Sesiones Registradas ({activities.length})
+            </span>
+          </div>
+
           {activities.map((activity) => {
             const distanceKm = (activity.distance / 1000).toFixed(2);
             const paceMinPerKm = activity.moving_time && activity.distance > 0
               ? ((activity.moving_time / 60) / (activity.distance / 1000)).toFixed(2)
               : '5.30';
-
-            const isHighHr = (activity.avg_hr || 0) > 158;
             const cadence = activity.avg_cadence || 168;
+            const isHighHr = (activity.avg_hr || 0) > 152;
 
             return (
               <div
                 key={activity.id}
                 onClick={() => onSelectActivity(activity)}
-                className="p-4 rounded-3xl liquid-glass-card hover:border-[#FC5200]/40 active:scale-[0.98] transition-all cursor-pointer space-y-3"
+                className="p-5 rounded-3xl liquid-glass-card hover:border-[#FC5200]/40 transition-all cursor-pointer space-y-3 apple-interactive-card"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-2xl bg-[#FC5200]/15 flex items-center justify-center text-[#FC5200] font-bold text-sm">
-                      🏃
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-[var(--text-primary)] leading-tight">{activity.name}</h3>
-                      <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
-                        {new Date(activity.start_date).toLocaleDateString('es-ES', {
-                          weekday: 'short',
-                          day: 'numeric',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </p>
-                    </div>
+                  <div>
+                    <h3 className="text-base font-bold text-[var(--text-primary)] leading-tight">{activity.name}</h3>
+                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                      {new Date(activity.start_date).toLocaleDateString('es-ES', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                      })} • {activity.type || 'Carrera'}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
-                      activity.source === 'strava_screenshot'
-                        ? 'bg-[#FC5200]/15 text-[#FC5200]'
-                        : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                    }`}>
-                      {activity.source === 'strava_screenshot' ? 'Strava' : 'Fit3 OK'}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/40 dark:bg-white/[0.06] text-[var(--text-secondary)] border border-[var(--glass-border-subtle)]">
+                      {activity.source === 'strava_screenshot' ? 'Strava' : 'Fit3'}
                     </span>
                     <ChevronRight className="w-4 h-4 text-[var(--text-tertiary)]" />
                   </div>
                 </div>
 
-                {/* Métricas Principales */}
-                <div className="grid grid-cols-4 gap-2 pt-2 border-t border-[var(--glass-border)] text-center">
-                  <div className="liquid-glass-pill p-2">
-                    <span className="text-[10px] text-[var(--text-tertiary)] block">Distancia</span>
-                    <span className="text-xs font-bold text-[var(--text-primary)] font-mono">{distanceKm} km</span>
+                {/* Métricas tabulares limpias idénticas a la tarjeta de Strava en Hoy */}
+                <div className="grid grid-cols-4 gap-2 pt-2 border-t border-[var(--glass-border-subtle)] text-center">
+                  <div>
+                    <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold block">Distancia</span>
+                    <span className="text-base sm:text-lg font-bold font-mono text-[var(--text-primary)] data-tabular">{distanceKm} <span className="text-xs font-normal text-[var(--text-tertiary)]">km</span></span>
                   </div>
-                  <div className="liquid-glass-pill p-2">
-                    <span className="text-[10px] text-[var(--text-tertiary)] block">Ritmo</span>
-                    <span className="text-xs font-bold text-[var(--text-primary)] font-mono">{paceMinPerKm} /km</span>
+                  <div>
+                    <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold block">Ritmo</span>
+                    <span className="text-base sm:text-lg font-bold font-mono text-[var(--text-primary)] data-tabular">{paceMinPerKm} <span className="text-xs font-normal text-[var(--text-tertiary)]">/km</span></span>
                   </div>
-                  <div className="liquid-glass-pill p-2">
-                    <span className="text-[10px] text-[var(--text-tertiary)] block">Cadencia</span>
-                    <span className="text-xs font-bold text-amber-500 font-mono">{cadence} ppm</span>
+                  <div>
+                    <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold block">Cadencia</span>
+                    <span className="text-base sm:text-lg font-bold font-mono text-amber-500 data-tabular">{cadence} <span className="text-xs font-normal text-[var(--text-tertiary)]">ppm</span></span>
                   </div>
-                  <div className="p-2 rounded-2xl bg-rose-500/10 border border-rose-500/20">
-                    <span className="text-[10px] text-rose-500 block">Pulso Medio</span>
-                    <span className="text-xs font-bold text-rose-500 font-mono">{activity.avg_hr || 142} bpm</span>
+                  <div>
+                    <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold block">Pulso</span>
+                    <span className="text-base sm:text-lg font-bold font-mono text-rose-500 data-tabular">{activity.avg_hr || 142} <span className="text-xs font-normal text-[var(--text-tertiary)]">bpm</span></span>
                   </div>
                 </div>
 

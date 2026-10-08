@@ -463,332 +463,223 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         </div>
       </div>
 
-      {/* FICHA OFICIAL DEL DÍA */}
-      <div className="p-4 rounded-3xl liquid-glass-card space-y-2.5">
+      {/* FICHA RESUMEN DEL DÍA (EDITORIAL APPLE) */}
+      <div className="liquid-glass-card p-5 sm:p-6 rounded-3xl space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono ${
                 currentRoutine.category === 'Fuerza'
-                  ? 'bg-[#2D68C4]/15 text-[#2D68C4] border border-[#2D68C4]/30'
+                  ? 'bg-[#2D68C4]/15 text-[#2D68C4] border border-[#2D68C4]/20'
                   : currentRoutine.category === 'Cardio'
-                  ? 'bg-[#FC5200]/15 text-[#FC5200] border border-[#FC5200]/30'
-                  : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                  ? 'bg-[#FC5200]/15 text-[#FC5200] border border-[#FC5200]/20'
+                  : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
               }`}
             >
               {currentRoutine.category}
             </span>
-            <span className="text-xs font-bold text-[var(--text-primary)]">
+            <span className="text-sm font-bold text-[var(--text-primary)] editorial-heading">
               {currentRoutine.dayName} • {currentRoutine.title}
             </span>
           </div>
-          <span className="text-[10px] font-bold text-[#D97757] font-mono">
+          <span className="text-xs font-bold text-[#D97757] font-mono data-tabular">
             {activeTargetCalories} kcal
           </span>
         </div>
 
-        <p className="text-[11px] text-[var(--text-secondary)] leading-snug">
+        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
           {currentRoutine.nutritionStrategy.guidelines}
         </p>
 
         {/* Resumen de objetivos prescritos */}
-        <div className="grid grid-cols-4 gap-1.5 pt-1 text-[10px] text-[var(--text-secondary)] font-mono">
-          <div className="p-1.5 rounded-2xl liquid-glass-pill text-center">
-            <span className="text-[9px] text-[var(--text-tertiary)] block">Kcal</span>
-            <span className="font-bold text-[var(--text-primary)]">{activeTargetCalories}</span>
+        <div className="grid grid-cols-4 gap-2 pt-1 text-center font-mono data-tabular">
+          <div className="p-2 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+            <span className="text-[9px] text-[var(--text-tertiary)] block uppercase">Kcal</span>
+            <span className="font-bold text-xs text-[var(--text-primary)]">{activeTargetCalories}</span>
           </div>
-          <div className="p-1.5 rounded-2xl liquid-glass-pill text-center">
-            <span className="text-[9px] text-[var(--text-tertiary)] block">Proteína</span>
-            <span className="font-bold text-rose-500">{currentRoutine.nutritionStrategy.proteinTarget.split(' ')[0]}</span>
+          <div className="p-2 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+            <span className="text-[9px] text-[var(--text-tertiary)] block uppercase">Proteína</span>
+            <span className="font-bold text-xs text-rose-500">{currentRoutine.nutritionStrategy.proteinTarget.split(' ')[0]}</span>
           </div>
-          <div className="p-1.5 rounded-2xl liquid-glass-pill text-center">
-            <span className="text-[9px] text-[var(--text-tertiary)] block">Carbos</span>
-            <span className="font-bold text-amber-500">{currentRoutine.nutritionStrategy.carbsTarget.split(' ')[0]}</span>
+          <div className="p-2 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+            <span className="text-[9px] text-[var(--text-tertiary)] block uppercase">Carbos</span>
+            <span className="font-bold text-xs text-amber-500">{currentRoutine.nutritionStrategy.carbsTarget.split(' ')[0]}</span>
           </div>
-          <div className="p-1.5 rounded-2xl liquid-glass-pill text-center">
-            <span className="text-[9px] text-[var(--text-tertiary)] block">Agua</span>
-            <span className="font-bold text-blue-500">{currentRoutine.nutritionStrategy.waterLiters}L</span>
+          <div className="p-2 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)]">
+            <span className="text-[9px] text-[var(--text-tertiary)] block uppercase">Agua</span>
+            <span className="font-bold text-xs text-blue-500">{currentRoutine.nutritionStrategy.waterLiters}L</span>
           </div>
-        </div>
-
-        {/* Menú estructurado recomendado de 4 tomas */}
-        {currentRoutine.nutritionStrategy.recommendedMeals?.length > 0 && (
-          <div className="pt-1 border-t border-[var(--glass-border)]">
-            <button
-              onClick={() => setShowRecommendedMenu(!showRecommendedMenu)}
-              className="w-full flex items-center justify-between text-left text-[11px] text-[#D97757] font-semibold py-1 transition-colors"
-            >
-              <span className="flex items-center gap-1.5">
-                <Utensils className="w-3.5 h-3.5" />
-                {showRecommendedMenu ? 'Ocultar menú sugerido' : 'Ver menú sugerido de 4 tomas'}
-              </span>
-              {showRecommendedMenu ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
-
-            {showRecommendedMenu && (
-              <div className="space-y-2 pt-2">
-                {currentRoutine.nutritionStrategy.recommendedMeals.map((meal, idx) => (
-                  <div
-                    key={idx}
-                    className="p-2.5 rounded-2xl liquid-glass-pill text-xs space-y-1.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-[#D97757] text-[11px] uppercase tracking-wider">
-                        {meal.slot}
-                      </span>
-                      <span className="text-[10px] text-[var(--text-tertiary)] font-mono">{meal.details}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-[var(--text-primary)] text-[11px] leading-relaxed flex-1">{meal.dish}</p>
-                      <button
-                        onClick={async () => {
-                          const slotLower = meal.slot.toLowerCase();
-                          const mType: NutritionLog['meal_type'] = slotLower.includes('desayun')
-                            ? 'Desayuno'
-                            : slotLower.includes('almuerz')
-                            ? 'Almuerzo'
-                            : slotLower.includes('cen')
-                            ? 'Cena'
-                            : 'Snack';
-                          const calMatch = meal.details.match(/(\d+)\s*kcal/);
-                          const pMatch = meal.details.match(/(\d+)g\s*P/);
-                          const cMatch = meal.details.match(/(\d+)g\s*HC/);
-                          const gMatch = meal.details.match(/(\d+)g\s*G/);
-                          await onAddMeal({
-                            date: selectedDate,
-                            meal_type: mType,
-                            description: meal.dish,
-                            calories: calMatch ? Number(calMatch[1]) : 550,
-                            protein_g: pMatch ? Number(pMatch[1]) : 45,
-                            carbs_g: cMatch ? Number(cMatch[1]) : 50,
-                            fat_g: gMatch ? Number(gMatch[1]) : 15,
-                          });
-                          setBatchToast(`+ Registrado ${meal.slot}`);
-                          setTimeout(() => setBatchToast(null), 2500);
-                          if (onRefreshData) onRefreshData();
-                        }}
-                        className="py-1 px-2.5 rounded-xl bg-[#D97757]/15 text-[#D97757] hover:bg-[#D97757] hover:text-white text-[10px] font-bold active:scale-95 transition-all whitespace-nowrap"
-                        title={`Registrar ${meal.slot}`}
-                      >
-                        + Registrar
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* PILL DE CREATINA Y ESTADO COACH */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {/* Tracker de Creatina con AppleSwitch */}
-        <div
-          className={`p-3 rounded-2xl border flex items-center justify-between transition-all duration-300 ${
-            creatineTaken
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-300'
-              : 'liquid-glass-card text-[var(--text-secondary)]'
-          }`}
-        >
-          <div className="flex items-center gap-2.5">
-            <div
-              className={`w-7 h-7 rounded-xl flex items-center justify-center transition-colors duration-300 ${
-                creatineTaken ? 'bg-emerald-500/20 text-emerald-500' : 'liquid-glass-pill text-[var(--text-tertiary)]'
-              }`}
-            >
-              <Zap className="w-4 h-4 fill-current" />
-            </div>
-            <div>
-              <div className="text-[11px] font-bold text-[var(--text-primary)]">Creatina (5g)</div>
-              <div className="text-[9px] text-[var(--text-secondary)]">Merienda con Avena + Whey</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-medium text-[var(--text-secondary)] hidden xs:inline">
-              {creatineTaken ? 'Tomada' : 'Pendiente'}
-            </span>
-            <AppleSwitch
-              checked={creatineTaken}
-              onChange={handleToggleCreatine}
-              size="sm"
-              activeColor="emerald"
-              aria-label="Alternar ingesta de creatina"
-            />
-          </div>
-        </div>
-
-        {/* Telegram Audio Helper */}
-        <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-xl bg-blue-500/20 text-blue-500 flex items-center justify-center">
-              <Mic className="w-4 h-4 animate-pulse" />
-            </div>
-            <div>
-              <div className="text-[11px] font-bold text-[var(--text-primary)]">Dictado por Voz Activo</div>
-              <div className="text-[9px] text-[var(--text-secondary)]">Habla en el Hub o vía Telegram</div>
-            </div>
-          </div>
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-500 border border-blue-500/30 font-mono">
-            Whisper
-          </span>
         </div>
       </div>
 
-      {/* TARJETA DE CALORÍAS Y MACRONUTRIENTES */}
-      <div className="p-4 rounded-3xl liquid-glass-card space-y-4">
-        {/* Calorías totales */}
-        <div className="flex items-center justify-between">
+      {/* BENTO GRID: COLUMNA 1 (MACROS) & COLUMNA 2 (HIDRATACIÓN Y SUPLEMENTOS) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* TARJETA DE CALORÍAS Y MACRONUTRIENTES */}
+        <div className="liquid-glass-card p-5 sm:p-6 rounded-3xl space-y-4 flex flex-col justify-between">
           <div>
-            <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider editorial-heading">Calorías ({selectedDate})</span>
-            <div className="text-2xl font-bold text-[var(--text-primary)] editorial-heading data-tabular">
-              {activeTotals.calories}{' '}
-              <span className="text-xs font-normal text-[var(--text-secondary)] font-sans">/ {activeTargetCalories} kcal</span>
-            </div>
-          </div>
-          <div className="text-right">
-            <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider editorial-heading">Restante</span>
-            <div className="text-base font-bold text-[#D97757] dark:text-[#E28464] editorial-heading data-tabular">
-              {Math.max(0, activeTargetCalories - activeTotals.calories)} kcal
-            </div>
-          </div>
-        </div>
-
-        {/* Desglose de Macronutrientes */}
-        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[var(--glass-border)]">
-          {/* Proteína */}
-          <div className="p-2.5 rounded-2xl liquid-glass-pill">
-            <div className="flex justify-between items-center text-[10px] text-[var(--text-secondary)] mb-1">
-              <span className="font-semibold editorial-heading">Proteína</span>
-              <span className="font-bold text-rose-500 font-mono data-tabular">{activeTotals.protein_g}g</span>
-            </div>
-            <div className="w-full bg-[var(--glass-border-subtle)] h-1 rounded-full overflow-hidden">
-              <div
-                className="bg-rose-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, (activeTotals.protein_g / targetProtein) * 100)}%` }}
-              />
-            </div>
-            <span className="text-[9px] text-[var(--text-tertiary)] mt-1 block font-mono data-tabular">Meta: {targetProtein}g</span>
-          </div>
-
-          {/* Carbohidratos */}
-          <div className="p-2.5 rounded-2xl liquid-glass-pill">
-            <div className="flex justify-between items-center text-[10px] text-[var(--text-secondary)] mb-1">
-              <span className="font-semibold editorial-heading">Carbos</span>
-              <span className="font-bold text-amber-500 font-mono data-tabular">{activeTotals.carbs_g}g</span>
-            </div>
-            <div className="w-full bg-[var(--glass-border-subtle)] h-1 rounded-full overflow-hidden">
-              <div
-                className="bg-amber-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, (activeTotals.carbs_g / targetCarbs) * 100)}%` }}
-              />
-            </div>
-            <span className="text-[9px] text-[var(--text-tertiary)] mt-1 block font-mono data-tabular">Meta: {targetCarbs}g</span>
-          </div>
-
-          {/* Grasas */}
-          <div className="p-2.5 rounded-2xl liquid-glass-pill">
-            <div className="flex justify-between items-center text-[10px] text-[var(--text-secondary)] mb-1">
-              <span className="font-semibold editorial-heading">Grasas</span>
-              <span className="font-bold text-emerald-500 font-mono data-tabular">{activeTotals.fat_g}g</span>
-            </div>
-            <div className="w-full bg-[var(--glass-border-subtle)] h-1 rounded-full overflow-hidden">
-              <div
-                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, (activeTotals.fat_g / targetFat) * 100)}%` }}
-              />
-            </div>
-            <span className="text-[9px] text-[var(--text-tertiary)] mt-1 block font-mono data-tabular">Meta: {targetFat}g</span>
-          </div>
-        </div>
-      </div>
-
-      {/* CONTROL DE AGUA E HIDRATACIÓN */}
-      <div className="p-4 rounded-3xl liquid-glass-card space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-xl bg-blue-500/20 text-blue-500 flex items-center justify-center">
-              <Droplet className="w-4 h-4 fill-blue-500/40" />
-            </div>
-            <div>
-              <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
-                Hidratación Diaria
-              </h3>
-              <p className="text-[10px] text-[var(--text-secondary)] font-mono">
-                {(activeTotals.water_ml / 1000).toFixed(2)}L de {(activeTargetWater / 1000).toFixed(1)}L objetivo
-              </p>
-            </div>
-          </div>
-          <span className="text-xs font-mono font-bold text-blue-500">
-            {Math.min(100, Math.round((activeTotals.water_ml / activeTargetWater) * 100))}%
-          </span>
-        </div>
-
-        <div className="w-full bg-[var(--glass-border-subtle)] h-2.5 rounded-full overflow-hidden">
-          <div
-            className="bg-blue-500 h-full rounded-full transition-all duration-500"
-            style={{ width: `${Math.min(100, (activeTotals.water_ml / activeTargetWater) * 100)}%` }}
-          />
-        </div>
-
-        {/* Botones de suma rápida */}
-        <div className="grid grid-cols-4 gap-2 pt-1">
-          <button
-            onClick={() => onAddWater(-250, selectedDate)}
-            className="py-2 rounded-xl liquid-glass-pill text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all"
-            title="Restar 250ml"
-          >
-            -250 ml
-          </button>
-          <button
-            onClick={() => onAddWater(250, selectedDate)}
-            className="py-2 rounded-xl liquid-glass-pill text-xs font-bold text-blue-500 hover:text-blue-600 active:scale-95 transition-all"
-          >
-            +250 ml
-          </button>
-          <button
-            onClick={() => onAddWater(500, selectedDate)}
-            className="py-2 rounded-xl liquid-glass-pill text-xs font-bold text-blue-500 hover:text-blue-600 active:scale-95 transition-all"
-          >
-            +500 ml
-          </button>
-          <button
-            onClick={() => onAddWater(1000, selectedDate)}
-            className="py-2 rounded-xl liquid-glass-pill text-xs font-bold text-blue-500 hover:text-blue-600 active:scale-95 transition-all"
-          >
-            +1.0L
-          </button>
-        </div>
-
-        {/* Listado de tomas individuales de agua */}
-        {displayedWater.length > 0 && (
-          <div className="pt-2 border-t border-[var(--glass-border)] space-y-1.5">
-            <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
-              <span>Tomas registradas ({displayedWater.length})</span>
-              <span className="font-mono">{displayedWater.reduce((s, w) => s + w.amount_ml, 0)} ml total</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {displayedWater.map((w) => (
-                <div
-                  key={w.id}
-                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-xl liquid-glass-pill text-[11px] text-[var(--text-primary)]"
-                >
-                  <span className="font-medium text-blue-500">+{w.amount_ml} ml</span>
-                  {onDeleteWater && (
-                    <button
-                      onClick={() => onDeleteWater(w.id)}
-                      className="text-[var(--text-tertiary)] hover:text-rose-500 p-0.5 rounded transition-colors"
-                      title="Eliminar esta toma"
-                      aria-label="Eliminar toma"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  )}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider editorial-heading">Calorías ({selectedDate === todayStr ? 'Hoy' : selectedDate})</span>
+                <div className="text-3xl font-black text-[var(--text-primary)] editorial-heading font-mono data-tabular mt-0.5">
+                  {activeTotals.calories}{' '}
+                  <span className="text-xs font-normal text-[var(--text-secondary)] font-sans">/ {activeTargetCalories}</span>
                 </div>
-              ))}
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider editorial-heading">Restante</span>
+                <div className="text-lg font-bold text-[#D97757] dark:text-[#E28464] editorial-heading font-mono data-tabular mt-0.5">
+                  {Math.max(0, activeTargetCalories - activeTotals.calories)} <span className="text-xs font-normal text-[var(--text-secondary)] font-sans">kcal</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Barra de progreso de calorías */}
+            <div className="w-full bg-[var(--glass-surface-thick)] h-2 rounded-full overflow-hidden mt-3 border border-[var(--glass-border)]">
+              <div
+                className="bg-gradient-to-r from-[#D97757] to-[#E28464] h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, (activeTotals.calories / activeTargetCalories) * 100)}%` }}
+              />
             </div>
           </div>
-        )}
+
+          {/* Desglose de Macronutrientes */}
+          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-[var(--glass-border)]">
+            {/* Proteína */}
+            <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-center">
+              <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase block">Proteína</span>
+              <div className="text-base font-bold text-rose-500 font-mono data-tabular my-0.5">{activeTotals.protein_g}g</div>
+              <div className="w-full bg-[var(--glass-surface-thick)] h-1 rounded-full overflow-hidden my-1">
+                <div
+                  className="bg-rose-500 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (activeTotals.protein_g / targetProtein) * 100)}%` }}
+                />
+              </div>
+              <span className="text-[9px] text-[var(--text-tertiary)] font-mono">Meta {targetProtein}g</span>
+            </div>
+
+            {/* Carbohidratos */}
+            <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-center">
+              <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase block">Carbos</span>
+              <div className="text-base font-bold text-amber-500 font-mono data-tabular my-0.5">{activeTotals.carbs_g}g</div>
+              <div className="w-full bg-[var(--glass-surface-thick)] h-1 rounded-full overflow-hidden my-1">
+                <div
+                  className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (activeTotals.carbs_g / targetCarbs) * 100)}%` }}
+                />
+              </div>
+              <span className="text-[9px] text-[var(--text-tertiary)] font-mono">Meta {targetCarbs}g</span>
+            </div>
+
+            {/* Grasas */}
+            <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-center">
+              <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase block">Grasas</span>
+              <div className="text-base font-bold text-emerald-500 font-mono data-tabular my-0.5">{activeTotals.fat_g}g</div>
+              <div className="w-full bg-[var(--glass-surface-thick)] h-1 rounded-full overflow-hidden my-1">
+                <div
+                  className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (activeTotals.fat_g / targetFat) * 100)}%` }}
+                />
+              </div>
+              <span className="text-[9px] text-[var(--text-tertiary)] font-mono">Meta {targetFat}g</span>
+            </div>
+          </div>
+        </div>
+
+        {/* COLUMNA DERECHA: HIDRATACIÓN & CREATINA */}
+        <div className="space-y-4">
+          {/* CONTROL DE AGUA E HIDRATACIÓN */}
+          <div className="liquid-glass-card p-5 sm:p-6 rounded-3xl space-y-3.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-500 flex items-center justify-center">
+                  <Droplet className="w-4 h-4 fill-blue-500/30" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider editorial-heading">
+                    Hidratación Diaria
+                  </h3>
+                  <p className="text-[11px] text-[var(--text-secondary)] font-mono data-tabular">
+                    {(activeTotals.water_ml / 1000).toFixed(2)}L de {(activeTargetWater / 1000).toFixed(1)}L objetivo
+                  </p>
+                </div>
+              </div>
+              <span className="text-sm font-mono font-bold text-blue-500 data-tabular">
+                {Math.min(100, Math.round((activeTotals.water_ml / activeTargetWater) * 100))}%
+              </span>
+            </div>
+
+            <div className="w-full bg-[var(--glass-surface-thick)] h-2 rounded-full overflow-hidden border border-[var(--glass-border)]">
+              <div
+                className="bg-blue-500 h-full rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, (activeTotals.water_ml / activeTargetWater) * 100)}%` }}
+              />
+            </div>
+
+            {/* Botones de suma rápida de agua */}
+            <div className="grid grid-cols-4 gap-2 pt-1">
+              <button
+                onClick={() => onAddWater(-250, selectedDate)}
+                className="py-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] apple-btn-spring transition-all font-mono"
+                title="Restar 250ml"
+              >
+                -250 ml
+              </button>
+              <button
+                onClick={() => onAddWater(250, selectedDate)}
+                className="py-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-xs font-bold text-blue-500 hover:text-blue-400 apple-btn-spring transition-all font-mono"
+              >
+                +250 ml
+              </button>
+              <button
+                onClick={() => onAddWater(500, selectedDate)}
+                className="py-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-xs font-bold text-blue-500 hover:text-blue-400 apple-btn-spring transition-all font-mono"
+              >
+                +500 ml
+              </button>
+              <button
+                onClick={() => onAddWater(1000, selectedDate)}
+                className="py-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-xs font-bold text-blue-500 hover:text-blue-400 apple-btn-spring transition-all font-mono"
+              >
+                +1.0 L
+              </button>
+            </div>
+          </div>
+
+          {/* TRACKER DE CREATINA */}
+          <div
+            className={`p-4 rounded-3xl border flex items-center justify-between transition-all duration-300 ${
+              creatineTaken
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-300'
+                : 'liquid-glass-card text-[var(--text-secondary)]'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <div
+                className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors duration-300 ${
+                  creatineTaken ? 'bg-emerald-500/20 text-emerald-500' : 'bg-[var(--glass-surface)] text-[var(--text-tertiary)]'
+                }`}
+              >
+                <Zap className="w-4 h-4 fill-current" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-[var(--text-primary)]">Creatina Monohidrato (5g)</div>
+                <div className="text-[10px] text-[var(--text-secondary)]">Saturación celular y fuerza</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-medium text-[var(--text-secondary)] font-mono">
+                {creatineTaken ? 'Tomada' : 'Pendiente'}
+              </span>
+              <AppleSwitch
+                checked={creatineTaken}
+                onChange={handleToggleCreatine}
+                size="sm"
+                activeColor="emerald"
+                aria-label="Alternar ingesta de creatina"
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ================================================================ */}
@@ -812,23 +703,23 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       {/* ================================================================ */}
       {/* PLANTILLAS EN BLOQUE Y BOTÓN DÍA TÍPICO CUMPLIDO (P1.3)           */}
       {/* ================================================================ */}
-      <div className="p-4 rounded-3xl liquid-glass-card space-y-3 border border-[var(--glass-border)]">
+      <div className="liquid-glass-card p-5 sm:p-6 rounded-3xl space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-xl bg-[#D97757]/15 text-[#D97757] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-[#D97757]/15 text-[#D97757] flex items-center justify-center">
               <Zap className="w-4 h-4 fill-current" />
             </div>
             <div>
-              <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
+              <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider editorial-heading">
                 Nutrición Rápida en Bloque
               </h3>
-              <p className="text-[10px] text-[var(--text-secondary)]">
-                Plantilla Álvaro: 2.400 kcal • 202g Proteína
+              <p className="text-[11px] text-[var(--text-secondary)] font-mono">
+                2.400 kcal • 202g Proteína (4 tomas)
               </p>
             </div>
           </div>
-          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono">
-            Anti-Fatiga
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono">
+            1-Tap
           </span>
         </div>
 
@@ -836,13 +727,13 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         <button
           onClick={handleTypicalDayClick}
           disabled={isApplyingBatch}
-          className="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-[#D97757] to-[#E28464] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-[#D97757]/20 active:scale-[0.98] transition-all disabled:opacity-50"
+          className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-[#D97757] to-[#E28464] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-[#D97757]/20 apple-btn-spring transition-all disabled:opacity-50"
         >
           <Zap className="w-4 h-4 fill-current" />
           <span>
             {isApplyingBatch
               ? 'Registrando día completo...'
-              : `⚡ Marcar Día Típico Cumplido (2.400 kcal)`}
+              : `Marcar Día Típico Cumplido (2.400 kcal)`}
           </span>
         </button>
 
@@ -856,23 +747,23 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
               onClick={() => setShowPresetsModal(true)}
               className="text-[10px] text-[#D97757] hover:underline font-bold"
             >
-              Ver las 8 plantillas &rarr;
+              Ver todas ({FREQUENT_MEAL_PRESETS.length}) &rarr;
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {FREQUENT_MEAL_PRESETS.slice(0, 4).map((preset) => (
               <button
                 key={preset.id}
                 onClick={() => handleAddPresetMeal(preset)}
-                className="p-2 rounded-xl liquid-glass-pill text-left hover:border-[#D97757]/30 active:scale-95 transition-all group flex flex-col justify-between"
+                className="p-2.5 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left hover:border-[#D97757]/40 apple-btn-spring transition-all group flex flex-col justify-between"
                 title={`Añadir ${preset.name}`}
               >
-                <div className="flex items-center justify-between text-[11px] font-bold text-[var(--text-primary)]">
+                <div className="flex items-center justify-between text-xs font-bold text-[var(--text-primary)]">
                   <span className="truncate pr-1">{preset.name}</span>
-                  <span className="text-[10px] font-mono text-[#D97757]">+{preset.calories}k</span>
+                  <span className="text-[10px] font-mono text-[#D97757] font-bold">+{preset.calories}k</span>
                 </div>
-                <div className="text-[9px] text-[var(--text-secondary)] mt-0.5 font-mono">
-                  P: {preset.protein_g}g • C: {preset.carbs_g}g • G: {preset.fat_g}g
+                <div className="text-[10px] text-[var(--text-secondary)] mt-1 font-mono data-tabular">
+                  {preset.protein_g}g P • {preset.carbs_g}g C
                 </div>
               </button>
             ))}
@@ -881,27 +772,33 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       </div>
 
       {/* LISTADO DE COMIDAS REGISTRADAS */}
-      <div className="p-4 rounded-3xl liquid-glass-card space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-          Comidas ({displayedMeals.length}) • {selectedDate}
-        </h3>
+      <div className="liquid-glass-card p-5 sm:p-6 rounded-3xl space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] editorial-heading">
+            Comidas Registradas ({displayedMeals.length})
+          </h3>
+          <span className="text-[11px] text-[var(--text-tertiary)] font-mono data-tabular">
+            {selectedDate === todayStr ? 'Hoy' : selectedDate}
+          </span>
+        </div>
+
         {displayedMeals.length === 0 ? (
           <p className="text-xs text-[var(--text-secondary)] py-6 text-center">
-            No hay comidas registradas para este día. ¡Usa el botón de voz en la pantalla principal o añade una manual!
+            Sin comidas registradas aún para este día. Usa el botón de voz o añade una manual.
           </p>
         ) : (
           <div className="space-y-2">
             {displayedMeals.map((meal) => (
               <div
                 key={meal.id}
-                className="p-3 rounded-2xl liquid-glass-pill space-y-1.5 hover:border-[#D97757]/40 transition-all"
+                className="p-3.5 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] space-y-1.5 hover:border-[#D97757]/40 transition-all"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--glass-border-subtle)] text-[var(--text-primary)] font-bold">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--glass-surface-thick)] text-[var(--text-primary)] font-bold">
                     {meal.meal_type}
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-[var(--text-primary)] font-mono">
+                    <span className="text-xs font-bold text-[var(--text-primary)] font-mono data-tabular">
                       {meal.calories} kcal
                     </span>
                     {onDeleteMeal && (
@@ -924,7 +821,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 <p className="text-xs text-[var(--text-primary)] font-medium leading-relaxed">
                   {meal.description}
                 </p>
-                <div className="flex items-center gap-3 text-[10px] text-[var(--text-secondary)] font-mono">
+                <div className="flex items-center gap-3 text-[10px] text-[var(--text-secondary)] font-mono data-tabular">
                   <span>
                     P: <strong className="text-rose-500">{meal.protein_g}g</strong>
                   </span>
@@ -935,7 +832,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                     G: <strong className="text-emerald-500">{meal.fat_g}g</strong>
                   </span>
                   {meal.raw_audio_transcription && (
-                    <span className="text-blue-500 ml-auto text-[9px] flex items-center gap-0.5">
+                    <span className="text-blue-500 ml-auto text-[9px] flex items-center gap-0.5 font-sans">
                       <Mic className="w-3 h-3" /> Audio
                     </span>
                   )}
@@ -947,7 +844,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       </div>
 
       {/* BASE DE DATOS DE ALIMENTOS HABITUALES (ACORDEÓN) */}
-      <div className="p-4 rounded-3xl liquid-glass-card space-y-3">
+      <div className="liquid-glass-card p-5 sm:p-6 rounded-3xl space-y-3">
         <button
           onClick={() => setShowFrequentFoods(!showFrequentFoods)}
           className="w-full flex items-center justify-between text-left"

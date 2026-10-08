@@ -28,6 +28,8 @@ export const CoachCommandBar: React.FC<CoachCommandBarProps> = ({
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const speechRecognitionRef = useRef<any>(null);
+  const speechTranscriptRef = useRef<string>('');
 
   // Limpiar temporizador de feedback
   useEffect(() => {
@@ -37,45 +39,116 @@ export const CoachCommandBar: React.FC<CoachCommandBarProps> = ({
     }
   }, [feedbackState]);
 
-  // Iniciar grabación de audio
+  // Iniciar grabación de audio con soporte dual (Web Speech API nativo móvil + MediaRecorder)
   const startRecording = async () => {
     try {
+      speechTranscriptRef.current = '';
+
+      // 1. Intentar iniciar transcriptor nativo del dispositivo (iOS Safari / Android Chrome)
+      if (typeof window !== 'undefined') {
+        const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (SpeechRec) {
+          try {
+            const recognition = new SpeechRec();
+            recognition.lang = 'es-ES';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.onresult = (event: any) => {
+              let currentTranscript = '';
+              for (let i = 0; i < event.results.length; i++) {
+                currentTranscript += event.results[i][0].transcript + ' ';
+              }
+              speechTranscriptRef.current = currentTranscript.trim();
+              if (speechTranscriptRef.current) {
+                setInputText(speechTranscriptRef.current);
+              }
+            };
+            recognition.onerror = (e: any) => {
+              console.warn('Aviso Web Speech API:', e.error);
+            };
+            recognition.start();
+            speechRecognitionRef.current = recognition;
+          } catch (e) {
+            console.warn('SpeechRecognition no iniciado:', e);
+          }
+        }
+      }
+
+      // 2. Iniciar MediaRecorder de audio crudo
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
 
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
-        ? 'audio/webm'
-        : MediaRecorder.isTypeSupported('audio/mp4')
-        ? 'audio/mp4'
-        : 'audio/ogg';
+      let selectedMime = '';
+      if (typeof MediaRecorder !== 'undefined') {
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) selectedMime = 'audio/webm;codecs=opus';
+        else if (MediaRecorder.isTypeSupported('audio/webm')) selectedMime = 'audio/webm';
+        else if (MediaRecorder.isTypeSupported('audio/mp4')) selectedMime = 'audio/mp4';
+        else if (MediaRecorder.isTypeSupported('audio/aac')) selectedMime = 'audio/aac';
+        else if (MediaRecorder.isTypeSupported('audio/ogg')) selectedMime = 'audio/ogg';
+      }
 
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const options = selectedMime ? { mimeType: selectedMime } : undefined;
+      const mediaRecorder = options ? new MediaRecorder(stream, options) : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach((track) => track.stop());
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-        await handleSendAudio(audioBlob, mimeType);
+
+        // Si Web Speech ya transcribió texto directamente en el teléfono, enviar el texto
+        const capturedSpeech = speechTranscriptRef.current.trim();
+        if (capturedSpeech) {
+          setIsRecording(false);
+          await handleSendText(capturedSpeech);
+          return;
+        }
+
+        const actualMime = (mediaRecorder.mimeType || selectedMime || 'audio/webm').split(';')[0].trim();
+        const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
+
+        if (audioBlob.size === 0) {
+          console.warn('Audio vacío detectado.');
+          if (onStatusChange) onStatusChange('No se detectó audio. Escribe tu mensaje en la barra.');
+          setIsProcessing(false);
+          setIsRecording(false);
+          return;
+        }
+
+        await handleSendAudio(audioBlob, actualMime);
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(250); // Emitir chunks cada 250ms para prevenir pérdida de buffers
       setIsRecording(true);
       if (onStatusChange) onStatusChange('Escuchando... Di lo que has comido o tu entreno');
     } catch (err) {
       console.error('Error al acceder al micrófono:', err);
-      if (onStatusChange) onStatusChange('Micrófono no disponible. Escribe tu mensaje en la barra.');
+      if (onStatusChange) onStatusChange('Micrófono no disponible o bloqueado. Escribe tu mensaje.');
+      setIsRecording(false);
     }
   };
 
   // Detener grabación de audio
   const stopRecording = () => {
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop();
+      } catch (_) {}
+    }
+
     if (mediaRecorderRef.current && isRecording) {
+      try {
+        // En Safari iOS forzar la emisión del último chunk antes de cerrar
+        if (mediaRecorderRef.current.state === 'recording') {
+          mediaRecorderRef.current.requestData();
+        }
+      } catch (e) {
+        console.warn('requestData fallback:', e);
+      }
       mediaRecorderRef.current.stop();
       setIsRecording(false);
     }
@@ -93,12 +166,15 @@ export const CoachCommandBar: React.FC<CoachCommandBarProps> = ({
         const base64data = (reader.result as string)?.split(',')[1];
         if (!base64data) throw new Error('No se pudo codificar el audio');
 
+        const cleanMime = (mimeType || 'audio/webm').split(';')[0].trim();
+
         const res = await fetch('/api/coach/message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             audioBase64: base64data,
-            mimeType,
+            mimeType: cleanMime,
+            text: speechTranscriptRef.current.trim() || undefined,
           }),
         });
 
@@ -107,6 +183,7 @@ export const CoachCommandBar: React.FC<CoachCommandBarProps> = ({
           setFeedbackState('success');
           if (onStatusChange) onStatusChange(data.replyText || data.reply || 'Datos procesados y aplicados.');
           if (onSuccessResult) onSuccessResult(data);
+          setInputText('');
         } else {
           setFeedbackState('error');
           if (onStatusChange) onStatusChange(data.error || 'No se pudo interpretar el audio.');

@@ -83,9 +83,25 @@ export async function POST(request: NextRequest) {
     const todayStr = getSpainTodayStr();
     const logDate = body.date || todayStr;
 
-    // Registro o resta de agua
-    if (body.type === 'water') {
-      const amount = Number(body.amount_ml) || 0;
+    // Eliminación de agua vía POST (compatibilidad)
+    if (body.action === 'delete_water' && body.id) {
+      const id = body.id;
+      if (isSupabaseConfigured && supabaseAdmin) {
+        await supabaseAdmin.from('water_logs').delete().eq('id', id);
+      }
+      mockStore.waterLogs = mockStore.waterLogs.filter((w) => w.id !== id);
+      return NextResponse.json({ success: true, deleted: id, type: 'water' });
+    }
+
+    // Registro o resta de agua polimórfico (acepta type: 'water' o action: 'add_water')
+    const isWaterAction =
+      body.type === 'water' ||
+      body.action === 'add_water' ||
+      body.action === 'water' ||
+      (body.amount_ml !== undefined && body.calories === undefined && !body.meal_type && !body.meals);
+
+    if (isWaterAction) {
+      const amount = Number(body.amount_ml ?? body.amount) || 0;
 
       // Resta de agua (amount negativo)
       if (amount < 0) {
