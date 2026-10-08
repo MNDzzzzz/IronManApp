@@ -243,7 +243,7 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
                     Fase {dataset.progressionPlan.phase}: {dataset.progressionPlan.phaseName}
                   </span>
                 </div>
-                <h1 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] mt-1 tracking-tight">
+                <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mt-1 tracking-tight editorial-heading">
                   {assessment.executiveHeadline}
                 </h1>
                 <p className="text-xs text-[var(--text-secondary)] mt-1 max-w-xl leading-relaxed">
@@ -254,8 +254,8 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
               {/* Puntuación de Adherencia */}
               <div className="flex items-center gap-3 bg-[var(--glass-surface)] border border-[var(--glass-border)] px-4 py-3 rounded-2xl shadow-sm">
                 <div className="text-right">
-                  <p className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wider font-semibold">Puntuación</p>
-                  <p className="text-2xl font-black text-[var(--text-primary)] leading-none mt-0.5 font-mono">
+                  <p className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wider font-semibold editorial-heading">Puntuación</p>
+                  <p className="text-2xl font-bold text-[var(--text-primary)] leading-none mt-0.5 font-mono data-tabular">
                     {assessment.overallScore}<span className="text-xs text-[#D97757]">/100</span>
                   </p>
                 </div>
@@ -270,9 +270,9 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {/* KPI 1: Variación de Peso */}
             <div className="liquid-glass-card border border-[var(--glass-border)] rounded-2xl p-4">
-              <span className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Variación Peso</span>
-              <div className="flex items-baseline gap-1 mt-1 font-mono">
-                <span className="text-xl font-black text-[var(--text-primary)]">
+              <span className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold editorial-heading">Variación Peso</span>
+              <div className="flex items-baseline gap-1 mt-1 font-mono data-tabular">
+                <span className="text-xl font-bold text-[var(--text-primary)]">
                   {dataset.summary.weightDeltaKg !== null
                     ? `${dataset.summary.weightDeltaKg > 0 ? '+' : ''}${dataset.summary.weightDeltaKg} kg`
                     : 'Sin cambio'}
@@ -285,9 +285,9 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
 
             {/* KPI 2: Pasos Diarios */}
             <div className="liquid-glass-card border border-[var(--glass-border)] rounded-2xl p-4">
-              <span className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold">Pasos Fit3 Media</span>
-              <div className="flex items-baseline gap-1 mt-1 font-mono">
-                <span className="text-xl font-black text-[#2D68C4] dark:text-[#5B95E0]">
+              <span className="text-[10px] text-[var(--text-secondary)] uppercase font-semibold editorial-heading">Pasos Fit3 Media</span>
+              <div className="flex items-baseline gap-1 mt-1 font-mono data-tabular">
+                <span className="text-xl font-bold text-[#2D68C4] dark:text-[#5B95E0]">
                   {dataset.summary.avgDailySteps.toLocaleString()}
                 </span>
                 <span className="text-[10px] text-[var(--text-secondary)]">/día</span>

@@ -22,9 +22,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
     <nav
       role="navigation"
       aria-label="Navegación principal"
-      className="fixed bottom-0 left-0 right-0 z-50 liquid-glass-nav border-t border-[var(--glass-border)] pb-[max(env(safe-area-inset-bottom),16px)] transition-colors duration-300"
+      className="fixed bottom-3 left-0 right-0 z-50 flex justify-center pointer-events-none px-4 pb-[env(safe-area-inset-bottom,0px)]"
     >
-      <div className="max-w-md mx-auto px-4 h-16 flex items-center justify-around">
+      <div className="pointer-events-auto max-w-sm w-full liquid-glass-dock px-2 py-1.5 flex items-center justify-between transition-all duration-300">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;
@@ -35,19 +35,19 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
               aria-selected={isActive}
               aria-label={tab.label}
               onClick={() => onSelectTab(tab.id)}
-              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all duration-200 active:scale-95 ${
+              className={`relative flex flex-col items-center justify-center flex-1 py-1.5 px-2 rounded-full transition-all duration-200 active:scale-95 ${
                 isActive
                   ? 'text-[#D97757] dark:text-[#E28464] font-semibold'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              <div className="relative">
-                <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? 'scale-110 stroke-[2.25]' : 'stroke-[1.75]'}`} />
+              <div className="relative flex items-center justify-center">
+                <Icon className={`w-4 h-4 transition-transform duration-200 ${isActive ? 'scale-110 stroke-[2.2]' : 'stroke-[1.75]'}`} />
                 {isActive && (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#D97757] dark:bg-[#E28464] rounded-full animate-pulse" />
+                  <span className="absolute -bottom-1.5 w-1 h-1 bg-[#D97757] dark:bg-[#E28464] rounded-full" />
                 )}
               </div>
-              <span className="text-[11px] mt-1 tracking-tight">{tab.label}</span>
+              <span className="text-[10px] mt-1 tracking-tight editorial-heading">{tab.label}</span>
             </button>
           );
         })}

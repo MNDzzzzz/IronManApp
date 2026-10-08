@@ -49,19 +49,19 @@ export const AdaptiveWorkoutView: React.FC<AdaptiveWorkoutViewProps> = ({
 
   return (
     <div className="w-full max-w-md mx-auto pb-24 animate-in fade-in duration-300">
-      {/* Selector de Modalidad Adaptativa */}
-      <div className="flex items-center justify-between p-1.5 mb-4 rounded-2xl liquid-glass-pill border border-[var(--glass-border)]">
+      {/* Selector de Modalidad Adaptativa Segmentado */}
+      <div className="flex items-center justify-between p-1 mb-4 rounded-full liquid-glass-pill border border-[var(--glass-border)]">
         <button
           onClick={() => setActiveMode('running')}
           role="tab"
           aria-selected={activeMode === 'running'}
-          className={`flex items-center justify-center gap-2 flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-95 ${
+          className={`flex items-center justify-center gap-2 flex-1 py-2 px-3 rounded-full text-xs font-semibold transition-all duration-200 active:scale-95 editorial-heading ${
             activeMode === 'running'
-              ? 'bg-[#FC5200] text-white shadow-md shadow-[#FC5200]/25'
+              ? 'bg-[#FC5200] text-white shadow-md shadow-[#FC5200]/20'
               : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
-          <Compass className="w-4 h-4" />
+          <Compass className="w-3.5 h-3.5" />
           <span>Running & Z2</span>
         </button>
 
@@ -69,13 +69,13 @@ export const AdaptiveWorkoutView: React.FC<AdaptiveWorkoutViewProps> = ({
           onClick={() => setActiveMode('fuerza')}
           role="tab"
           aria-selected={activeMode === 'fuerza'}
-          className={`flex items-center justify-center gap-2 flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-95 ${
+          className={`flex items-center justify-center gap-2 flex-1 py-2 px-3 rounded-full text-xs font-semibold transition-all duration-200 active:scale-95 editorial-heading ${
             activeMode === 'fuerza'
-              ? 'bg-[#2D68C4] text-white shadow-md shadow-[#2D68C4]/25'
+              ? 'bg-[#2D68C4] text-white shadow-md shadow-[#2D68C4]/20'
               : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
-          <Dumbbell className="w-4 h-4" />
+          <Dumbbell className="w-3.5 h-3.5" />
           <span>Fuerza & Rodilla</span>
         </button>
       </div>

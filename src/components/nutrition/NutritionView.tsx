@@ -637,15 +637,15 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         {/* Calorías totales */}
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-[11px] text-[var(--text-secondary)] font-medium">Calorías ({selectedDate})</span>
-            <div className="text-2xl font-bold text-[var(--text-primary)] font-mono">
+            <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider editorial-heading">Calorías ({selectedDate})</span>
+            <div className="text-2xl font-bold text-[var(--text-primary)] editorial-heading data-tabular">
               {activeTotals.calories}{' '}
-              <span className="text-xs font-normal text-[var(--text-secondary)]">/ {activeTargetCalories} kcal</span>
+              <span className="text-xs font-normal text-[var(--text-secondary)] font-sans">/ {activeTargetCalories} kcal</span>
             </div>
           </div>
           <div className="text-right">
-            <span className="text-[11px] text-[var(--text-secondary)] font-medium">Restante</span>
-            <div className="text-base font-bold text-[#D97757] font-mono">
+            <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider editorial-heading">Restante</span>
+            <div className="text-base font-bold text-[#D97757] dark:text-[#E28464] editorial-heading data-tabular">
               {Math.max(0, activeTargetCalories - activeTotals.calories)} kcal
             </div>
           </div>
@@ -656,46 +656,46 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
           {/* Proteína */}
           <div className="p-2.5 rounded-2xl liquid-glass-pill">
             <div className="flex justify-between items-center text-[10px] text-[var(--text-secondary)] mb-1">
-              <span>Proteína</span>
-              <span className="font-bold text-rose-500 font-mono">{activeTotals.protein_g}g</span>
+              <span className="font-semibold editorial-heading">Proteína</span>
+              <span className="font-bold text-rose-500 font-mono data-tabular">{activeTotals.protein_g}g</span>
             </div>
-            <div className="w-full bg-[var(--glass-border-subtle)] h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-[var(--glass-border-subtle)] h-1 rounded-full overflow-hidden">
               <div
                 className="bg-rose-500 h-full rounded-full transition-all duration-500"
                 style={{ width: `${Math.min(100, (activeTotals.protein_g / targetProtein) * 100)}%` }}
               />
             </div>
-            <span className="text-[9px] text-[var(--text-tertiary)] mt-1 block">Meta: {targetProtein}g</span>
+            <span className="text-[9px] text-[var(--text-tertiary)] mt-1 block font-mono data-tabular">Meta: {targetProtein}g</span>
           </div>
 
           {/* Carbohidratos */}
           <div className="p-2.5 rounded-2xl liquid-glass-pill">
             <div className="flex justify-between items-center text-[10px] text-[var(--text-secondary)] mb-1">
-              <span>Carbos</span>
-              <span className="font-bold text-amber-500 font-mono">{activeTotals.carbs_g}g</span>
+              <span className="font-semibold editorial-heading">Carbos</span>
+              <span className="font-bold text-amber-500 font-mono data-tabular">{activeTotals.carbs_g}g</span>
             </div>
-            <div className="w-full bg-[var(--glass-border-subtle)] h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-[var(--glass-border-subtle)] h-1 rounded-full overflow-hidden">
               <div
                 className="bg-amber-500 h-full rounded-full transition-all duration-500"
                 style={{ width: `${Math.min(100, (activeTotals.carbs_g / targetCarbs) * 100)}%` }}
               />
             </div>
-            <span className="text-[9px] text-[var(--text-tertiary)] mt-1 block">Meta: {targetCarbs}g</span>
+            <span className="text-[9px] text-[var(--text-tertiary)] mt-1 block font-mono data-tabular">Meta: {targetCarbs}g</span>
           </div>
 
           {/* Grasas */}
           <div className="p-2.5 rounded-2xl liquid-glass-pill">
             <div className="flex justify-between items-center text-[10px] text-[var(--text-secondary)] mb-1">
-              <span>Grasas</span>
-              <span className="font-bold text-emerald-500 font-mono">{activeTotals.fat_g}g</span>
+              <span className="font-semibold editorial-heading">Grasas</span>
+              <span className="font-bold text-emerald-500 font-mono data-tabular">{activeTotals.fat_g}g</span>
             </div>
-            <div className="w-full bg-[var(--glass-border-subtle)] h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-[var(--glass-border-subtle)] h-1 rounded-full overflow-hidden">
               <div
                 className="bg-emerald-500 h-full rounded-full transition-all duration-500"
                 style={{ width: `${Math.min(100, (activeTotals.fat_g / targetFat) * 100)}%` }}
               />
             </div>
-            <span className="text-[9px] text-[var(--text-tertiary)] mt-1 block">Meta: {targetFat}g</span>
+            <span className="text-[9px] text-[var(--text-tertiary)] mt-1 block font-mono data-tabular">Meta: {targetFat}g</span>
           </div>
         </div>
       </div>

@@ -107,36 +107,36 @@ export const CardioView: React.FC<CardioViewProps> = ({
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">Cardio & Rodajes</h1>
-            <span className="text-[10px] px-2 py-0.5 rounded-full liquid-glass-pill text-[#FC5200] font-bold font-mono">
-              GALAXY FIT3
+            <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight editorial-heading">Cardio & Rodajes</h1>
+            <span className="text-[10px] px-2 py-0.5 rounded-full liquid-glass-pill text-[#FC5200] font-bold font-mono data-tabular">
+              FIT3
             </span>
           </div>
           <p className="text-xs text-[var(--text-secondary)] font-medium">Preparación Media Maratón 28 Feb 2027</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => setIsSimulatorModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-[#FC5200] border border-[#FC5200]/40 font-bold text-xs hover:border-[#FC5200] active:scale-95 transition-all shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full liquid-glass-pill text-[#FC5200] border border-[#FC5200]/30 font-bold text-xs hover:bg-[#FC5200]/10 active:scale-95 transition-all shadow-sm"
             title="Simular ritmo y estrategia para la Media Maratón 2027"
           >
-            <Award className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Simulador 21K</span>
+            <Award className="w-3.5 h-3.5" />
+            <span className="editorial-heading">Simulador 21K</span>
           </button>
           <button
             onClick={() => setIsStravaModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl liquid-glass-pill text-[#FC5200] border border-[#FC5200]/30 font-bold text-xs hover:bg-[#FC5200]/10 active:scale-95 transition-all"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full liquid-glass-pill text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-bold text-xs active:scale-95 transition-all"
             title="Escanear captura de Strava o Garmin con IA"
           >
-            <Camera className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Escanear Strava</span>
+            <Camera className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline editorial-heading">Strava</span>
           </button>
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-[#FC5200] text-white font-bold text-xs shadow-md shadow-[#FC5200]/25 active:scale-95 transition-all"
+            className="flex items-center gap-1 px-3 py-2 rounded-full bg-[#FC5200] text-white font-bold text-xs shadow-md shadow-[#FC5200]/25 active:scale-95 transition-all"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Manual</span>
+            <Plus className="w-3.5 h-3.5" />
+            <span className="editorial-heading">Manual</span>
           </button>
         </div>
       </div>

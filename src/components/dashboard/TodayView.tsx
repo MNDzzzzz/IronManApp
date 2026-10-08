@@ -203,29 +203,29 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
       {effectiveRoutine && (
         <section className="relative overflow-hidden p-5 rounded-3xl liquid-glass-card border border-[var(--glass-border)] transition-all">
           <div className="flex items-start justify-between gap-3">
-            <div className="cursor-pointer" onClick={() => onNavigateTab('entreno')}>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold tracking-wider uppercase text-[#D97757] dark:text-[#E28464]">
+            <div className="cursor-pointer flex-1" onClick={() => onNavigateTab('entreno')}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-bold tracking-widest uppercase text-[#D97757] dark:text-[#E28464] editorial-heading">
                   {effectiveRoutine.dayName} • Sesión de Hoy
                 </span>
                 {effectiveRoutine.isOverridden && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-300 font-medium border border-amber-500/30">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 font-medium border border-amber-500/25">
                     Adaptada ⚡
                   </span>
                 )}
                 {selectedDiscomfortLevel && (
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${
                     selectedDiscomfortLevel === 6
-                      ? 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/40 animate-pulse'
+                      ? 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 animate-pulse'
                       : selectedDiscomfortLevel >= 4
-                      ? 'bg-orange-500/20 text-orange-600 dark:text-orange-400 border-orange-500/30'
-                      : 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                      ? 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/25'
+                      : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/25'
                   }`}>
-                    Molestia Nivel {selectedDiscomfortLevel}
+                    Nivel {selectedDiscomfortLevel}
                   </span>
                 )}
               </div>
-              <h1 className="text-lg font-bold text-[var(--text-primary)] tracking-tight mt-1">
+              <h1 className="text-lg font-bold text-[var(--text-primary)] tracking-tight mt-1.5 editorial-heading">
                 {effectiveRoutine.routine.title}
               </h1>
               <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed line-clamp-2">
@@ -236,26 +236,26 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
             <button
               onClick={() => setIsScheduleModalOpen(true)}
               aria-label="Cambiar o mover sesión de hoy"
-              className="shrink-0 px-3 py-1.5 rounded-xl liquid-glass-pill text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex items-center gap-1.5 active:scale-95"
+              className="shrink-0 px-3 py-1.5 rounded-full liquid-glass-pill text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex items-center gap-1.5 active:scale-95"
             >
               <ArrowLeftRight className="w-3.5 h-3.5 text-[#D97757]" />
-              <span>Cambiar</span>
+              <span>Mover</span>
             </button>
           </div>
 
-          <div className="flex items-center justify-between pt-3.5 mt-3.5 border-t border-[var(--glass-border)] text-xs text-[var(--text-secondary)]">
+          <div className="flex items-center justify-between pt-3 mt-3.5 border-t border-[var(--glass-border)] text-xs text-[var(--text-secondary)]">
             <div className="flex items-center gap-1.5">
               <Footprints className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
               <span>
                 Meta pasos:{' '}
-                <strong className="text-[var(--text-primary)] font-mono">
+                <strong className="text-[var(--text-primary)] font-mono data-tabular">
                   {effectiveRoutine.routine.targetSteps.min.toLocaleString()} – {effectiveRoutine.routine.targetSteps.max.toLocaleString()}
                 </strong>
               </span>
             </div>
             <button
               onClick={() => onNavigateTab('entreno')}
-              className="text-[11px] font-semibold text-[#D97757] dark:text-[#E28464] flex items-center gap-0.5 hover:underline"
+              className="text-[11px] font-semibold text-[#D97757] dark:text-[#E28464] flex items-center gap-0.5 hover:opacity-80 transition-opacity"
             >
               <span>Ver entreno</span>
               <ChevronRight className="w-3 h-3" />
@@ -459,7 +459,7 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
       </section>
 
       {/* ================================================================ */}
-      {/* 4. ANILLOS & TARJETAS DE PROGRESO EN CRISTAL LÍQUIDO              */}
+      {/* 4. TARJETAS DE PROGRESO BIOMÉTRICO (APPLE & ANTHROPIC AESTHETIC) */}
       {/* ================================================================ */}
       <section className="grid grid-cols-2 gap-3">
         {/* Calorías Restantes */}
@@ -468,24 +468,24 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
           className="p-4 rounded-3xl liquid-glass-card cursor-pointer hover:border-[#D97757]/40 active:scale-[0.98] transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+            <span className="text-[10px] font-bold tracking-wider text-[var(--text-secondary)] uppercase editorial-heading">
               Calorías
             </span>
-            <div className="w-6 h-6 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
+            <div className="w-6 h-6 rounded-full bg-[#D97757]/15 flex items-center justify-center text-[#D97757]">
               <Flame className="w-3.5 h-3.5" />
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-xl font-bold text-[var(--text-primary)] font-mono flex items-baseline gap-1">
-              {caloriesConsumed}{' '}
-              <span className="text-xs font-normal text-[var(--text-secondary)]">/ {caloriesTarget}</span>
+            <div className="text-2xl font-bold text-[var(--text-primary)] editorial-heading data-tabular flex items-baseline gap-1">
+              {caloriesConsumed}
+              <span className="text-xs font-normal text-[var(--text-tertiary)] font-sans">/ {caloriesTarget}</span>
             </div>
-            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
+            <p className="text-[11px] text-[#D97757] dark:text-[#E28464] font-medium mt-0.5">
               {caloriesRemaining > 0 ? `${caloriesRemaining} kcal restantes` : 'Límite completado'}
             </p>
-            <div className="w-full bg-[var(--glass-border-subtle)] h-1.5 rounded-full mt-2.5 overflow-hidden">
+            <div className="w-full bg-[var(--glass-border-subtle)] h-1 rounded-full mt-2.5 overflow-hidden">
               <div
-                className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                className="bg-[#D97757] dark:bg-[#E28464] h-full rounded-full transition-all duration-500"
                 style={{ width: `${caloriesPercent}%` }}
               />
             </div>
@@ -498,24 +498,24 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
           className="p-4 rounded-3xl liquid-glass-card cursor-pointer hover:border-emerald-500/40 active:scale-[0.98] transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+            <span className="text-[10px] font-bold tracking-wider text-[var(--text-secondary)] uppercase editorial-heading">
               Proteína
             </span>
-            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 font-mono data-tabular">
               {proteinPercent}%
             </span>
           </div>
           <div className="mt-3">
-            <div className="text-xl font-bold text-[var(--text-primary)] font-mono flex items-baseline gap-1">
-              {proteinConsumed.toFixed(0)}{' '}
-              <span className="text-xs font-normal text-[var(--text-secondary)]">/ {proteinTarget}g</span>
+            <div className="text-2xl font-bold text-[var(--text-primary)] editorial-heading data-tabular flex items-baseline gap-1">
+              {proteinConsumed.toFixed(0)}
+              <span className="text-xs font-normal text-[var(--text-tertiary)] font-sans">/ {proteinTarget}g</span>
             </div>
             <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">
               {proteinConsumed >= proteinTarget
                 ? 'Meta cubierta'
                 : `${(proteinTarget - proteinConsumed).toFixed(1)}g restantes`}
             </p>
-            <div className="w-full bg-[var(--glass-border-subtle)] h-1.5 rounded-full mt-2.5 overflow-hidden">
+            <div className="w-full bg-[var(--glass-border-subtle)] h-1 rounded-full mt-2.5 overflow-hidden">
               <div
                 className="bg-emerald-500 h-full rounded-full transition-all duration-500"
                 style={{ width: `${proteinPercent}%` }}
@@ -527,7 +527,7 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
         {/* Hidratación Rápida */}
         <div className="p-4 rounded-3xl liquid-glass-card flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+            <span className="text-[10px] font-bold tracking-wider text-[var(--text-secondary)] uppercase editorial-heading">
               Agua
             </span>
             <div className="flex items-center gap-1">
@@ -548,14 +548,14 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-xl font-bold text-[var(--text-primary)] font-mono flex items-baseline gap-1">
-              {((nutritionTotals.water_ml || 0) / 1000).toFixed(1)}{' '}
-              <span className="text-xs font-normal text-[var(--text-secondary)]">/ 3.0 L</span>
+            <div className="text-2xl font-bold text-[var(--text-primary)] editorial-heading data-tabular flex items-baseline gap-1">
+              {((nutritionTotals.water_ml || 0) / 1000).toFixed(1)}
+              <span className="text-xs font-normal text-[var(--text-tertiary)] font-sans">/ 3.0 L</span>
             </div>
             <p className="text-[11px] text-blue-500 font-medium mt-0.5">
               {nutritionTotals.water_ml} ml hoy
             </p>
-            <div className="w-full bg-[var(--glass-border-subtle)] h-1.5 rounded-full mt-2.5 overflow-hidden">
+            <div className="w-full bg-[var(--glass-border-subtle)] h-1 rounded-full mt-2.5 overflow-hidden">
               <div
                 className="bg-blue-500 h-full rounded-full transition-all duration-500"
                 style={{ width: `${waterPercent}%` }}
@@ -570,23 +570,24 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
           className="p-4 rounded-3xl liquid-glass-card cursor-pointer hover:border-indigo-500/40 active:scale-[0.98] transition-all flex flex-col justify-between"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+            <span className="text-[10px] font-bold tracking-wider text-[var(--text-secondary)] uppercase editorial-heading">
               Sueño
             </span>
-            <div className="w-6 h-6 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+            <div className="w-6 h-6 rounded-full bg-indigo-500/15 flex items-center justify-center text-indigo-500">
               <Moon className="w-3.5 h-3.5" />
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-xl font-bold text-[var(--text-primary)] font-mono flex items-baseline gap-1">
-              {sleepHours} <span className="text-xs font-normal text-[var(--text-secondary)]">horas</span>
+            <div className="text-2xl font-bold text-[var(--text-primary)] editorial-heading data-tabular flex items-baseline gap-1">
+              {sleepHours}
+              <span className="text-xs font-normal text-[var(--text-tertiary)] font-sans">horas</span>
             </div>
             <p className="text-[11px] text-indigo-500 font-medium mt-0.5">
               Score: {sleepScore}
             </p>
             <div className="text-[10px] text-[var(--text-tertiary)] mt-2 flex items-center justify-between">
-              <span>FC: {restingHr} bpm</span>
-              <span className="text-indigo-500">Fit3 &rarr;</span>
+              <span className="font-mono data-tabular">FC: {restingHr} bpm</span>
+              <span className="text-indigo-500 font-medium">Fit3 &rarr;</span>
             </div>
           </div>
         </div>

@@ -129,4 +129,24 @@ body {
     box-shadow: var(--glass-specular-bevel);
     border-radius: 9999px;
   }
+
+  /* Muelle flotante estilo iOS 26 / visionOS (Floating Dock) */
+  .liquid-glass-dock {
+    background: var(--glass-surface-thick);
+    backdrop-filter: blur(32px) saturate(190%);
+    -webkit-backdrop-filter: blur(32px) saturate(190%);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.12), var(--glass-specular-bevel);
+    border-radius: 9999px;
+  }
+
+  /* Textos editoriales y números tabulares */
+  .editorial-heading {
+    letter-spacing: -0.025em;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  .data-tabular {
+    font-variant-numeric: tabular-nums;
+  }
 }

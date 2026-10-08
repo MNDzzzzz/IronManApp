@@ -183,15 +183,15 @@ export const HealthView: React.FC<HealthViewProps> = ({
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Salud & Biometría</h1>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-bold uppercase">
-              Galaxy Fit3
+            <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight editorial-heading">Salud & Biometría</h1>
+            <span className="text-[10px] px-2 py-0.5 rounded-full liquid-glass-pill text-indigo-500 font-bold uppercase font-mono data-tabular">
+              FIT3
             </span>
           </div>
-          <p className="text-xs text-[var(--text-secondary)]">Peso, telemetría continua y descanso fisiológico</p>
+          <p className="text-xs text-[var(--text-secondary)] font-medium">Peso, telemetría continua y descanso fisiológico</p>
         </div>
         <span className="text-[10px] px-2.5 py-1 rounded-full liquid-glass-pill border border-[var(--glass-border)] text-emerald-500 font-mono flex items-center gap-1.5 shadow-sm">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Health Connect
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Sincronizado
         </span>
       </div>
 

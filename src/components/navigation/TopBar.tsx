@@ -30,26 +30,27 @@ export const TopBar: React.FC<TopBarProps> = ({
   }).format(new Date());
 
   return (
-    <header className="sticky top-0 z-40 liquid-glass-nav border-b border-[var(--glass-border)] pt-[env(safe-area-inset-top,16px)] px-4 pb-3 transition-colors duration-300">
+    <header className="sticky top-0 z-40 liquid-glass-nav border-b border-[var(--glass-border)] pt-[max(env(safe-area-inset-top),14px)] px-4 pb-2.5 transition-colors duration-300">
       <div className="max-w-md mx-auto flex items-center justify-between">
-        {/* Marca y Fecha */}
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-bold tracking-wider text-sm bg-gradient-to-r from-amber-500 to-[#D97757] dark:from-amber-300 dark:to-amber-500 bg-clip-text text-transparent">
+        {/* Identidad de Marca y Fecha */}
+        <div className="flex flex-col">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-bold tracking-[0.18em] text-[var(--text-primary)] editorial-heading">
               IRONMAN
             </span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full liquid-glass-pill text-[var(--text-secondary)] font-mono">
-              GALAXY FIT3
+            <span className="w-1 h-1 rounded-full bg-[#D97757] dark:bg-[#E28464]" />
+            <span className="text-[10px] text-[var(--text-tertiary)] font-mono tracking-tight">
+              21K 2027
             </span>
           </div>
-          <p className="text-[11px] text-[var(--text-secondary)] capitalize mt-0.5 font-medium">
+          <p className="text-[11px] text-[var(--text-secondary)] capitalize font-medium tracking-tight mt-0.5">
             {todayFormatted}
           </p>
         </div>
 
-        {/* Acciones Rápidas */}
-        <div className="flex items-center gap-2">
-          {/* Badge de conectividad y sincronización offline-first */}
+        {/* Grupo de Acciones Rápidas */}
+        <div className="flex items-center gap-1.5">
+          {/* Badge de sincronización offline-first */}
           <SyncStatusPill />
 
           {/* Selector de Modo Claro / Oscuro */}
@@ -57,31 +58,31 @@ export const TopBar: React.FC<TopBarProps> = ({
             <button
               onClick={onToggleTheme}
               aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-              className="p-2 rounded-xl liquid-glass-card text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all"
+              className="w-8 h-8 rounded-full liquid-glass-pill flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-90 transition-all"
             >
-              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
+              {isDark ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-700" />}
             </button>
           )}
 
-          {/* Botón Sincronizar Ahora */}
+          {/* Sincronización Manual */}
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
             aria-label="Sincronizar telemetría"
-            className="p-2 rounded-xl liquid-glass-card text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all"
+            className="w-8 h-8 rounded-full liquid-glass-pill flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-90 transition-all"
           >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-amber-500 dark:text-amber-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#D97757]' : ''}`} />
           </button>
 
-          {/* Informe Semanal */}
+          {/* Acceso a Informe Semanal */}
           {onOpenReport && (
             <button
               onClick={onOpenReport}
               aria-label="Informe Semanal"
               title="Informe y Resumen Semanal"
-              className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 hover:text-amber-500 active:scale-95 transition-all"
+              className="w-8 h-8 rounded-full liquid-glass-pill flex items-center justify-center text-[#D97757] dark:text-[#E28464] hover:opacity-80 active:scale-90 transition-all"
             >
-              <FileText className="w-4 h-4" />
+              <FileText className="w-3.5 h-3.5" />
             </button>
           )}
 
@@ -89,9 +90,9 @@ export const TopBar: React.FC<TopBarProps> = ({
           <button
             onClick={onOpenSettings}
             aria-label="Ajustes de la aplicación"
-            className="p-2 rounded-xl liquid-glass-card text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-all"
+            className="w-8 h-8 rounded-full liquid-glass-pill flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-90 transition-all"
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
