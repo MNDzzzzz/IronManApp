@@ -60,6 +60,25 @@ const config: Config = {
           "sans-serif",
         ],
       },
+      transitionTimingFunction: {
+        'apple-spring': 'cubic-bezier(0.16, 1, 0.3, 1)',
+        'apple-bounce': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'apple-snappy': 'cubic-bezier(0.2, 0, 0, 1)',
+      },
+      keyframes: {
+        appleFadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(4px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        appleScaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.96)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+      },
+      animation: {
+        'apple-fade-in': 'appleFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'apple-scale-in': 'appleScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+      },
     },
   },
   plugins: [],

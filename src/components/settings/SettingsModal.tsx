@@ -88,8 +88,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md overflow-y-auto pb-24 pt-[env(safe-area-inset-top,20px)] px-4 animate-in fade-in duration-200 flex items-center justify-center">
-      <div className="max-w-md w-full mx-auto space-y-4 liquid-glass-card bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] rounded-3xl p-5 shadow-2xl my-auto">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md overflow-y-auto pb-24 pt-[env(safe-area-inset-top,20px)] px-4 animate-apple-fade-in flex items-center justify-center">
+      <div className="max-w-md w-full mx-auto space-y-4 liquid-glass-card bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] rounded-3xl p-5 shadow-2xl my-auto animate-apple-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="w-8" />

@@ -4,7 +4,14 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const { pin } = await request.json();
-    const masterPin = process.env.APP_MASTER_PIN || '1234';
+    const masterPin = process.env.APP_MASTER_PIN;
+    if (!masterPin) {
+      console.error('Error de configuración del servidor: APP_MASTER_PIN no está configurado');
+      return NextResponse.json(
+        { success: false, error: 'Servidor no configurado para autenticación por PIN' },
+        { status: 500 }
+      );
+    }
 
     if (pin === masterPin) {
       const response = NextResponse.json({ success: true, message: 'Acceso autorizado' });
@@ -20,7 +27,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: false, error: 'PIN incorrecto' }, { status: 401 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : 'Error interno de autenticación';
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 }

@@ -27,6 +27,7 @@ import {
   generateTypicalDayMeals,
   calculateMealTotals,
 } from '@/lib/nutritionPresets';
+import { AppleSwitch } from '@/components/common/AppleSwitch';
 
 interface NutritionViewProps {
   meals: NutritionLog[];
@@ -582,18 +583,17 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
       {/* PILL DE CREATINA Y ESTADO COACH */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {/* Tracker de Creatina */}
-        <button
-          onClick={handleToggleCreatine}
-          className={`p-3 rounded-2xl border text-left flex items-center justify-between transition-all active:scale-[0.98] ${
+        {/* Tracker de Creatina con AppleSwitch */}
+        <div
+          className={`p-3 rounded-2xl border flex items-center justify-between transition-all duration-300 ${
             creatineTaken
-              ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-300'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-300'
               : 'liquid-glass-card text-[var(--text-secondary)]'
           }`}
         >
           <div className="flex items-center gap-2.5">
             <div
-              className={`w-7 h-7 rounded-xl flex items-center justify-center ${
+              className={`w-7 h-7 rounded-xl flex items-center justify-center transition-colors duration-300 ${
                 creatineTaken ? 'bg-emerald-500/20 text-emerald-500' : 'liquid-glass-pill text-[var(--text-tertiary)]'
               }`}
             >
@@ -604,16 +604,19 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
               <div className="text-[9px] text-[var(--text-secondary)]">Merienda con Avena + Whey</div>
             </div>
           </div>
-          <span
-            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-              creatineTaken
-                ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/40'
-                : 'liquid-glass-pill text-[var(--text-secondary)]'
-            }`}
-          >
-            {creatineTaken ? 'Tomada' : 'Pendiente'}
-          </span>
-        </button>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-medium text-[var(--text-secondary)] hidden xs:inline">
+              {creatineTaken ? 'Tomada' : 'Pendiente'}
+            </span>
+            <AppleSwitch
+              checked={creatineTaken}
+              onChange={handleToggleCreatine}
+              size="sm"
+              activeColor="emerald"
+              aria-label="Alternar ingesta de creatina"
+            />
+          </div>
+        </div>
 
         {/* Telegram Audio Helper */}
         <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between">

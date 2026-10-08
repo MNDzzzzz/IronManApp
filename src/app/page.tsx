@@ -305,9 +305,11 @@ export default function Home() {
       {/* Contenido Principal con Bento Grid Responsive de Alta Gama (Móvil a 4K) */}
       <main className="flex-1 w-full max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 transition-all duration-300">
         {isReportOpen ? (
-          <WeeklyReportView onClose={() => setIsReportOpen(false)} />
+          <div className="apple-tab-panel">
+            <WeeklyReportView onClose={() => setIsReportOpen(false)} />
+          </div>
         ) : (
-          <>
+          <div key={currentTab} className="apple-tab-panel min-h-[calc(100vh-140px)]">
             {currentTab === 'hoy' && (
               <TodayView
                 health={health}
@@ -358,7 +360,7 @@ export default function Home() {
                 onDeleteWeight={handleDeleteWeight}
               />
             )}
-          </>
+          </div>
         )}
       </main>
 

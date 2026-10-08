@@ -57,9 +57,9 @@ export const RaceSimulatorModal: React.FC<RaceSimulatorModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="race-sim-title"
-      className="fixed inset-0 z-50 bg-[#0A0D14]/90 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 bg-[#0A0D14]/90 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto animate-apple-fade-in"
     >
-      <div className="liquid-glass-card border border-[var(--glass-border)] rounded-3xl p-5 sm:p-6 max-w-2xl w-full shadow-2xl space-y-5 my-auto text-[var(--text-primary)]">
+      <div className="liquid-glass-card border border-[var(--glass-border)] rounded-3xl p-5 sm:p-6 max-w-2xl w-full shadow-2xl space-y-5 my-auto text-[var(--text-primary)] animate-apple-scale-in">
         {/* Cabecera */}
         <div className="flex items-center justify-between border-b border-[var(--glass-border)] pb-3">
           <div className="flex items-center gap-2.5">

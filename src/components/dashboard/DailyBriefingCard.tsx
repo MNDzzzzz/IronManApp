@@ -94,7 +94,7 @@ export const DailyBriefingCard: React.FC<DailyBriefingCardProps> = ({
         <button
           onClick={onOpenScheduleModal}
           aria-label="Cambiar o mover sesión de hoy"
-          className="shrink-0 px-3.5 py-1.5 rounded-full bg-white/50 dark:bg-white/[0.08] border border-white/60 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_0.5px_rgba(255,255,255,0.15)] text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/70 dark:hover:bg-white/12 transition-all flex items-center gap-1.5 active:scale-95"
+          className="shrink-0 px-3.5 py-1.5 rounded-full bg-white/50 dark:bg-white/[0.08] border border-white/60 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_0.5px_rgba(255,255,255,0.15)] text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/70 dark:hover:bg-white/12 transition-all flex items-center gap-1.5 apple-btn-spring"
         >
           <ArrowLeftRight className="w-3.5 h-3.5 text-[#D97757] dark:text-[#E28464]" />
           <span>Mover</span>
@@ -208,7 +208,7 @@ export const DailyBriefingCard: React.FC<DailyBriefingCardProps> = ({
               <button
                 key={lvl}
                 onClick={() => onSelectDiscomfortLevel(isSelected ? null : lvl)}
-                className={`py-2 sm:py-2.5 rounded-xl text-center text-xs font-mono font-bold transition-all duration-200 active:scale-90 border ${
+                className={`py-2 sm:py-2.5 rounded-xl text-center text-xs font-mono font-bold apple-btn-spring border ${
                   isSelected
                     ? `${activeBg} border-transparent shadow-lg scale-[1.02]`
                     : 'bg-white/40 dark:bg-white/[0.04] text-[var(--text-secondary)] border-[var(--glass-border)] hover:border-[#D97757]/40 hover:text-[var(--text-primary)] hover:bg-white/60 dark:hover:bg-white/10'
