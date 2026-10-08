@@ -16,6 +16,7 @@ interface TopBarProps {
   currentTab?: TabType;
   onSelectTab?: (tab: TabType) => void;
   coachStatusMessage?: string;
+  isReportOpen?: boolean;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -29,6 +30,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   currentTab,
   onSelectTab,
   coachStatusMessage,
+  isReportOpen = false,
 }) => {
   const todayFormatted = new Intl.DateTimeFormat('es-ES', {
     weekday: 'short',
@@ -73,7 +75,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             >
               {navTabs.map((tab) => {
                 const Icon = tab.icon;
-                const isActive = currentTab === tab.id;
+                const isActive = !isReportOpen && currentTab === tab.id;
                 return (
                   <button
                     key={tab.id}
@@ -135,13 +137,17 @@ export const TopBar: React.FC<TopBarProps> = ({
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#D97757]' : ''}`} />
           </button>
 
-          {/* Acceso a Informe Semanal */}
+          {/* Acceso a Informe Semanal con feedback de vista activa */}
           {onOpenReport && (
             <button
               onClick={onOpenReport}
-              aria-label="Informe Semanal"
-              title="Informe y Resumen Semanal"
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/40 dark:bg-white/[0.06] border border-white/60 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_0.5px_rgba(255,255,255,0.15)] flex items-center justify-center text-[#D97757] dark:text-[#E28464] hover:opacity-80 apple-pressable apple-btn-spring touch-manipulation transition-all duration-200"
+              aria-label={isReportOpen ? 'Cerrar informe semanal' : 'Informe Semanal'}
+              title={isReportOpen ? 'Cerrar informe semanal' : 'Informe y Resumen Semanal'}
+              className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_0.5px_rgba(255,255,255,0.15)] flex items-center justify-center apple-pressable apple-btn-spring touch-manipulation transition-all duration-200 ${
+                isReportOpen
+                  ? 'bg-[#D97757]/20 border-[#D97757]/50 text-[#D97757] dark:text-[#E28464] ring-2 ring-[#D97757]/30 shadow-md shadow-orange-500/10'
+                  : 'bg-white/40 dark:bg-white/[0.06] border-white/60 dark:border-white/10 text-[#D97757] dark:text-[#E28464] hover:opacity-80'
+              }`}
             >
               <FileText className="w-3.5 h-3.5" />
             </button>

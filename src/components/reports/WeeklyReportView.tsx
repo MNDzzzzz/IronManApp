@@ -150,62 +150,49 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
   }, [dataset]);
 
   return (
-    <div className="pb-24 pt-2 text-[var(--text-primary)] max-w-4xl mx-auto px-4">
-      {/* Barra de Navegación Semanal */}
-      <div className="liquid-glass-card bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] rounded-2xl p-4 mb-5 shadow-xl">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* Controles de Semana */}
-          <div className="flex items-center gap-2">
+    <div className="w-full text-[var(--text-primary)] pb-12 pt-1 transition-all duration-300">
+      {/* Barra de Navegación y Cabecera Nativa de Apple (WWDC Fluid Interfaces) */}
+      <div className="liquid-glass-card bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 mb-5 shadow-sm">
+        {/* Nivel 1: Barra de Navegación Nativa estilo iOS con botón de retorno y acciones */}
+        <div className="flex items-center justify-between gap-3 pb-3.5 border-b border-[var(--glass-border-subtle)]">
+          {/* Botón de retorno nativo estilo iOS "< Volver a Hoy" */}
+          {onClose ? (
             <button
-              onClick={() => setWeekOffset((prev) => prev - 1)}
-              className="p-2 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] hover:bg-[var(--glass-surface-thick)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors active:scale-95"
-              title="Semana anterior"
-              aria-label="Semana anterior"
+              onClick={onClose}
+              className="flex items-center gap-1.5 min-h-[44px] px-3.5 py-2 -ml-1 rounded-xl text-[#D97757] dark:text-[#E28464] hover:bg-[#D97757]/10 active:bg-[#D97757]/15 apple-btn-spring apple-pressable font-semibold text-sm transition-colors touch-manipulation group"
+              aria-label="Volver a la vista Hoy"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-5 h-5 -ml-1 stroke-[2.5] transition-transform duration-200 group-hover:-translate-x-0.5" />
+              <span className="editorial-heading">Volver a Hoy</span>
             </button>
-
-            <div className="text-center sm:text-left px-2">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-base text-[var(--text-primary)] font-mono">
-                  Semana {dataset?.weekNumber || '--'}
-                </span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#D97757]/15 text-[#D97757] border border-[#D97757]/30 font-medium">
-                  {weekOffset === 0 ? 'Esta Semana' : weekOffset === -1 ? 'Semana Pasada' : `${Math.abs(weekOffset)} sem. atrás`}
-                </span>
-              </div>
-              <p className="text-xs text-[var(--text-secondary)] mt-0.5 font-mono">
-                {dataset ? `${dataset.startDate}  al  ${dataset.endDate}` : 'Cargando fechas...'}
-              </p>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#D97757] dark:text-[#E28464]">
+                Informe de Alto Rendimiento
+              </span>
             </div>
+          )}
 
-            <button
-              onClick={() => setWeekOffset((prev) => prev + 1)}
-              disabled={weekOffset >= 0}
-              className={`p-2 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] transition-colors ${
-                weekOffset >= 0 ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[var(--glass-surface-thick)] hover:text-[var(--text-primary)] active:scale-95'
-              }`}
-              title="Semana siguiente"
-              aria-label="Semana siguiente"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Botones de Acción */}
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          {/* Acciones principales de exportación e impresión */}
+          <div className="flex items-center gap-2">
             <button
               onClick={handleDownloadPdf}
               disabled={isLoading || isDownloadingPdf}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#D97757] to-[#C26243] hover:opacity-90 text-white font-semibold text-xs tracking-wide shadow-lg shadow-orange-500/20 active:scale-95 transition-all disabled:opacity-50"
+              className="min-h-[44px] flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#D97757] to-[#C26243] hover:opacity-95 text-white font-semibold text-xs tracking-wide shadow-md shadow-orange-500/20 apple-btn-spring apple-pressable active:scale-[0.97] transition-all disabled:opacity-50 touch-manipulation"
+              title="Descargar informe oficial en PDF"
             >
               <Download className={`w-4 h-4 ${isDownloadingPdf ? 'animate-bounce' : ''}`} />
-              <span>{isDownloadingPdf ? 'Generando PDF...' : 'Descargar Informe (PDF)'}</span>
+              <span className="hidden xs:inline sm:inline">
+                {isDownloadingPdf ? 'Generando PDF...' : 'Descargar Informe (PDF)'}
+              </span>
+              <span className="inline xs:hidden sm:hidden">
+                {isDownloadingPdf ? 'Generando...' : 'PDF'}
+              </span>
             </button>
 
             <button
               onClick={() => window.print()}
-              className="p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-surface-thick)] transition-colors hidden sm:block active:scale-95"
+              className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-surface-hover)] apple-btn-spring apple-pressable active:scale-[0.97] transition-colors hidden sm:flex items-center justify-center touch-manipulation shadow-sm"
               title="Imprimir versión A4"
               aria-label="Imprimir versión A4"
             >
@@ -215,11 +202,62 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
             {onClose && (
               <button
                 onClick={onClose}
-                className="px-3 py-2 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs active:scale-95"
+                className="min-h-[44px] px-3 py-2 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-surface-hover)] text-xs font-medium apple-btn-spring apple-pressable active:scale-[0.97] transition-colors flex sm:hidden items-center justify-center touch-manipulation"
+                title="Cerrar informe"
+                aria-label="Cerrar informe"
               >
                 Cerrar
               </button>
             )}
+          </div>
+        </div>
+
+        {/* Nivel 2: Selector de Semana Táctil de Alta Precisión con Micro-resortes */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3">
+          {/* Stepper de Semanas */}
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-start">
+            <button
+              onClick={() => setWeekOffset((prev) => prev - 1)}
+              className="min-h-[44px] min-w-[44px] p-2 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] hover:bg-[var(--glass-surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] apple-btn-spring apple-pressable active:scale-[0.96] transition-all flex items-center justify-center touch-manipulation shadow-sm"
+              title="Semana anterior"
+              aria-label="Semana anterior"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+
+            <div className="text-center sm:text-left px-2 flex-1 sm:flex-initial">
+              <div className="flex items-center justify-center sm:justify-start gap-2">
+                <span className="font-bold text-base sm:text-lg text-[var(--text-primary)] font-mono data-tabular tabular-nums tracking-tight">
+                  Semana {dataset?.weekNumber || '--'}
+                </span>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#D97757]/15 text-[#D97757] dark:text-[#E28464] border border-[#D97757]/30 font-medium tracking-tight">
+                  {weekOffset === 0 ? 'Esta Semana' : weekOffset === -1 ? 'Semana Pasada' : `${Math.abs(weekOffset)} sem. atrás`}
+                </span>
+              </div>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5 font-mono data-tabular tabular-nums tracking-tight">
+                {dataset ? `${dataset.startDate}  al  ${dataset.endDate}` : 'Cargando fechas...'}
+              </p>
+            </div>
+
+            <button
+              onClick={() => setWeekOffset((prev) => prev + 1)}
+              disabled={weekOffset >= 0}
+              className={`min-h-[44px] min-w-[44px] p-2 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] apple-btn-spring apple-pressable transition-all flex items-center justify-center touch-manipulation shadow-sm ${
+                weekOffset >= 0
+                  ? 'opacity-35 cursor-not-allowed'
+                  : 'hover:bg-[var(--glass-surface-hover)] hover:text-[var(--text-primary)] active:scale-[0.96]'
+              }`}
+              title="Semana siguiente"
+              aria-label="Semana siguiente"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Indicador de telemetría consolidada en tiempo real */}
+          <div className="hidden md:flex items-center gap-2 text-xs text-[var(--text-secondary)] font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
+            <span>Telemetría consolidada 100% Real (Fit3 & Strava)</span>
           </div>
         </div>
       </div>
@@ -774,6 +812,20 @@ export const WeeklyReportView: React.FC<WeeklyReportViewProps> = ({ onClose }) =
               </tbody>
             </table>
           </div>
+
+          {/* Pie de navegación ergonómico para volver a Hoy tras la lectura completa */}
+          {onClose && (
+            <div className="pt-4 pb-6 flex items-center justify-center">
+              <button
+                onClick={onClose}
+                className="flex items-center gap-2 min-h-[44px] px-6 py-2.5 rounded-full bg-[var(--glass-surface)] hover:bg-[var(--glass-surface-hover)] border border-[var(--glass-border)] text-sm font-semibold text-[var(--text-primary)] hover:text-[#D97757] dark:hover:text-[#E28464] apple-btn-spring apple-pressable active:scale-[0.97] transition-all shadow-sm touch-manipulation group"
+                aria-label="Volver a la vista Hoy"
+              >
+                <ChevronLeft className="w-4 h-4 stroke-[2.5] transition-transform duration-200 group-hover:-translate-x-0.5" />
+                <span>Volver a la vista Hoy</span>
+              </button>
+            </div>
+          )}
         </div>
       ) : null}
     </div>

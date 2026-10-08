@@ -8,9 +8,10 @@ export type TabType = 'hoy' | 'entreno' | 'dieta' | 'salud';
 interface BottomNavProps {
   currentTab: TabType;
   onSelectTab: (tab: TabType) => void;
+  isReportOpen?: boolean;
 }
 
-export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab }) => {
+export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab, isReportOpen = false }) => {
   const tabs = [
     { id: 'hoy' as TabType, label: 'Hoy', icon: Flame },
     { id: 'entreno' as TabType, label: 'Entreno', icon: Dumbbell },
@@ -27,7 +28,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
       <div className="pointer-events-auto max-w-[360px] sm:max-w-sm w-full rounded-full liquid-glass-dock p-1.5 flex items-center justify-between transition-all duration-300">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = currentTab === tab.id;
+          const isActive = !isReportOpen && currentTab === tab.id;
           return (
             <button
               key={tab.id}

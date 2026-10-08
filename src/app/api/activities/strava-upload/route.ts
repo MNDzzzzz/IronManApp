@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import { mockStore } from '@/lib/mockStore';
-import { CardioActivity } from '@/types/database';
+import { CardioActivity, HeartRateSample } from '@/types/database';
+import { fuseStravaSplitsWithFit3 } from '@/lib/merging/temporalAligner';
 
 function getSpainTodayStr(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date());
@@ -174,6 +175,37 @@ Si la imagen NO es de deporte o carrera, devuelve:
     const targetDate = analysis.activity_date || todayStr;
     const targetStartTime = `${targetDate}T18:00:00Z`;
 
+    // Consultar muestras de frecuencia cardíaca de la Galaxy Fit3 para esa fecha
+    let candidateHrSamples: HeartRateSample[] = [];
+
+    if (isSupabaseConfigured && supabaseAdmin) {
+      try {
+        const dayStart = `${targetDate}T00:00:00.000Z`;
+        const dayEnd = `${targetDate}T23:59:59.999Z`;
+        const { data: dbSamples, error: dbErr } = await supabaseAdmin
+          .from('heart_rate_samples')
+          .select('*')
+          .gte('timestamp', dayStart)
+          .lte('timestamp', dayEnd)
+          .order('timestamp', { ascending: true });
+
+        if (!dbErr && dbSamples && dbSamples.length > 0) {
+          candidateHrSamples = dbSamples;
+        }
+      } catch (dbQueryErr) {
+        console.warn('Aviso consultando heart_rate_samples en Supabase:', dbQueryErr);
+      }
+    }
+
+    // Si Supabase no tiene muestras o estamos en modo local en memoria, consultar mockStore
+    if (candidateHrSamples.length === 0 && mockStore.hrSamples.length > 0) {
+      candidateHrSamples = mockStore.hrSamples.filter((s) => {
+        return s.timestamp && s.timestamp.startsWith(targetDate);
+      });
+    }
+
+    const userCaptionOrTitle = `${caption || ''} ${analysis.name || ''}`.trim();
+
     const finalActivity: CardioActivity = {
       id: Date.now(),
       name: analysis.name || 'Rodaje Strava',
@@ -183,8 +215,8 @@ Si la imagen NO es de deporte o carrera, devuelve:
       moving_time: durationSec,
       distance: distMeters,
       total_elevation_gain: Number(analysis.elevation_gain_m) || 15,
-      avg_hr: Number(analysis.avg_hr) || 142,
-      max_hr: Number(analysis.max_hr) || 158,
+      avg_hr: Number(analysis.avg_hr) || null,
+      max_hr: Number(analysis.max_hr) || null,
       avg_cadence: Number(analysis.avg_cadence) || 168,
       calories: Number(analysis.calories) || Math.round((distMeters / 1000) * 85),
       splits: Array.isArray(analysis.splits) ? analysis.splits : [],
@@ -194,6 +226,17 @@ Si la imagen NO es de deporte o carrera, devuelve:
       created_at: new Date().toISOString(),
     };
 
+    // Ejecutar algoritmo de fusión biométrica (Fit3 + Regex de título/caption + splits km a km)
+    const fusionResult = fuseStravaSplitsWithFit3(
+      finalActivity,
+      candidateHrSamples,
+      userCaptionOrTitle
+    );
+
+    finalActivity.avg_hr = fusionResult.avg_hr;
+    finalActivity.max_hr = fusionResult.max_hr;
+    finalActivity.splits = fusionResult.splits;
+
     // Guardar en mockStore
     mockStore.stravaActivities.unshift(finalActivity);
 
@@ -202,6 +245,7 @@ Si la imagen NO es de deporte o carrera, devuelve:
       Promise.resolve(
         supabaseAdmin.from('strava_activities').insert([
           {
+            id: finalActivity.id,
             name: finalActivity.name,
             type: finalActivity.type,
             start_date: finalActivity.start_date,
@@ -217,6 +261,8 @@ Si la imagen NO es de deporte o carrera, devuelve:
             streams_data: {
               splits: finalActivity.splits,
               elevation_profile: finalActivity.elevation_profile,
+              fusion_source: fusionResult.source_applied,
+              samples_matched: fusionResult.samples_matched_count,
             },
           },
         ])
@@ -228,12 +274,21 @@ Si la imagen NO es de deporte o carrera, devuelve:
     return NextResponse.json({
       success: true,
       activity: finalActivity,
+      fusion: {
+        source_applied: fusionResult.source_applied,
+        samples_matched: fusionResult.samples_matched_count,
+        extracted_from_text: fusionResult.extracted_from_text,
+        avg_hr: finalActivity.avg_hr,
+        max_hr: finalActivity.max_hr,
+      },
       analysis: {
         distanceKm: analysis.distance_km,
         movingTimeSec: durationSec,
         paceStr: analysis.avg_pace_str,
         splits: finalActivity.splits,
         coachAssessment: analysis.coach_assessment,
+        avg_hr: finalActivity.avg_hr,
+        max_hr: finalActivity.max_hr,
       },
     });
   } catch (err: any) {

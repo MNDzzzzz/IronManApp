@@ -6,7 +6,7 @@
 // Idioma: Español (Strict TypeScript / Clean Architecture / Liquid Glass)
 // ====================================================================
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   X,
   Zap,
@@ -40,6 +40,15 @@ export const RaceSimulatorModal: React.FC<RaceSimulatorModalProps> = ({
   const [targetCadenceSpm, setTargetCadenceSpm] = useState<number>(174);
   const [cacoProtocol, setCacoProtocol] = useState<boolean>(false);
 
+  // Bloquear scroll de fondo para comportamiento nativo Apple Bottom Sheet
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+
   // Ejecutar motor de simulación
   const simulation = useMemo(() => {
     const params: RaceSimulationParams = {
@@ -57,9 +66,14 @@ export const RaceSimulatorModal: React.FC<RaceSimulatorModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="race-sim-title"
-      className="fixed inset-0 z-50 bg-[#0A0D14]/90 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto animate-apple-fade-in"
+      className="fixed inset-0 z-50 bg-[#0A0D14]/90 backdrop-blur-xl flex items-end sm:items-center justify-center p-0 sm:p-4 animate-apple-fade-in"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div className="liquid-glass-card border border-[var(--glass-border)] rounded-3xl p-5 sm:p-6 max-w-2xl w-full shadow-2xl space-y-5 my-auto text-[var(--text-primary)] animate-apple-scale-in">
+      <div className="liquid-glass-card border border-[var(--glass-border)] rounded-t-[32px] sm:rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-2xl space-y-5 text-[var(--text-primary)] animate-apple-scale-in">
+        {/* Tirador táctil Apple para Bottom Sheet en móvil */}
+        <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-2 sm:hidden shrink-0" />
         {/* Cabecera */}
         <div className="flex items-center justify-between border-b border-[var(--glass-border)] pb-3">
           <div className="flex items-center gap-2.5">

@@ -318,14 +318,18 @@ export default function Home() {
         isDark={isDark}
         onToggleTheme={toggleTheme}
         currentTab={currentTab}
-        onSelectTab={setCurrentTab}
+        onSelectTab={(tab) => {
+          setIsReportOpen(false);
+          setCurrentTab(tab);
+        }}
         coachStatusMessage={coachStatusMessage}
+        isReportOpen={isReportOpen}
       />
 
       {/* Contenido Principal con Bento Grid Responsive de Alta Gama (Móvil a 4K) */}
       <main className="flex-1 w-full max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 md:pb-10 transition-all duration-300">
         {isReportOpen ? (
-          <div className="apple-tab-panel">
+          <div className="apple-tab-panel min-h-[calc(100vh-140px)] w-full">
             <WeeklyReportView onClose={() => setIsReportOpen(false)} />
           </div>
         ) : (
@@ -395,7 +399,14 @@ export default function Home() {
       />
 
       {/* Barra de Navegación Inferior Flotante de 4 Pestañas */}
-      <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} />
+      <BottomNav
+        currentTab={currentTab}
+        isReportOpen={isReportOpen}
+        onSelectTab={(tab) => {
+          setIsReportOpen(false);
+          setCurrentTab(tab);
+        }}
+      />
     </div>
   );
 }

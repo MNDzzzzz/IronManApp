@@ -8,7 +8,7 @@
 // Idioma: Español (Strict TypeScript / Clean Architecture)
 // ====================================================================
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Upload, Camera, CheckCircle2, AlertCircle, Loader2, Sparkles, Activity } from 'lucide-react';
 import { CardioActivity } from '@/types/database';
 
@@ -39,6 +39,16 @@ export const StravaUploadModal: React.FC<StravaUploadModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<StravaUploadResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Bloqueo de scroll de fondo con experiencia fluida Apple Bottom Sheet
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -102,16 +112,24 @@ export const StravaUploadModal: React.FC<StravaUploadModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-apple-fade-in">
-      <div className="relative w-full max-w-lg rounded-3xl liquid-glass-card border border-[var(--glass-border)] shadow-2xl overflow-hidden p-6 max-h-[90vh] flex flex-col animate-apple-scale-in">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="relative w-full sm:max-w-lg rounded-t-[32px] sm:rounded-3xl liquid-glass-card border border-[var(--glass-border)] shadow-2xl p-6 max-h-[85vh] overflow-y-auto flex flex-col animate-apple-scale-in">
+        {/* Tirador táctil Apple para Bottom Sheet en móvil */}
+        <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
+
         {/* Cabecera */}
-        <div className="flex items-center justify-between pb-4 border-b border-[var(--glass-border)]">
+        <div className="flex items-center justify-between pb-4 border-b border-[var(--glass-border)] shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-2xl liquid-glass-pill text-amber-500">
               <Activity className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-[var(--text-primary)]">
+              <h3 className="font-bold text-base text-[var(--text-primary)] apple-title">
                 Importar Carrera de Strava
               </h3>
               <p className="text-xs text-[var(--text-secondary)]">
@@ -121,7 +139,8 @@ export const StravaUploadModal: React.FC<StravaUploadModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-full liquid-glass-pill text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+            className="p-2 rounded-full liquid-glass-pill text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors apple-pressable"
+            aria-label="Cerrar modal"
           >
             <X className="w-5 h-5" />
           </button>
@@ -241,12 +260,12 @@ export const StravaUploadModal: React.FC<StravaUploadModalProps> = ({
 
               {/* Valoración del Coach para la rodilla */}
               {result.analysis?.coachAssessment && (
-                <div className="p-4 rounded-2xl liquid-glass-card border border-[var(--glass-border)]">
+                <div className="p-4 rounded-2xl liquid-glass-card border border-[var(--glass-border)] w-full break-words">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-amber-500 mb-1.5">
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>Prescripción Biomecánica (Rodilla Álvaro)</span>
                   </div>
-                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed break-words">
                     {result.analysis.coachAssessment}
                   </p>
                 </div>

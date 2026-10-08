@@ -7,8 +7,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import { mockStore } from '@/lib/mockStore';
-import { BridgeSyncPayload, DailyHealthMetric, HeartRateSample } from '@/types/database';
-import { mergeStravaWithFit3HeartRate } from '@/lib/merging/temporalAligner';
+import { BridgeSyncPayload, DailyHealthMetric, HeartRateSample, CardioActivity } from '@/types/database';
+import { mergeStravaWithFit3HeartRate, fuseStravaSplitsWithFit3 } from '@/lib/merging/temporalAligner';
 
 export async function POST(request: NextRequest) {
   try {
@@ -173,20 +173,159 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 5. Cruce retroactivo automático con actividades pendientes de pulso
+    // 5. Cruce retroactivo automático con actividades de Strava para enriquecer pulso y splits
+    const affectedDates: string[] = [];
+    const addDate = (d?: string | null) => {
+      if (d && !affectedDates.includes(d)) {
+        affectedDates.push(d);
+      }
+    };
+
+    incomingHrSamples.forEach((sample) => {
+      if (sample.timestamp) {
+        addDate(sample.timestamp.split('T')[0]);
+      }
+    });
+    if (incomingMetric.date) {
+      addDate(incomingMetric.date);
+    }
+    if (affectedDates.length === 0) {
+      addDate(todayStr);
+    }
+
+    let retroEnrichedCount = 0;
+
+    // A. Enriquecimiento en memoria (mockStore.stravaActivities)
     for (const activity of mockStore.stravaActivities) {
-      if (!activity.merged_hr_data || activity.merged_hr_data.length === 0 || !activity.avg_hr) {
-        if (activity.streams_data && activity.streams_data.length > 0) {
-          const merged = mergeStravaWithFit3HeartRate(
-            activity.start_date,
-            activity.streams_data,
-            mockStore.hrSamples
+      const actDate = activity.start_date ? activity.start_date.split('T')[0] : '';
+      if (affectedDates.includes(actDate)) {
+        // Comprobar si los splits carecen de pulso o si la actividad no tiene pulso
+        const splitsNeedHr =
+          !activity.splits ||
+          activity.splits.length === 0 ||
+          activity.splits.some((s) => !s.avg_hr || s.avg_hr === 0);
+        const hrNeedsUpdate = !activity.avg_hr || activity.avg_hr === 0 || splitsNeedHr;
+
+        if (hrNeedsUpdate) {
+          const daySamples = mockStore.hrSamples.filter(
+            (s) => s.timestamp && s.timestamp.startsWith(actDate)
           );
-          if (merged.avg_hr > 0) {
-            activity.merged_hr_data = merged.merged_streams;
-            activity.avg_hr = merged.avg_hr;
-            activity.max_hr = merged.max_hr;
+          if (daySamples.length > 0) {
+            const fusion = fuseStravaSplitsWithFit3(activity, daySamples, activity.name);
+            if (fusion.samples_matched_count > 0 || fusion.avg_hr > 0) {
+              activity.avg_hr = fusion.avg_hr;
+              activity.max_hr = fusion.max_hr;
+              activity.splits = fusion.splits;
+              retroEnrichedCount++;
+            }
           }
+        }
+
+        // Si tiene streams detallados de GPS y falta la serie continua merged_hr_data
+        if (
+          activity.streams_data &&
+          Array.isArray(activity.streams_data) &&
+          activity.streams_data.length > 0
+        ) {
+          if (!activity.merged_hr_data || activity.merged_hr_data.length === 0) {
+            const merged = mergeStravaWithFit3HeartRate(
+              activity.start_date,
+              activity.streams_data,
+              mockStore.hrSamples
+            );
+            if (merged.avg_hr > 0) {
+              activity.merged_hr_data = merged.merged_streams;
+              activity.avg_hr = merged.avg_hr;
+              activity.max_hr = merged.max_hr;
+            }
+          }
+        }
+      }
+    }
+
+    // B. Enriquecimiento en base de datos Supabase (si está configurada)
+    if (isSupabaseConfigured && supabaseAdmin) {
+      for (const dateStr of affectedDates) {
+        try {
+          const dayStart = `${dateStr}T00:00:00.000Z`;
+          const dayEnd = `${dateStr}T23:59:59.999Z`;
+
+          const { data: dbActivities } = await supabaseAdmin
+            .from('strava_activities')
+            .select('*')
+            .gte('start_date', dayStart)
+            .lte('start_date', dayEnd);
+
+          if (dbActivities && dbActivities.length > 0) {
+            const { data: dbHrSamples } = await supabaseAdmin
+              .from('heart_rate_samples')
+              .select('*')
+              .gte('timestamp', dayStart)
+              .lte('timestamp', dayEnd)
+              .order('timestamp', { ascending: true });
+
+            const samplesForFusion =
+              dbHrSamples && dbHrSamples.length > 0
+                ? dbHrSamples
+                : mockStore.hrSamples.filter((s) => s.timestamp && s.timestamp.startsWith(dateStr));
+
+            if (samplesForFusion.length > 0) {
+              for (const dbAct of dbActivities) {
+                const currentSplits = dbAct.streams_data?.splits || dbAct.splits || [];
+                const splitsNeedHr =
+                  !currentSplits ||
+                  currentSplits.length === 0 ||
+                  currentSplits.some((s: any) => !s.avg_hr || s.avg_hr === 0);
+                const needsUpdate = !dbAct.avg_hr || dbAct.avg_hr === 0 || splitsNeedHr;
+
+                if (needsUpdate) {
+                  const tempAct: Partial<CardioActivity> = {
+                    id: dbAct.id,
+                    name: dbAct.name,
+                    type: dbAct.type,
+                    start_date: dbAct.start_date,
+                    distance: dbAct.distance,
+                    moving_time: dbAct.moving_time,
+                    elapsed_time: dbAct.elapsed_time,
+                    splits: currentSplits,
+                    avg_hr: dbAct.avg_hr,
+                    max_hr: dbAct.max_hr,
+                  };
+
+                  const fusion = fuseStravaSplitsWithFit3(tempAct, samplesForFusion, dbAct.name);
+
+                  if (fusion.samples_matched_count > 0 || fusion.avg_hr > 0) {
+                    await supabaseAdmin
+                      .from('strava_activities')
+                      .update({
+                        avg_hr: fusion.avg_hr,
+                        max_hr: fusion.max_hr,
+                        streams_data: {
+                          ...(typeof dbAct.streams_data === 'object' ? dbAct.streams_data : {}),
+                          splits: fusion.splits,
+                          fusion_source: fusion.source_applied,
+                          samples_matched: fusion.samples_matched_count,
+                          retroactive_synced_at: new Date().toISOString(),
+                        },
+                      })
+                      .eq('id', dbAct.id);
+
+                    // Sincronizar también con mockStore si la actividad está en memoria
+                    const mIdx = mockStore.stravaActivities.findIndex(
+                      (a) => String(a.id) === String(dbAct.id)
+                    );
+                    if (mIdx >= 0) {
+                      mockStore.stravaActivities[mIdx].avg_hr = fusion.avg_hr;
+                      mockStore.stravaActivities[mIdx].max_hr = fusion.max_hr;
+                      mockStore.stravaActivities[mIdx].splits = fusion.splits;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch (enrichErr) {
+          console.warn('Aviso durante enriquecimiento retroactivo en Supabase:', enrichErr);
         }
       }
     }
@@ -198,6 +337,10 @@ export async function POST(request: NextRequest) {
         hr_samples: incomingHrSamples.length,
         has_daily_metric: Object.keys(incomingMetric).length > 0,
         workouts: incomingWorkouts.length,
+      },
+      retroactive_enrichment: {
+        dates_checked: affectedDates,
+        activities_enriched: retroEnrichedCount,
       },
     });
   } catch (error: any) {

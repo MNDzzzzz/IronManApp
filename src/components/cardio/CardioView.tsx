@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   TrendingUp,
   Clock,
@@ -54,6 +54,17 @@ export const CardioView: React.FC<CardioViewProps> = ({
   const [isStravaModalOpen, setIsStravaModalOpen] = useState(false);
   const [isSimulatorModalOpen, setIsSimulatorModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Bloquear scroll de fondo cuando hay un modal abierto (UX fluida estilo Apple Bottom Sheet)
+  useEffect(() => {
+    if (selectedActivity || isAddModalOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [selectedActivity, isAddModalOpen]);
 
   // Estimación determinista para Media Maratón 2027 basada en bioenergética
   const raceEstimate = useMemo(() => {
@@ -381,10 +392,18 @@ export const CardioView: React.FC<CardioViewProps> = ({
         </div>
       )}
 
-      {/* MODAL PARA REGISTRAR RODAJE FIT3 */}
+      {/* MODAL PARA REGISTRAR RODAJE FIT3 - APPLE BOTTOM SHEET EN MÓVIL */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md liquid-glass-sheet p-6 space-y-4 shadow-2xl rounded-3xl">
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsAddModalOpen(false);
+          }}
+        >
+          <div className="w-full sm:max-w-md max-h-[85vh] overflow-y-auto liquid-glass-sheet p-6 space-y-4 shadow-2xl rounded-t-[32px] sm:rounded-3xl animate-apple-scale-in">
+            {/* Tirador táctil Apple para Bottom Sheet en móvil */}
+            <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
+
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-base font-bold text-[var(--text-primary)] apple-title">Registrar Rodaje Fit3</h2>
@@ -497,10 +516,18 @@ export const CardioView: React.FC<CardioViewProps> = ({
         </div>
       )}
 
-      {/* MODAL DETALLE DE ACTIVIDAD CON GRÁFICA MULTICAPA */}
+      {/* MODAL DETALLE DE ACTIVIDAD CON GRÁFICA MULTICAPA - APPLE BOTTOM SHEET EN MÓVIL */}
       {selectedActivity && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl overflow-y-auto pb-24 pt-[env(safe-area-inset-top,20px)] px-4 animate-in fade-in duration-200">
-          <div className="max-w-md mx-auto space-y-4 liquid-glass-sheet p-6 rounded-3xl">
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) onSelectActivity(null);
+          }}
+        >
+          <div className="max-h-[85vh] overflow-y-auto w-full sm:max-w-md rounded-t-[32px] sm:rounded-3xl liquid-glass-sheet p-6 space-y-4 shadow-2xl animate-apple-scale-in">
+            {/* Tirador táctil Apple para Bottom Sheet en móvil */}
+            <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
+
             {/* Header del Modal */}
             <div className="flex items-center justify-between">
               <button
@@ -547,13 +574,13 @@ export const CardioView: React.FC<CardioViewProps> = ({
               </div>
             </div>
 
-            {/* Notas Biomecánicas */}
+            {/* Notas Biomecánicas (Contenedor con fondo completo sin desbordamiento) */}
             {selectedActivity.notes && (
-              <div className="p-3.5 rounded-2xl liquid-glass-pill text-xs text-[var(--text-secondary)] space-y-1">
+              <div className="liquid-glass-card border border-[var(--glass-border)] rounded-2xl p-4 w-full break-words text-xs text-[var(--text-secondary)] space-y-1">
                 <span className="text-[10px] uppercase font-bold text-[#FC5200] tracking-wider block">
                   Notas de la sesión & Biomecánica
                 </span>
-                <p className="leading-relaxed text-[var(--text-primary)]">{selectedActivity.notes}</p>
+                <p className="leading-relaxed text-[var(--text-primary)] break-words">{selectedActivity.notes}</p>
               </div>
             )}
 

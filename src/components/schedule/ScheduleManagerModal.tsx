@@ -7,7 +7,7 @@
 // Idioma: Español (Strict TypeScript / Clean Architecture / Liquid Glass)
 // ====================================================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   ArrowLeftRight,
@@ -111,6 +111,16 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
   // Estado general de envío
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Bloqueo de scroll de fondo para comportamiento nativo Apple Bottom Sheet
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -220,10 +230,18 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in motion-reduce:transition-none">
-      <div className="liquid-glass-sheet rounded-3xl border border-[var(--glass-border)] border-t border-t-white/30 dark:border-t-white/15 w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-apple-scale-in">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in motion-reduce:transition-none"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="liquid-glass-sheet rounded-t-[32px] sm:rounded-3xl border border-[var(--glass-border)] border-t border-t-white/30 dark:border-t-white/15 w-full sm:max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-apple-scale-in">
+        {/* Tirador táctil Apple para Bottom Sheet en móvil */}
+        <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mt-3 sm:hidden shrink-0" />
+
         {/* Cabecera del Modal con borde especular y tipografía Apple */}
-        <div className="p-5 border-b border-[var(--glass-border)] flex items-center justify-between bg-[var(--glass-surface)]/80 backdrop-blur-md">
+        <div className="p-5 border-b border-[var(--glass-border)] flex items-center justify-between bg-[var(--glass-surface)]/80 backdrop-blur-md shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#D97757]/15 border border-[#D97757]/30 flex items-center justify-center text-[#D97757] shadow-inner">
               <ArrowLeftRight className="w-5 h-5" />

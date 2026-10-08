@@ -7,7 +7,7 @@
 // Idioma: Español (Strict TypeScript / Clean Architecture / Liquid Glass)
 // ====================================================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Copy,
@@ -35,6 +35,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [reseedStatus, setReseedStatus] = useState<string | null>(null);
   const [telegramStatus, setTelegramStatus] = useState<string | null>(null);
   const [isActivatingTelegram, setIsActivatingTelegram] = useState(false);
+
+  // Bloqueo de scroll de fondo para comportamiento nativo Apple Bottom Sheet
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
 
   const handleActivateTelegram = async () => {
     setIsActivatingTelegram(true);
@@ -88,8 +98,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl overflow-y-auto pb-24 pt-[env(safe-area-inset-top,20px)] px-4 animate-apple-fade-in motion-reduce:transition-none flex items-center justify-center">
-      <div className="max-w-md w-full mx-auto space-y-4 liquid-glass-sheet rounded-3xl border border-[var(--glass-border)] border-t border-t-white/30 dark:border-t-white/15 p-5 shadow-2xl my-auto animate-apple-scale-in">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in motion-reduce:transition-none"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="w-full sm:max-w-md max-h-[85vh] overflow-y-auto liquid-glass-sheet rounded-t-[32px] sm:rounded-3xl border border-[var(--glass-border)] border-t border-t-white/30 dark:border-t-white/15 p-5 sm:p-6 space-y-4 shadow-2xl animate-apple-scale-in">
+        {/* Tirador táctil Apple para Bottom Sheet en móvil */}
+        <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="w-8" />

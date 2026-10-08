@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import { mockStore } from '@/lib/mockStore';
 import { StravaWebhookEvent, StravaActivity, StreamDataPoint, HeartRateSample } from '@/types/database';
-import { mergeStravaWithFit3HeartRate } from '@/lib/merging/temporalAligner';
+import { mergeStravaWithFit3HeartRate, fuseStravaSplitsWithFit3 } from '@/lib/merging/temporalAligner';
 
 /**
  * 1. HANDSHAKE GET DE STRAVA:
@@ -131,6 +131,9 @@ export async function POST(request: NextRequest) {
       activityData.avg_hr = merged.avg_hr;
       activityData.max_hr = merged.max_hr;
     }
+
+    // Fusión biométrica de parciales (splits km 1, km 2...) con la Fit3 o título
+    fuseStravaSplitsWithFit3(activityData, fit3Samples, activityData.name);
 
     // 5. GUARDAR LA ACTIVIDAD FUSIONADA
     if (isSupabaseConfigured && supabaseAdmin) {
