@@ -19,8 +19,18 @@ const WeeklyReportView = dynamic(
   () => import('@/components/reports/WeeklyReportView').then((m) => m.WeeklyReportView),
   { ssr: false }
 );
+const SquadView = dynamic(
+  () => import('@/components/social/SquadView').then((m) => m.SquadView),
+  { ssr: false }
+);
+const UserProfileModal = dynamic(
+  () => import('@/components/social/UserProfileModal').then((m) => m.UserProfileModal),
+  { ssr: false }
+);
 import { useOfflineSync } from '@/lib/offline/useOfflineSync';
 import { getCachedTelemetry, setCachedTelemetry } from '@/lib/offline/offlineStore';
+import { initialProfiles } from '@/lib/socialManager';
+import { UserProfile } from '@/types/social';
 import {
   DailyHealthMetric,
   StravaActivity,
@@ -36,6 +46,8 @@ export default function Home() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [currentProfile, setCurrentProfile] = useState<UserProfile>(initialProfiles[0]);
   const [selectedActivity, setSelectedActivity] = useState<StravaActivity | null>(null);
   const [coachStatusMessage, setCoachStatusMessage] = useState<string>(
     'Head Coach listo. Habla o escribe para registrar comidas o mover entrenos.'
@@ -324,6 +336,9 @@ export default function Home() {
         }}
         coachStatusMessage={coachStatusMessage}
         isReportOpen={isReportOpen}
+        athleteName={currentProfile.display_name}
+        athleteLevel={currentProfile.current_level}
+        onOpenProfile={() => setIsProfileModalOpen(true)}
       />
 
       {/* Contenido Principal con Bento Grid Responsive de Alta Gama (Móvil a 4K) */}
@@ -387,6 +402,10 @@ export default function Home() {
                 onDeleteWeight={handleDeleteWeight}
               />
             )}
+
+            {currentTab === 'tribu' && (
+              <SquadView currentProfile={currentProfile} />
+            )}
           </div>
         )}
       </main>
@@ -398,7 +417,15 @@ export default function Home() {
         onReseedMockData={handleReseedMockData}
       />
 
-      {/* Barra de Navegación Inferior Flotante de 4 Pestañas */}
+      {/* Modal de Perfil de Atleta y Sesión */}
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        currentProfile={currentProfile}
+        onSelectProfile={setCurrentProfile}
+      />
+
+      {/* Barra de Navegación Inferior Flotante de 5 Pestañas */}
       <BottomNav
         currentTab={currentTab}
         isReportOpen={isReportOpen}

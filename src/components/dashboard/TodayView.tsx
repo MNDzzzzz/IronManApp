@@ -17,6 +17,7 @@ import {
   Utensils,
   Dumbbell,
   RefreshCw,
+  Users,
 } from 'lucide-react';
 import { DailyHealthMetric, StravaActivity } from '@/types/database';
 import { CoachTurnResult } from '@/lib/coach/coachCore';
@@ -231,6 +232,34 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
             onOpenScheduleModal={() => setIsScheduleModalOpen(true)}
             onNavigateToWorkout={() => onNavigateTab('entreno')}
           />
+
+          {/* Tarjeta de Racha y Tribu Social */}
+          <div
+            onClick={() => onNavigateTab('tribu')}
+            className="p-3.5 sm:p-4 rounded-3xl bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-transparent border border-orange-500/20 hover:border-orange-500/40 flex items-center justify-between cursor-pointer transition-all apple-pressable apple-interactive-card shadow-sm"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#D97757] to-amber-500 flex items-center justify-center text-white shadow-md shadow-orange-500/20">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs sm:text-sm font-bold text-white apple-title">
+                    Tribu 21K 2027 ⚡
+                  </span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-orange-500/20 text-orange-400 text-[9px] font-bold">
+                    🔥 18 Días Racha
+                  </span>
+                </div>
+                <p className="text-[10.5px] text-[var(--text-secondary)]">
+                  Feed de hoy, podio semanal y check-in de compañeros
+                </p>
+              </div>
+            </div>
+            <span className="text-xs text-[var(--accent-coral)] font-bold flex items-center gap-1 shrink-0">
+              Ver Tribu →
+            </span>
+          </div>
 
           {/* Quick Action Buttons Hub (WWDC Fluid Interfaces & Latency Kill) */}
           <div className="p-4 sm:p-5 rounded-3xl liquid-glass-card border border-[var(--glass-border)] shadow-[var(--glass-specular-bevel)] space-y-3">

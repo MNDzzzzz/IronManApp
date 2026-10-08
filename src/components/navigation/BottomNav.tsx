@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Flame, Dumbbell, Utensils, HeartPulse } from 'lucide-react';
+import { Flame, Dumbbell, Utensils, HeartPulse, Users } from 'lucide-react';
 
-export type TabType = 'hoy' | 'entreno' | 'dieta' | 'salud';
+export type TabType = 'hoy' | 'entreno' | 'dieta' | 'salud' | 'tribu';
 
 interface BottomNavProps {
   currentTab: TabType;
@@ -17,6 +17,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab, i
     { id: 'entreno' as TabType, label: 'Entreno', icon: Dumbbell },
     { id: 'dieta' as TabType, label: 'Dieta', icon: Utensils },
     { id: 'salud' as TabType, label: 'Salud', icon: HeartPulse },
+    { id: 'tribu' as TabType, label: 'Tribu', icon: Users },
   ];
 
   return (

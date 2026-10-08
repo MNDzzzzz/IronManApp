@@ -1,13 +1,14 @@
 'use client';
 
 import React from 'react';
-import { RefreshCw, Settings, FileText, Sun, Moon, Flame, Dumbbell, Utensils, HeartPulse, Sparkles } from 'lucide-react';
+import { RefreshCw, Settings, FileText, Sun, Moon, Flame, Dumbbell, Utensils, HeartPulse, Sparkles, Users } from 'lucide-react';
 import { SyncStatusPill } from '@/components/common/SyncStatusPill';
 import { TabType } from '@/components/navigation/BottomNav';
 
 interface TopBarProps {
   onOpenSettings: () => void;
   onOpenReport?: () => void;
+  onOpenProfile?: () => void;
   onRefresh: () => void;
   isRefreshing: boolean;
   lastSyncedText?: string;
@@ -17,11 +18,14 @@ interface TopBarProps {
   onSelectTab?: (tab: TabType) => void;
   coachStatusMessage?: string;
   isReportOpen?: boolean;
+  athleteName?: string;
+  athleteLevel?: number;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
   onOpenSettings,
   onOpenReport,
+  onOpenProfile,
   onRefresh,
   isRefreshing,
   lastSyncedText = 'Fit3: Al día',
@@ -31,6 +35,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onSelectTab,
   coachStatusMessage,
   isReportOpen = false,
+  athleteName = 'Álvaro',
+  athleteLevel = 14,
 }) => {
   const todayFormatted = new Intl.DateTimeFormat('es-ES', {
     weekday: 'short',
@@ -43,6 +49,7 @@ export const TopBar: React.FC<TopBarProps> = ({
     { id: 'entreno', label: 'Entreno', icon: Dumbbell },
     { id: 'dieta', label: 'Dieta', icon: Utensils },
     { id: 'salud', label: 'Salud', icon: HeartPulse },
+    { id: 'tribu', label: 'Tribu', icon: Users },
   ];
 
   return (
@@ -113,6 +120,28 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         {/* Grupo de Acciones Rápidas con Botones Circulares Specular de Apple */}
         <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+          {/* Badge de perfil de atleta y sesión */}
+          {onOpenProfile && (
+            <button
+              onClick={onOpenProfile}
+              aria-label="Perfil y Sesión"
+              title="Perfil de Atleta y Tribu"
+              className="h-8 sm:h-9 px-2 sm:px-2.5 rounded-full bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-500/30 flex items-center gap-1.5 text-white apple-pressable apple-btn-spring touch-manipulation transition-all duration-200"
+            >
+              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#D97757] to-amber-500 flex items-center justify-center text-[10px] font-bold">
+                {athleteName ? athleteName.charAt(0) : 'A'}
+              </div>
+              <span className="hidden sm:inline text-[11px] font-semibold truncate max-w-[80px]">
+                {athleteName}
+              </span>
+              {athleteLevel && (
+                <span className="text-[9px] px-1 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-bold">
+                  Nv.{athleteLevel}
+                </span>
+              )}
+            </button>
+          )}
+
           {/* Badge de sincronización offline-first */}
           <SyncStatusPill />
 
