@@ -31,7 +31,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 liquid-glass-nav border-b border-[var(--glass-border)] pt-[max(env(safe-area-inset-top),14px)] px-4 pb-2.5 transition-colors duration-300">
-      <div className="max-w-md mx-auto flex items-center justify-between">
+      <div className="max-w-5xl xl:max-w-6xl mx-auto flex items-center justify-between">
         {/* Identidad de Marca y Fecha */}
         <div className="flex flex-col">
           <div className="flex items-center gap-1.5">
