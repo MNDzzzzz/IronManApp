@@ -60,6 +60,9 @@ export const CoachChat: React.FC<CoachChatProps> = ({ onTurnCompleted, className
     error: recorderError,
   } = useVoiceRecorder();
 
+  const speechRecognitionRef = useRef<any>(null);
+  const speechTranscriptRef = useRef<string>('');
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -69,6 +72,35 @@ export const CoachChat: React.FC<CoachChatProps> = ({ onTurnCompleted, className
   useEffect(() => {
     scrollToBottom();
   }, [messages, isProcessing]);
+
+  // Iniciar grabación de audio con soporte dual nativo
+  const handleStartVoice = async () => {
+    speechTranscriptRef.current = '';
+    if (typeof window !== 'undefined') {
+      const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRec) {
+        try {
+          const rec = new SpeechRec();
+          rec.lang = 'es-ES';
+          rec.continuous = true;
+          rec.interimResults = true;
+          rec.onresult = (event: any) => {
+            let transcript = '';
+            for (let i = 0; i < event.results.length; i++) {
+              transcript += event.results[i][0].transcript + ' ';
+            }
+            speechTranscriptRef.current = transcript.trim();
+          };
+          rec.onerror = (e: any) => console.warn('SpeechRec en CoachChat:', e.error);
+          rec.start();
+          speechRecognitionRef.current = rec;
+        } catch (e) {
+          console.warn('SpeechRecognition no iniciado en CoachChat:', e);
+        }
+      }
+    }
+    await startRecording();
+  };
 
   // Enviar mensaje de texto al backend
   const handleSendText = async (textToSend?: string) => {
@@ -129,6 +161,20 @@ export const CoachChat: React.FC<CoachChatProps> = ({ onTurnCompleted, className
 
   // Detener y enviar nota de voz
   const handleStopAndSendVoice = async () => {
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop();
+      } catch (_) {}
+    }
+
+    // Si Web Speech capturó texto directamente en el teléfono del usuario, enviar el texto
+    const capturedSpeech = speechTranscriptRef.current.trim();
+    if (capturedSpeech && !/^[\s.,;:\-_!?]+$/.test(capturedSpeech)) {
+      await stopRecording();
+      await handleSendText(capturedSpeech);
+      return;
+    }
+
     const audioData = await stopRecording();
     if (!audioData) return;
 
@@ -138,7 +184,7 @@ export const CoachChat: React.FC<CoachChatProps> = ({ onTurnCompleted, className
       {
         id: userMsgId,
         sender: 'user',
-        text: '🎙️ Grabando nota de voz...',
+        text: '🎙️ Nota de voz...',
         isVoice: true,
         voiceDuration: audioData.durationSeconds,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -161,11 +207,16 @@ export const CoachChat: React.FC<CoachChatProps> = ({ onTurnCompleted, className
       if (!res.ok) throw new Error('Error procesando nota de voz');
       const data: CoachTurnResult = await res.json();
 
-      // Actualizar el mensaje del usuario con la transcripción real
+      const validTranscription =
+        data.transcription && !/^[\s.,;:\-_!?]+$/.test(data.transcription.trim())
+          ? data.transcription.trim()
+          : '🎙️ Audio recibido';
+
+      // Actualizar el mensaje del usuario con la transcripción real (sin puntos solitarios)
       setMessages((prev) =>
         prev.map((m) =>
           m.id === userMsgId
-            ? { ...m, text: data.transcription || 'Nota de voz procesada' }
+            ? { ...m, text: validTranscription }
             : m
         )
       );
@@ -354,7 +405,7 @@ export const CoachChat: React.FC<CoachChatProps> = ({ onTurnCompleted, className
           // Vista Normal: Entrada de Texto + Botón Micrófono
           <div className="flex items-center gap-2">
             <button
-              onClick={startRecording}
+              onClick={handleStartVoice}
               disabled={isProcessing}
               title="Grabar nota de voz"
               aria-label="Grabar nota de voz"

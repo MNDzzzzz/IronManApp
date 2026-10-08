@@ -17,6 +17,9 @@ import {
   Check,
   Bookmark,
   X,
+  Sparkles,
+  ClipboardPaste,
+  CheckCircle2,
 } from 'lucide-react';
 import { NutritionLog, WaterLog } from '@/types/database';
 import { initialFrequentFoods, DayType } from '@/lib/nutritionProtocol';
@@ -28,6 +31,11 @@ import {
   calculateMealTotals,
 } from '@/lib/nutritionPresets';
 import { AppleSwitch } from '@/components/common/AppleSwitch';
+import {
+  parseMultipleDishesWithExactMacros,
+  extractExplicitMacrosFromText,
+  ParsedDishWithMacros,
+} from '@/lib/frequentFoodsManager';
 
 interface NutritionViewProps {
   meals: NutritionLog[];
@@ -334,6 +342,108 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Estados y lógica para Entrada Manual vs Pegar de Gemini
+  const [addMealTab, setAddMealTab] = useState<'manual' | 'gemini'>('manual');
+  const [geminiPasteText, setGeminiPasteText] = useState('');
+  const [isSavingGeminiDishes, setIsSavingGeminiDishes] = useState(false);
+
+  // Parsear texto pegado de Gemini en tiempo real con macros exactos
+  const parsedGeminiDishes = useMemo(() => {
+    if (!geminiPasteText.trim()) return [];
+    const dishes = parseMultipleDishesWithExactMacros(geminiPasteText);
+    if (dishes.length > 0) return dishes;
+
+    // Si es un solo plato sin formato de lista numerada
+    const singleMacro = extractExplicitMacrosFromText(geminiPasteText);
+    if (singleMacro.hasExplicitMacros && (singleMacro.calories !== undefined || singleMacro.protein_g !== undefined)) {
+      const lines = geminiPasteText.split('\n').map((l) => l.trim()).filter(Boolean);
+      const firstLine = lines[0] || 'Comida';
+      let mType = 'Almuerzo';
+      const low = geminiPasteText.toLowerCase();
+      if (low.includes('desayuno')) mType = 'Desayuno';
+      else if (low.includes('cena')) mType = 'Cena';
+      else if (low.includes('merienda') || low.includes('snack')) mType = 'Snack';
+
+      let cleanDesc = firstLine.replace(/^[0-9]+[.)]\s*/, '').replace(/^[-*•]\s*/, '').trim();
+      if (cleanDesc.includes(':')) {
+        const parts = cleanDesc.split(':');
+        if (parts[1] && parts[1].trim().length > 3) cleanDesc = parts[1].trim();
+      }
+
+      return [
+        {
+          mealType: mType,
+          description: cleanDesc || 'Plato exacto',
+          calories: singleMacro.calories || 0,
+          protein_g: singleMacro.protein_g || 0,
+          carbs_g: singleMacro.carbs_g || 0,
+          fat_g: singleMacro.fat_g || 0,
+        },
+      ];
+    }
+
+    return [];
+  }, [geminiPasteText]);
+
+  const geminiDishesTotals = useMemo(() => {
+    return parsedGeminiDishes.reduce(
+      (acc, d) => ({
+        calories: acc.calories + d.calories,
+        protein_g: Number((acc.protein_g + d.protein_g).toFixed(1)),
+        carbs_g: Number((acc.carbs_g + d.carbs_g).toFixed(1)),
+        fat_g: Number((acc.fat_g + d.fat_g).toFixed(1)),
+      }),
+      { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 }
+    );
+  }, [parsedGeminiDishes]);
+
+  const handleSaveGeminiDishes = async () => {
+    if (parsedGeminiDishes.length === 0) return;
+    setIsSavingGeminiDishes(true);
+    try {
+      const mealsToInsert: Partial<NutritionLog>[] = parsedGeminiDishes.map((d) => ({
+        date: selectedDate,
+        meal_type: d.mealType as any,
+        description: d.description,
+        calories: d.calories,
+        protein_g: d.protein_g,
+        carbs_g: d.carbs_g,
+        fat_g: d.fat_g,
+        raw_audio_transcription: `Pegado de Gemini: ${d.description}`,
+      }));
+
+      if (onAddMealsBatch) {
+        await onAddMealsBatch(mealsToInsert);
+      } else {
+        for (const m of mealsToInsert) {
+          await onAddMeal(m);
+        }
+      }
+
+      setBatchToast(`+ Registrados ${mealsToInsert.length} platos exactos`);
+      setTimeout(() => setBatchToast(null), 3000);
+      setGeminiPasteText('');
+      setShowAddModal(false);
+      if (onRefreshData) onRefreshData();
+    } catch (err) {
+      console.error('Error guardando platos de Gemini:', err);
+      setBatchToast('Error al registrar platos de Gemini');
+      setTimeout(() => setBatchToast(null), 3000);
+    } finally {
+      setIsSavingGeminiDishes(false);
+    }
+  };
+
+  const handleFillManualFromGemini = (dish: ParsedDishWithMacros) => {
+    setMealType(dish.mealType as any);
+    setDescription(dish.description);
+    setCalories(dish.calories.toString());
+    setProtein(dish.protein_g.toString());
+    setCarbs(dish.carbs_g.toString());
+    setFat(dish.fat_g.toString());
+    setAddMealTab('manual');
   };
 
   return (
@@ -1026,104 +1136,240 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
         </div>
       )}
 
-      {/* MODAL MANUAL PARA AÑADIR COMIDA */}
+      {/* MODAL PARA AÑADIR COMIDA (MANUAL O PEGAR DE GEMINI / IA) */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-sm liquid-glass-card bg-[var(--glass-surface-thick)] p-5 space-y-4">
-            <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
-              Añadir Comida Manual
-            </h3>
-
-            <form onSubmit={handleSaveMeal} className="space-y-3">
-              <div>
-                <label className="text-[10px] text-[var(--text-secondary)] block mb-1">Tipo de Comida</label>
-                <select
-                  value={mealType}
-                  onChange={(e) => setMealType(e.target.value as any)}
-                  className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-semibold outline-none"
-                >
-                  <option value="Desayuno">Desayuno</option>
-                  <option value="Almuerzo">Almuerzo</option>
-                  <option value="Cena">Cena</option>
-                  <option value="Snack">Snack / Merienda</option>
-                </select>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md liquid-glass-card bg-[var(--glass-surface-thick)] p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[var(--glass-border)] pb-3">
+              <div className="flex items-center gap-2">
+                <Utensils className="w-4 h-4 text-[#D97757]" />
+                <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">
+                  Registrar Comida
+                </h3>
               </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-1 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-              <div>
-                <label className="text-[10px] text-[var(--text-secondary)] block mb-1">Descripción de alimentos</label>
-                <input
-                  type="text"
-                  placeholder="Ej: Bol de avena con leche, yogur griego y whey"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs outline-none focus:border-[#D97757]"
-                  required
-                />
-              </div>
+            {/* Selector de Pestañas: Entrada Manual vs Pegar de Gemini */}
+            <div className="flex p-1 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setAddMealTab('manual')}
+                className={`flex-1 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                  addMealTab === 'manual'
+                    ? 'bg-[#D97757] text-white shadow-sm'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <Utensils className="w-3.5 h-3.5" />
+                <span>Entrada Manual</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddMealTab('gemini')}
+                className={`flex-1 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                  addMealTab === 'gemini'
+                    ? 'bg-[#D97757] text-white shadow-sm'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Pegar de Gemini / IA</span>
+              </button>
+            </div>
 
-              <div className="grid grid-cols-2 gap-2">
+            {addMealTab === 'manual' ? (
+              <form onSubmit={handleSaveMeal} className="space-y-3">
                 <div>
-                  <label className="text-[10px] text-[var(--text-secondary)] block mb-1">Calorías (kcal)</label>
+                  <label className="text-[10px] text-[var(--text-secondary)] block mb-1">Tipo de Comida</label>
+                  <select
+                    value={mealType}
+                    onChange={(e) => setMealType(e.target.value as any)}
+                    className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-semibold outline-none"
+                  >
+                    <option value="Desayuno">Desayuno</option>
+                    <option value="Almuerzo">Almuerzo</option>
+                    <option value="Cena">Cena</option>
+                    <option value="Snack">Snack / Merienda</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-[var(--text-secondary)] block mb-1">Nombre o descripción del plato</label>
                   <input
-                    type="number"
-                    value={calories}
-                    onChange={(e) => setCalories(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
+                    type="text"
+                    placeholder="Ej: Bol de avena con leche, yogur griego y whey"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs outline-none focus:border-[#D97757]"
                     required
                   />
                 </div>
-                <div>
-                  <label className="text-[10px] text-[var(--text-secondary)] block mb-1">Proteína (g)</label>
-                  <input
-                    type="number"
-                    value={protein}
-                    onChange={(e) => setProtein(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
-                    required
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] text-[var(--text-secondary)] block mb-1">Carbohidratos (g)</label>
-                  <input
-                    type="number"
-                    value={carbs}
-                    onChange={(e) => setCarbs(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
-                    required
-                  />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-[var(--text-secondary)] block mb-1">Calorías (kcal)</label>
+                    <input
+                      type="number"
+                      value={calories}
+                      onChange={(e) => setCalories(e.target.value)}
+                      className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[var(--text-secondary)] block mb-1">Proteína (g)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={protein}
+                      onChange={(e) => setProtein(e.target.value)}
+                      className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
+                      required
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-[10px] text-[var(--text-secondary)] block mb-1">Grasas (g)</label>
-                  <input
-                    type="number"
-                    value={fat}
-                    onChange={(e) => setFat(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
-                    required
-                  />
-                </div>
-              </div>
 
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-2.5 rounded-xl liquid-glass-pill text-[var(--text-secondary)] font-bold text-xs"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 py-2.5 rounded-xl bg-[#D97757] text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-[#D97757]/20 active:scale-95"
-                >
-                  Guardar
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-[var(--text-secondary)] block mb-1">Carbohidratos (g)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={carbs}
+                      onChange={(e) => setCarbs(e.target.value)}
+                      className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[var(--text-secondary)] block mb-1">Grasas (g)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={fat}
+                      onChange={(e) => setFat(e.target.value)}
+                      className="w-full p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-bold outline-none"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModal(false)}
+                    className="flex-1 py-2.5 rounded-xl liquid-glass-pill text-[var(--text-secondary)] font-bold text-xs"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 py-2.5 rounded-xl bg-[#D97757] text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-[#D97757]/20 active:scale-95"
+                  >
+                    Guardar Plato Exacto
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-3.5">
+                <div>
+                  <label className="text-[10px] text-[var(--text-secondary)] block mb-1 font-semibold">
+                    Pega aquí la respuesta o cálculo de platos y macros de Gemini:
+                  </label>
+                  <textarea
+                    rows={4}
+                    placeholder={`Pega el texto tal cual te lo da Gemini. Ej:\n1. Arroz con pollo: 480 kcal, 42g proteína, 55g hidratos, 8g grasa\n2. Yogur griego con frutos secos: 250 kcal, 18g proteína, 12g hidratos, 14g grasa`}
+                    value={geminiPasteText}
+                    onChange={(e) => setGeminiPasteText(e.target.value)}
+                    className="w-full p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs outline-none focus:border-[#D97757] resize-none leading-relaxed font-mono"
+                  />
+                </div>
+
+                {parsedGeminiDishes.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-[var(--text-secondary)]">
+                      <span>Platos detectados ({parsedGeminiDishes.length}):</span>
+                      <span className="font-mono text-[#D97757]">
+                        {geminiDishesTotals.calories} kcal | {geminiDishesTotals.protein_g}g P
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                      {parsedGeminiDishes.map((dish, i) => (
+                        <div
+                          key={i}
+                          className="p-2.5 rounded-xl bg-[var(--glass-surface)] border border-[var(--glass-border)] flex items-center justify-between text-xs"
+                        >
+                          <div className="min-w-0 flex-1 pr-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[#D97757]/15 text-[#D97757] font-bold">
+                                {dish.mealType}
+                              </span>
+                              <span className="font-bold text-[var(--text-primary)] truncate">
+                                {dish.description}
+                              </span>
+                            </div>
+                            <p className="text-[10px] font-mono text-[var(--text-secondary)] mt-0.5">
+                              {dish.calories} kcal • {dish.protein_g}g P • {dish.carbs_g}g HC • {dish.fat_g}g G
+                            </p>
+                          </div>
+                          {parsedGeminiDishes.length === 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleFillManualFromGemini(dish)}
+                              className="text-[10px] text-[#D97757] font-bold px-2 py-1 rounded-lg liquid-glass-pill shrink-0"
+                            >
+                              Editar
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-600 dark:text-emerald-400">
+                      💡 Total acumulado exacto: <strong>{geminiDishesTotals.calories} kcal</strong> (Proteína: <strong>{geminiDishesTotals.protein_g}g</strong>, Carbohidratos: <strong>{geminiDishesTotals.carbs_g}g</strong>, Grasas: <strong>{geminiDishesTotals.fat_g}g</strong>).
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGeminiPasteText('');
+                        }}
+                        className="py-2.5 px-3 rounded-xl liquid-glass-pill text-[var(--text-secondary)] font-bold text-xs"
+                      >
+                        Limpiar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveGeminiDishes}
+                        disabled={isSavingGeminiDishes}
+                        className="flex-1 py-2.5 rounded-xl bg-[#D97757] text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-[#D97757]/20 active:scale-95 flex items-center justify-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Guardar {parsedGeminiDishes.length} {parsedGeminiDishes.length === 1 ? 'Plato' : 'Platos'} Exactos</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border-subtle)] text-[11px] text-[var(--text-secondary)] leading-relaxed space-y-1">
+                    <p className="font-semibold text-[var(--text-primary)]">
+                      ℹ️ Formatos compatibles:
+                    </p>
+                    <p>• Listas numeradas: <em>&ldquo;1. Salmón con patata: 500 kcal, 40g proteina, 30g hidratos, 18g grasa&rdquo;</em></p>
+                    <p>• Líneas individuales o respuestas completas estructuradas de Gemini.</p>
+                    <p>• Los macros y nombres se guardarán exactamente como los indiques sin recálculos.</p>
+                  </div>
+                )}
               </div>
-            </form>
+            )}
           </div>
         </div>
       )}

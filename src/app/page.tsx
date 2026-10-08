@@ -183,6 +183,20 @@ export default function Home() {
     }
   };
 
+  const handleAddMealsBatch = async (mealsData: Partial<NutritionLog>[]) => {
+    const res = await fetch('/api/nutrition', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'batch_insert',
+        meals: mealsData,
+      }),
+    });
+    if (res.ok) {
+      await loadAllData();
+    }
+  };
+
   const handleDeleteMeal = async (mealId: string) => {
     const res = await fetch(`/api/nutrition?id=${encodeURIComponent(mealId)}&type=meal`, { method: 'DELETE' });
     if (res.ok) {
@@ -346,6 +360,7 @@ export default function Home() {
                 onDeleteWater={handleDeleteWater}
                 onAddMeal={handleAddMeal}
                 onDeleteMeal={handleDeleteMeal}
+                onAddMealsBatch={handleAddMealsBatch}
                 onRefreshData={loadAllData}
               />
             )}

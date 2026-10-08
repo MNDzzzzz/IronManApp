@@ -915,3 +915,84 @@ export function extractExplicitMacrosFromText(text: string): ExplicitMacrosResul
     fat_g,
   };
 }
+
+export interface ParsedDishWithMacros {
+  mealType: string;
+  description: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+}
+
+/**
+ * Parsea múltiples platos y macros a partir de un texto estructurado
+ * (ej. salidas de Gemini, listas numeradas 1..N o desglose de comidas).
+ */
+export function parseMultipleDishesWithExactMacros(text: string): ParsedDishWithMacros[] {
+  if (!text) return [];
+
+  // 1. Intentar dividir por bloques numerados o viñetas
+  let sections = text
+    .split(/(?:^|\n)(?=(?:[0-9]+[.)]|[-*•])\s*(?:[A-Za-zÁÉÍÓÚáéíóú]+))/i)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  if (sections.length <= 1) {
+    sections = text.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean);
+  }
+
+  if (sections.length <= 1) {
+    // Intentar por líneas separadas si cada una contiene macros
+    sections = text.split('\n').map((s) => s.trim()).filter((s) => {
+      const m = extractExplicitMacrosFromText(s);
+      return m.hasExplicitMacros && (m.calories !== undefined || m.protein_g !== undefined);
+    });
+  }
+
+  const parsedDishes: ParsedDishWithMacros[] = [];
+
+  for (const sec of sections) {
+    const macros = extractExplicitMacrosFromText(sec);
+    if (!macros.hasExplicitMacros || (!macros.calories && !macros.protein_g)) {
+      continue;
+    }
+
+    const lines = sec.split('\n').map((l) => l.trim()).filter(Boolean);
+    const firstLine = lines[0] || 'Comida';
+
+    let mealType = 'Almuerzo';
+    const lower = sec.toLowerCase();
+    if (lower.includes('desayuno')) mealType = 'Desayuno';
+    else if (lower.includes('recena')) mealType = 'Snack';
+    else if (lower.includes('merienda')) mealType = 'Merienda';
+    else if (lower.includes('snack')) mealType = 'Snack';
+    else if (lower.includes('cena')) mealType = 'Cena';
+    else if (lower.includes('almuerzo') || lower.includes('comida')) mealType = 'Almuerzo';
+
+    let desc = firstLine.replace(/^[0-9]+[.)]\s*/, '').replace(/^[-*•]\s*/, '').trim();
+    if (desc.includes(':')) {
+      const parts = desc.split(':');
+      if (parts[1] && parts[1].trim().length > 3) {
+        desc = parts[1].trim();
+      }
+    }
+
+    const foodLine = lines.find((l) => l.toLowerCase().startsWith('alimentos:'));
+    if (foodLine) {
+      desc = foodLine.replace(/^alimentos:\s*/i, '').trim();
+    }
+
+    parsedDishes.push({
+      mealType,
+      description: desc || 'Plato exacto',
+      calories: macros.calories || 0,
+      protein_g: macros.protein_g || 0,
+      carbs_g: macros.carbs_g || 0,
+      fat_g: macros.fat_g || 0,
+    });
+  }
+
+  return parsedDishes;
+}
+

@@ -43,6 +43,7 @@ import {
   findUserFrequentFood,
   memorizeUserFood,
   extractExplicitMacrosFromText,
+  parseMultipleDishesWithExactMacros,
 } from '@/lib/frequentFoodsManager';
 import {
   swapScheduleDays,
@@ -62,6 +63,7 @@ export interface UniversalAssistantResponse {
     | 'log_workout'
     | 'log_cardio'
     | 'log_nutrition'
+    | 'log_multiple_dishes'
     | 'log_water'
     | 'log_weight'
     | 'protocol_update'
@@ -75,11 +77,13 @@ export interface UniversalAssistantResponse {
     | 'save_food_preference'
     | 'discomfort_report'
     | 'log_typical_day'
+    | 'audio_unclear'
     | 'unknown';
   transcription?: string;
   workout?: any;
   cardio?: any;
   nutrition?: any;
+  multiple_dishes?: any;
   water_ml?: number;
   weight_log?: any;
   protocol_update?: any;
@@ -188,7 +192,7 @@ export async function transcribeAudioWithGemini(
           body: JSON.stringify({
             contents: [{
               parts: [
-                { text: 'Transcribe este audio palabra por palabra en español sin inventar nada. Devuelve solo la transcripción literal exacta.' },
+                { text: 'Transcribe con fidelidad absoluta lo que se habla en este audio en español. Si solo hay silencio, ruido de fondo o no hay voz inteligible, devuelve exactamente cadena vacía sin inventar nada ni poner puntos.' },
                 {
                   inline_data: {
                     mime_type: rawMime,
@@ -206,7 +210,14 @@ export async function transcribeAudioWithGemini(
         const text =
           data.candidates?.[0]?.content?.parts?.[0]?.audioTranscription?.text ||
           data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text && text.trim()) return text.trim();
+        if (text && text.trim()) {
+          const cleanText = text.trim();
+          // Si el texto es solo un punto o signos de puntuación sin palabras inteligibles, ignorar
+          if (/^[\s.,;:\-_!?]+$/.test(cleanText)) {
+            return null;
+          }
+          return cleanText;
+        }
       }
     } catch (err) {
       console.warn(`Aviso de latencia/fallo transcribiendo audio con ${model}:`, err);
@@ -454,7 +465,25 @@ export async function tryDeterministicBypass(
     };
   }
 
-  // 3. Detección rápida de comidas pesadas o macros explícitos
+  // 3. Detección de bloque múltiple de comidas con macros exactos (salidas de Gemini o listas)
+  const multipleDishes = parseMultipleDishesWithExactMacros(clean);
+  if (multipleDishes.length >= 2) {
+    const totalCal = multipleDishes.reduce((acc, d) => acc + d.calories, 0);
+    const totalProt = multipleDishes.reduce((acc, d) => acc + d.protein_g, 0);
+    const totalCarb = multipleDishes.reduce((acc, d) => acc + d.carbs_g, 0);
+    const totalFat = multipleDishes.reduce((acc, d) => acc + d.fat_g, 0);
+
+    return {
+      action: 'log_multiple_dishes',
+      multiple_dishes: multipleDishes,
+      reply_text: `✅ Registradas ${multipleDishes.length} comidas con tus macros exactos:\n` +
+        multipleDishes.map((d) => `• **${d.mealType}**: ${d.description} (${d.calories} kcal | ${d.protein_g}g P | ${d.carbs_g}g HC | ${d.fat_g}g G)`).join('\n') +
+        `\n\n**Total acumulado:** ${totalCal} kcal | ${Number(totalProt.toFixed(1))}g P | ${Number(totalCarb.toFixed(1))}g HC | ${Number(totalFat.toFixed(1))}g G.`,
+      coach_tip: 'Tus macros dictados se han guardado con 100% de fidelidad sin modificaciones.',
+    };
+  }
+
+  // 4. Detección rápida de comidas pesadas o macros explícitos
   const items = extractItemsFromText(clean);
   const explicitMacros = extractExplicitMacrosFromText(clean);
 
@@ -494,6 +523,10 @@ export async function tryDeterministicBypass(
     else if (hour < 19) mealType = 'Merienda';
     else mealType = 'Cena';
 
+    const customReply = explicitMacros.hasExplicitMacros
+      ? `Plato registrado con tus macros exactos: ${finalCal} kcal | ${finalP}g P | ${finalC}g HC | ${finalF}g G.`
+      : `Ingesta calculada al instante (0 ms) con el catálogo oficial de Mercadona.`;
+
     return {
       action: 'log_nutrition',
       nutrition: {
@@ -508,8 +541,10 @@ export async function tryDeterministicBypass(
         creatine_detected: lower.includes('creatina'),
         user_explicit_macros: explicitMacros.hasExplicitMacros,
       },
-      reply_text: `Ingesta calculada al instante (0 ms) con el catálogo oficial de Mercadona.`,
-      coach_tip: 'Máxima precisión bromatológica para tu déficit de recomposición.',
+      reply_text: customReply,
+      coach_tip: explicitMacros.hasExplicitMacros
+        ? 'Tus macros se han guardado con fidelidad matemática exacta.'
+        : 'Máxima precisión bromatológica para tu déficit de recomposición.',
     };
   }
 
@@ -868,8 +903,30 @@ export async function executeCoachTurn({
   if (audioBase64 && mimeType) {
     isVoice = true;
     const transcribed = await transcribeAudioWithGemini({ base64: audioBase64, mimeType }, geminiKey);
-    if (transcribed && transcribed.trim()) {
+    if (transcribed && transcribed.trim() && !/^[\s.,;:\-_!?]+$/.test(transcribed.trim())) {
       spokenText = transcribed.trim();
+    } else if (!spokenText) {
+      // Audio ininteligible, mudo o con sólo ruidos/puntos
+      const totals = await getTodayNutritionTotals(todayStr);
+      return {
+        success: true,
+        transcription: '',
+        isVoice: true,
+        action: 'audio_unclear',
+        replyText: '🎧 No he podido escuchar tu audio con claridad. Por favor, acércate más al micrófono o escribe lo que necesitas en la barra.',
+        coachTip: 'En entornos con ruido o en Safari móvil, también puedes escribir directamente o usar el teclado.',
+        todayTotals: {
+          calories: totals.totalKcal,
+          caloriesRemaining: Math.max(0, 2400 - totals.totalKcal),
+          caloriesTarget: 2400,
+          protein_g: totals.totalProtein,
+          proteinTarget_g: 202,
+          carbs_g: totals.totalCarbs,
+          fat_g: totals.totalFat,
+          water_ml: totals.totalWaterMl,
+          waterTarget_ml: 3800,
+        },
+      };
     }
   }
 
@@ -911,6 +968,43 @@ export async function executeCoachTurn({
 
   // 3. Ejecución de la Acción
   switch (aiResult.action) {
+    case 'log_multiple_dishes': {
+      const dishes = (aiResult as any).multiple_dishes || [];
+      const createdMeals: NutritionLog[] = [];
+
+      for (let i = 0; i < dishes.length; i++) {
+        const dish = dishes[i];
+        const m: NutritionLog = {
+          id: `nutri-${Date.now()}-${i}`,
+          timestamp: new Date(Date.now() + i * 1000).toISOString(),
+          date: todayStr,
+          meal_type: dish.mealType || 'Almuerzo',
+          description: dish.description,
+          calories: dish.calories,
+          protein_g: dish.protein_g,
+          carbs_g: dish.carbs_g,
+          fat_g: dish.fat_g,
+          raw_audio_transcription: spokenText,
+        };
+        mockStore.nutritionLogs.unshift(m);
+        createdMeals.push(m);
+      }
+
+      if (isSupabaseConfigured && supabaseAdmin && createdMeals.length > 0) {
+        try {
+          await supabaseAdmin.from('nutrition_logs').insert(createdMeals);
+        } catch (err) {
+          console.warn('Fallo guardando múltiples comidas en Supabase:', err);
+        }
+      }
+
+      dataSummary = {
+        multipleMeals: createdMeals,
+        count: createdMeals.length,
+      };
+      break;
+    }
+
     case 'log_nutrition': {
       if (aiResult.nutrition) {
         const nutri = aiResult.nutrition;
@@ -929,21 +1023,30 @@ export async function executeCoachTurn({
         let finalCarbs = Number(nutri.carbs_g) || 0;
         let finalFat = Number(nutri.fat_g) || 0;
 
-        if (itemsToCalculate.length > 0) {
-          // Prioridad 1: Desglose aditivo determinista de ingredientes pesados
+        if (userHasExactMacros) {
+          // PRIORIDAD 1: Si el atleta proporciona macros explícitos (Kcal, P, C, G),
+          // PREVALECEN AL 100% y NUNCA se recalculan con el catálogo ni con estimaciones.
+          if (explicitMacros.calories !== undefined) finalCalories = explicitMacros.calories;
+          else if (nutri.calories !== undefined) finalCalories = Number(nutri.calories);
+
+          if (explicitMacros.protein_g !== undefined) finalProtein = explicitMacros.protein_g;
+          else if (nutri.protein_g !== undefined) finalProtein = Number(nutri.protein_g);
+
+          if (explicitMacros.carbs_g !== undefined) finalCarbs = explicitMacros.carbs_g;
+          else if (nutri.carbs_g !== undefined) finalCarbs = Number(nutri.carbs_g);
+
+          if (explicitMacros.fat_g !== undefined) finalFat = explicitMacros.fat_g;
+          else if (nutri.fat_g !== undefined) finalFat = Number(nutri.fat_g);
+
+          breakdownText = `Macros exactos registrados: ${finalCalories} kcal | ${finalProtein}g P | ${finalCarbs}g HC | ${finalFat}g G`;
+        } else if (itemsToCalculate.length > 0) {
+          // Prioridad 2: Desglose aditivo determinista de ingredientes pesados con catálogo
           const calc = await calculateMealFromWeighedItems(itemsToCalculate);
           finalCalories = calc.totalCalories;
           finalProtein = calc.totalProtein;
           finalCarbs = calc.totalCarbs;
           finalFat = calc.totalFat;
           breakdownText = calc.formattedBreakdown;
-        } else if (userHasExactMacros) {
-          // Prioridad 2: Macros explícitos para un plato único sin desglose de ingredientes
-          if (explicitMacros.calories !== undefined) finalCalories = explicitMacros.calories;
-          if (explicitMacros.protein_g !== undefined) finalProtein = explicitMacros.protein_g;
-          if (explicitMacros.carbs_g !== undefined) finalCarbs = explicitMacros.carbs_g;
-          if (explicitMacros.fat_g !== undefined) finalFat = explicitMacros.fat_g;
-          breakdownText = `Macros dictados: ${finalCalories} kcal | ${finalProtein}g P | ${finalCarbs}g HC | ${finalFat}g G`;
         }
 
         const newMeal: NutritionLog = {

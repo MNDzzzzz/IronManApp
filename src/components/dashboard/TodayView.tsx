@@ -33,6 +33,10 @@ const CoachChat = dynamic(
   () => import('@/components/coach/CoachChat').then((m) => m.CoachChat),
   { ssr: false }
 );
+const CoachResponseModal = dynamic(
+  () => import('@/components/coach/CoachResponseModal').then((m) => m.CoachResponseModal),
+  { ssr: false }
+);
 
 interface TodayViewProps {
   health: DailyHealthMetric | null;
@@ -76,6 +80,8 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
   );
   const [showFullChatHistory, setShowFullChatHistory] = useState(false);
   const [selectedDiscomfortLevel, setSelectedDiscomfortLevel] = useState<DiscomfortLevel | null>(null);
+  const [isCoachResponseModalOpen, setIsCoachResponseModalOpen] = useState(false);
+  const [lastCoachTurnResult, setLastCoachTurnResult] = useState<CoachTurnResult | null>(null);
 
   const discomfortStrategy: AdaptationStrategy | null = useMemo(() => {
     if (!selectedDiscomfortLevel) return null;
@@ -119,9 +125,13 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
   }, []);
 
   // Manejador del resultado emitido por el Coach
-  const handleCoachTurnCompleted = (result: CoachTurnResult) => {
+  const handleCoachTurnCompleted = (result: CoachTurnResult, showModal = true) => {
     if (result.replyText) {
       setCoachStatusMessage(result.replyText);
+    }
+    if (showModal) {
+      setLastCoachTurnResult(result);
+      setIsCoachResponseModalOpen(true);
     }
     if (result.action?.includes('schedule') || (result as unknown as Record<string, unknown>).scheduleModified) {
       fetchSchedule();
@@ -345,7 +355,7 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
       <section className="pt-2 max-w-2xl mx-auto">
         <CoachCommandBar
           onStatusChange={(status) => setCoachStatusMessage(status)}
-          onSuccessResult={handleCoachTurnCompleted}
+          onSuccessResult={(result) => handleCoachTurnCompleted(result, true)}
         />
       </section>
 
@@ -369,9 +379,20 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
 
       {showFullChatHistory && (
         <section className="pt-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <CoachChat onTurnCompleted={handleCoachTurnCompleted} />
+          <CoachChat onTurnCompleted={(result) => handleCoachTurnCompleted(result, false)} />
         </section>
       )}
+
+      {/* Modal Liquid Glass de Respuesta y Desglose del Head Coach */}
+      <CoachResponseModal
+        isOpen={isCoachResponseModalOpen}
+        result={lastCoachTurnResult}
+        onClose={() => setIsCoachResponseModalOpen(false)}
+        onOpenFullChat={() => {
+          setIsCoachResponseModalOpen(false);
+          setShowFullChatHistory(true);
+        }}
+      />
 
       {/* Modal de Planificación de Calendario */}
       <ScheduleManagerModal
