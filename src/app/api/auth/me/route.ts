@@ -7,9 +7,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getUserProfile,
   registerAthleteProfile,
+  upsertUserProfile,
   socialStore,
   MASTER_ATHLETE_ID,
 } from '@/lib/socialManager';
+import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +20,22 @@ export async function GET(request: NextRequest) {
 
     // 1. Si se solicita un ID específico
     if (requestedUserId) {
-      const profile = getUserProfile(requestedUserId);
+      let profile = getUserProfile(requestedUserId);
+
+      if (!profile && isSupabaseConfigured && supabaseAdmin) {
+        try {
+          const { data: dbProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('*')
+            .eq('id', requestedUserId)
+            .single();
+          if (dbProfile) {
+            profile = dbProfile;
+            upsertUserProfile(dbProfile);
+          }
+        } catch {}
+      }
+
       if (!profile) {
         return NextResponse.json(
           { success: false, error: 'Perfil de atleta no encontrado' },
@@ -32,24 +49,39 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 2. Si no se especifica ID, buscar atleta maestro o primer perfil registrado
-    const defaultProfile =
-      getUserProfile(MASTER_ATHLETE_ID) ||
-      (socialStore.profiles.length > 0 ? socialStore.profiles[0] : null);
+    // 2. Si no se especifica ID, comprobar cookie de sesión activa
+    const sessionCookie = request.cookies.get('ironman_session')?.value;
+    if (sessionCookie) {
+      let profile = getUserProfile(sessionCookie);
 
-    if (!defaultProfile) {
-      // Estado cero: no hay sesión activa aún
-      return NextResponse.json({
-        success: true,
-        authenticated: false,
-        data: null,
-      });
+      if (!profile && isSupabaseConfigured && supabaseAdmin) {
+        try {
+          const { data: dbProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('*')
+            .eq('id', sessionCookie)
+            .single();
+          if (dbProfile) {
+            profile = dbProfile;
+            upsertUserProfile(dbProfile);
+          }
+        } catch {}
+      }
+
+      if (profile) {
+        return NextResponse.json({
+          success: true,
+          authenticated: true,
+          data: profile,
+        });
+      }
     }
 
+    // 3. Estado cero: No hay sesión activa aún (visitante nuevo o desconectado)
     return NextResponse.json({
       success: true,
-      authenticated: true,
-      data: defaultProfile,
+      authenticated: false,
+      data: null,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Error al obtener sesión';

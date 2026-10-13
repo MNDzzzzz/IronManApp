@@ -67,7 +67,7 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
   health,
   nutritionTotals,
   latestActivity,
-  currentWeight = 101.0,
+  currentWeight,
   onQuickAddWater,
   onNavigateTab,
   onSelectActivity,
@@ -207,7 +207,7 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
   };
 
   return (
-    <div className="w-full space-y-6 pb-24 transition-all">
+    <div className="w-full space-y-6 pb-12 sm:pb-16 transition-all">
       {/* 1. Dynamic Island: Coach Status Pill en la cabecera */}
       <section className="w-full flex justify-center">
         <DynamicIslandCoach
@@ -233,7 +233,7 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
             onNavigateToWorkout={() => onNavigateTab('entreno')}
           />
 
-          {/* Tarjeta de Racha y Tribu Social */}
+          {/* Tarjeta de Acceso a Tribu Social */}
           <div
             onClick={() => onNavigateTab('tribu')}
             className="p-3.5 sm:p-4 rounded-3xl bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-transparent border border-orange-500/20 hover:border-orange-500/40 flex items-center justify-between cursor-pointer transition-all apple-pressable apple-interactive-card shadow-sm"
@@ -244,15 +244,15 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs sm:text-sm font-bold text-white apple-title">
-                    Tribu 21K 2027 ⚡
+                  <span className="text-xs sm:text-sm font-bold text-[var(--text-primary)] apple-title">
+                    Tribu de Rendimiento ⚡
                   </span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-orange-500/20 text-orange-400 text-[9px] font-bold">
-                    🔥 18 Días Racha
+                  <span className="px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 text-[9px] font-bold">
+                    Comunidad
                   </span>
                 </div>
                 <p className="text-[10.5px] text-[var(--text-secondary)]">
-                  Feed de hoy, podio semanal y check-in de compañeros
+                  Feed de hoy, podio semanal y retos de entrenamiento
                 </p>
               </div>
             </div>
@@ -341,7 +341,7 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
                   Pesarme
                 </span>
                 <span className="text-[9.5px] text-[var(--text-tertiary)] mt-0.5 font-mono data-tabular">
-                  {currentWeight.toFixed(1)} kg
+                  {currentWeight != null ? `${currentWeight.toFixed(1)} kg` : '-- kg'}
                 </span>
               </button>
             </div>
@@ -507,7 +507,7 @@ const TodayViewComponent: React.FC<TodayViewProps> = ({
                   <Scale className="w-3.5 h-3.5" />
                 </div>
                 <p className="text-sm font-bold font-mono data-tabular text-[var(--text-primary)] apple-title">
-                  {currentWeight.toFixed(1)}
+                  {currentWeight != null ? currentWeight.toFixed(1) : '--'}
                 </p>
                 <p className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold mt-0.5">
                   kg actual

@@ -99,12 +99,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in motion-reduce:transition-none"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in motion-reduce:transition-none"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full sm:max-w-md max-h-[85vh] overflow-y-auto liquid-glass-sheet rounded-t-[32px] sm:rounded-3xl border border-[var(--glass-border)] border-t border-t-white/30 dark:border-t-white/15 p-5 sm:p-6 space-y-4 shadow-2xl animate-apple-scale-in">
+      <div className="w-full sm:max-w-md max-h-[85vh] overflow-y-auto liquid-glass-sheet rounded-t-[32px] sm:rounded-3xl border border-[var(--glass-border)] border-t border-t-white/30 dark:border-t-white/15 p-5 pb-12 sm:p-6 sm:pb-8 space-y-4 shadow-2xl animate-apple-scale-in">
         {/* Tirador táctil Apple para Bottom Sheet en móvil */}
         <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
 

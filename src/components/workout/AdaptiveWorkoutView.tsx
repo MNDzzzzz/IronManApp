@@ -24,6 +24,7 @@ interface AdaptiveWorkoutViewProps {
     rpe?: number;
   }) => Promise<void>;
   onDeleteSet?: (logId: string) => Promise<void>;
+  currentProfile?: any;
 }
 
 export const AdaptiveWorkoutView: React.FC<AdaptiveWorkoutViewProps> = ({
@@ -35,6 +36,7 @@ export const AdaptiveWorkoutView: React.FC<AdaptiveWorkoutViewProps> = ({
   gymLogs,
   onAddSet,
   onDeleteSet,
+  currentProfile,
 }) => {
   // Detección automática según el día de la semana en España:
   // Martes (2), Viernes (5) o Lunes (1) -> Fuerza
@@ -48,7 +50,7 @@ export const AdaptiveWorkoutView: React.FC<AdaptiveWorkoutViewProps> = ({
   const [activeMode, setActiveMode] = useState<'running' | 'fuerza'>(detectedMode);
 
   return (
-    <div className="w-full max-w-4xl mx-auto pb-24">
+    <div className="w-full max-w-4xl mx-auto pb-12 sm:pb-16">
       {/* Selector de Modalidad Adaptativa Segmentado (Apple Liquid Glass Pill) */}
       <div 
         role="tablist" 
@@ -97,6 +99,7 @@ export const AdaptiveWorkoutView: React.FC<AdaptiveWorkoutViewProps> = ({
               selectedActivity={selectedActivity}
               onSelectActivity={onSelectActivity}
               onRefresh={onRefreshCardio}
+              currentProfile={currentProfile}
             />
           </div>
         ) : (
@@ -107,6 +110,7 @@ export const AdaptiveWorkoutView: React.FC<AdaptiveWorkoutViewProps> = ({
               logs={gymLogs}
               onAddSet={onAddSet}
               onDeleteSet={onDeleteSet}
+              currentProfile={currentProfile}
             />
           </div>
         )}

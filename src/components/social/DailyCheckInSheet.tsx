@@ -9,6 +9,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Camera, Sparkles, CheckCircle2, Flame, Dumbbell, Route, ShieldAlert, Loader2 } from 'lucide-react';
 import { CheckInActivityType, WorkoutCheckIn, UserProfile } from '@/types/social';
+import { ATHLETE_STORAGE_KEY } from '@/lib/socialManager';
+import { apiFetch, getActiveAthleteId } from '@/lib/api/apiClient';
 
 export interface DailyCheckInInitialData {
   activityType?: CheckInActivityType;
@@ -36,9 +38,31 @@ export const DailyCheckInSheet: React.FC<DailyCheckInSheetProps> = ({
   initialData,
   currentProfile,
 }) => {
+  const [effectiveProfile, setEffectiveProfile] = useState<UserProfile | null>(currentProfile || null);
+
+  useEffect(() => {
+    if (currentProfile) {
+      setEffectiveProfile(currentProfile);
+    } else if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(ATHLETE_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.id) setEffectiveProfile(parsed);
+        }
+      } catch {}
+    }
+  }, [currentProfile, isOpen]);
+
   const [activityType, setActivityType] = useState<CheckInActivityType>('strength');
   const [title, setTitle] = useState('');
   const [metricsNote, setMetricsNote] = useState('');
+  const [distanceKm, setDistanceKm] = useState<string>('');
+  const [durationMin, setDurationMin] = useState<string>('');
+  const [avgPace, setAvgPace] = useState<string>('');
+  const [avgHr, setAvgHr] = useState<string>('');
+  const [volumeSets, setVolumeSets] = useState<string>('');
+  const [muscleGroups, setMuscleGroups] = useState<string>('');
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [isVerifyingPhoto, setIsVerifyingPhoto] = useState(false);
   const [photoVerificationResult, setPhotoVerificationResult] = useState<{
@@ -55,6 +79,10 @@ export const DailyCheckInSheet: React.FC<DailyCheckInSheetProps> = ({
         if (initialData.activityType) setActivityType(initialData.activityType);
         if (initialData.title) setTitle(initialData.title);
         if (initialData.metricsNote) setMetricsNote(initialData.metricsNote);
+        if (initialData.distance_km) setDistanceKm(String(initialData.distance_km));
+        if (initialData.duration_min) setDurationMin(String(initialData.duration_min));
+        if (initialData.avg_hr) setAvgHr(String(initialData.avg_hr));
+        if (initialData.volume_sets) setVolumeSets(String(initialData.volume_sets));
       } else if (!title) {
         // Sugerencia de título inicial según tipo
         setTitle(
@@ -70,6 +98,12 @@ export const DailyCheckInSheet: React.FC<DailyCheckInSheetProps> = ({
       setPhotoBase64(null);
       setPhotoVerificationResult(null);
       setErrorMsg('');
+      setDistanceKm('');
+      setDurationMin('');
+      setAvgPace('');
+      setAvgHr('');
+      setVolumeSets('');
+      setMuscleGroups('');
     }
     return () => {
       document.body.style.overflow = '';
@@ -126,19 +160,41 @@ export const DailyCheckInSheet: React.FC<DailyCheckInSheetProps> = ({
     try {
       const isGold = Boolean(photoBase64 && photoVerificationResult?.isVerified);
 
-      const res = await fetch('/api/checkins', {
+      const parsedDistance = distanceKm ? parseFloat(distanceKm) : (activityType === 'running' ? initialData?.distance_km : undefined);
+      const parsedDuration = durationMin ? parseFloat(durationMin) : initialData?.duration_min;
+      const parsedHr = avgHr ? parseInt(avgHr, 10) : initialData?.avg_hr;
+      const parsedSets = volumeSets ? parseInt(volumeSets, 10) : (activityType === 'strength' ? initialData?.volume_sets : undefined);
+      const parsedMuscles = muscleGroups ? muscleGroups.split(',').map((m) => m.trim()).filter(Boolean) : undefined;
+      
+      let computedPace = avgPace.trim();
+      if (!computedPace && parsedDistance && parsedDuration && parsedDistance > 0) {
+        const paceDecimal = parsedDuration / parsedDistance;
+        const paceM = Math.floor(paceDecimal);
+        const paceS = Math.round((paceDecimal - paceM) * 60).toString().padStart(2, '0');
+        computedPace = `${paceM}:${paceS} /km`;
+      }
+
+      const resolvedId = effectiveProfile?.id || getActiveAthleteId() || '';
+
+      const res = await apiFetch('/api/checkins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-athlete-id': resolvedId,
+        },
         body: JSON.stringify({
-          userId: currentProfile?.id,
+          userId: resolvedId,
+          userProfile: effectiveProfile,
           activityType,
           title: title.trim(),
           metrics: {
             notes: metricsNote.trim() || undefined,
-            volume_sets: activityType === 'strength' ? initialData?.volume_sets : undefined,
-            distance_km: activityType === 'running' ? initialData?.distance_km : undefined,
-            duration_min: initialData?.duration_min,
-            avg_hr: initialData?.avg_hr,
+            distance_km: parsedDistance,
+            duration_min: parsedDuration,
+            avg_pace: computedPace || undefined,
+            avg_hr: parsedHr,
+            volume_sets: parsedSets,
+            muscle_groups: parsedMuscles,
           },
           hasPhoto: Boolean(photoBase64),
           photoUrl: photoBase64 || undefined,
@@ -168,7 +224,7 @@ export const DailyCheckInSheet: React.FC<DailyCheckInSheetProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label="Registrar Check-in de Hoy"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in transition-all duration-300"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in transition-all duration-300"
       onClick={onClose}
     >
       <div
@@ -183,7 +239,7 @@ export const DailyCheckInSheet: React.FC<DailyCheckInSheetProps> = ({
         {/* Cabecera */}
         <div className="flex items-center justify-between px-5 pt-3 pb-3 border-b border-[var(--glass-border)] shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-white apple-title">Check-in de Hoy</span>
+            <span className="text-sm font-bold text-[var(--text-primary)] apple-title">Check-in de Hoy</span>
             <span className="px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 text-[10px] font-bold">
               🔥 Racha Activa
             </span>
@@ -191,14 +247,14 @@ export const DailyCheckInSheet: React.FC<DailyCheckInSheetProps> = ({
           <button
             onClick={onClose}
             aria-label="Cerrar modal"
-            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-[var(--text-secondary)] hover:text-white apple-pressable apple-btn-spring"
+            className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] apple-pressable apple-btn-spring"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Formulario */}
-        <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4">
+        {/* Formulario con padding inferior seguro */}
+        <form onSubmit={handleSubmit} className="p-5 pb-12 sm:pb-8 overflow-y-auto space-y-4">
           {initialData && (
             <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center gap-2.5 text-xs text-amber-300">
               <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
@@ -279,9 +335,101 @@ export const DailyCheckInSheet: React.FC<DailyCheckInSheetProps> = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Ej: Día 1 Torso (16 series) o Rodaje 8K Z2"
-              className="w-full px-4 py-2.5 rounded-2xl bg-black/20 dark:bg-white/[0.04] border border-[var(--glass-border)] text-sm text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-coral)]"
+              className="w-full px-4 py-2.5 rounded-2xl bg-black/5 dark:bg-white/[0.04] border border-[var(--glass-border)] text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-coral)]"
             />
           </div>
+
+          {/* Métricas dinámicas para Carrera / Running */}
+          {(activityType === 'running' || activityType === 'hybrid') && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-sky-500/[0.06] border border-sky-500/20">
+              <div>
+                <label className="block text-[10px] font-bold text-sky-600 dark:text-sky-300 uppercase mb-1">
+                  Distancia (km)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={distanceKm}
+                  onChange={(e) => setDistanceKm(e.target.value)}
+                  placeholder="8.5"
+                  className="w-full px-3 py-2 rounded-xl bg-black/10 dark:bg-white/[0.06] border border-sky-500/30 text-xs text-[var(--text-primary)] font-mono font-bold focus:outline-none focus:ring-1 focus:ring-sky-400"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-sky-600 dark:text-sky-300 uppercase mb-1">
+                  Duración (min)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={durationMin}
+                  onChange={(e) => setDurationMin(e.target.value)}
+                  placeholder="42"
+                  className="w-full px-3 py-2 rounded-xl bg-black/10 dark:bg-white/[0.06] border border-sky-500/30 text-xs text-[var(--text-primary)] font-mono font-bold focus:outline-none focus:ring-1 focus:ring-sky-400"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-sky-600 dark:text-sky-300 uppercase mb-1">
+                  Ritmo (min/km)
+                </label>
+                <input
+                  type="text"
+                  value={avgPace}
+                  onChange={(e) => setAvgPace(e.target.value)}
+                  placeholder="4:58 /km"
+                  className="w-full px-3 py-2 rounded-xl bg-black/10 dark:bg-white/[0.06] border border-sky-500/30 text-xs text-[var(--text-primary)] font-mono font-bold focus:outline-none focus:ring-1 focus:ring-sky-400"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-sky-600 dark:text-sky-300 uppercase mb-1">
+                  Pulso Med (bpm)
+                </label>
+                <input
+                  type="number"
+                  min="50"
+                  max="220"
+                  value={avgHr}
+                  onChange={(e) => setAvgHr(e.target.value)}
+                  placeholder="142"
+                  className="w-full px-3 py-2 rounded-xl bg-black/10 dark:bg-white/[0.06] border border-sky-500/30 text-xs text-[var(--text-primary)] font-mono font-bold focus:outline-none focus:ring-1 focus:ring-sky-400"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Métricas dinámicas para Fuerza */}
+          {(activityType === 'strength' || activityType === 'hybrid') && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3 rounded-2xl bg-purple-500/[0.06] border border-purple-500/20">
+              <div>
+                <label className="block text-[10px] font-bold text-purple-600 dark:text-purple-300 uppercase mb-1">
+                  Series Totales
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="60"
+                  value={volumeSets}
+                  onChange={(e) => setVolumeSets(e.target.value)}
+                  placeholder="16"
+                  className="w-full px-3 py-2 rounded-xl bg-black/10 dark:bg-white/[0.06] border border-purple-500/30 text-xs text-[var(--text-primary)] font-mono font-bold focus:outline-none focus:ring-1 focus:ring-purple-400"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-purple-600 dark:text-purple-300 uppercase mb-1">
+                  Grupos Musculares
+                </label>
+                <input
+                  type="text"
+                  value={muscleGroups}
+                  onChange={(e) => setMuscleGroups(e.target.value)}
+                  placeholder="Pecho, Espalda, Pierna"
+                  className="w-full px-3 py-2 rounded-xl bg-black/10 dark:bg-white/[0.06] border border-purple-500/30 text-xs text-[var(--text-primary)] font-semibold focus:outline-none focus:ring-1 focus:ring-purple-400"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Notas o sensaciones */}
           <div>
@@ -293,7 +441,7 @@ export const DailyCheckInSheet: React.FC<DailyCheckInSheetProps> = ({
               value={metricsNote}
               onChange={(e) => setMetricsNote(e.target.value)}
               placeholder="Sensaciones, ritmo medio, RPE o cargas..."
-              className="w-full px-4 py-2.5 rounded-2xl bg-black/20 dark:bg-white/[0.04] border border-[var(--glass-border)] text-sm text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-coral)] resize-none"
+              className="w-full px-4 py-2.5 rounded-2xl bg-black/5 dark:bg-white/[0.04] border border-[var(--glass-border)] text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-coral)] resize-none"
             />
           </div>
 
@@ -301,12 +449,12 @@ export const DailyCheckInSheet: React.FC<DailyCheckInSheetProps> = ({
           <div className="p-3.5 rounded-2xl bg-amber-500/[0.06] border border-amber-500/20">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span className="text-xs font-bold text-amber-300">
+                <Sparkles className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-300">
                   Check-in de Oro (Proof of Workout)
                 </span>
               </div>
-              <span className="text-[10px] font-bold text-amber-400 px-2 py-0.5 rounded-full bg-amber-500/20">
+              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full bg-amber-500/20">
                 +50 XP Bonus
               </span>
             </div>

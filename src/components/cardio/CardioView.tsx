@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Scale,
   Sparkles,
+  AlertCircle,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -28,6 +29,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { CardioActivity } from '@/types/database';
+import { apiFetch, getActiveAthleteId } from '@/lib/api/apiClient';
 import { StravaUploadModal } from '@/components/workout/StravaUploadModal';
 import { simulateHalfMarathon2027 } from '@/lib/cardio/raceSimulatorEngine';
 import dynamic from 'next/dynamic';
@@ -43,6 +45,7 @@ interface CardioViewProps {
   selectedActivity: CardioActivity | null;
   onSelectActivity: (act: CardioActivity | null) => void;
   onRefresh?: () => void;
+  currentProfile?: any;
 }
 
 export const CardioView: React.FC<CardioViewProps> = ({
@@ -50,19 +53,27 @@ export const CardioView: React.FC<CardioViewProps> = ({
   selectedActivity,
   onSelectActivity,
   onRefresh,
+  currentProfile,
 }) => {
+  const [localActivities, setLocalActivities] = useState<CardioActivity[]>(activities);
   const [activeMetric, setActiveMetric] = useState<'all' | 'hr' | 'alt'>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isStravaModalOpen, setIsStravaModalOpen] = useState(false);
   const [isSimulatorModalOpen, setIsSimulatorModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createError, setCreateError] = useState<string>('');
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+
+  useEffect(() => {
+    setLocalActivities(activities);
+  }, [activities]);
 
   // Estados de Check-in en Tribu
   const [isCheckInOpen, setIsCheckInOpen] = useState(false);
   const [checkInInitialData, setCheckInInitialData] = useState<DailyCheckInInitialData | null>(null);
 
   const handleOpenCheckIn = (activity?: CardioActivity | null) => {
-    const target = activity || activities[0];
+    const target = activity || localActivities[0];
     if (!target) return;
     const distKm = parseFloat((target.distance / 1000).toFixed(1));
     const durMin = Math.round((target.elapsed_time || target.moving_time || 0) / 60);
@@ -113,20 +124,36 @@ export const CardioView: React.FC<CardioViewProps> = ({
   const handleCreateActivity = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setCreateError('');
     try {
+      let safeStartDate: string;
+      try {
+        const d = new Date(formDate);
+        safeStartDate = isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+      } catch {
+        safeStartDate = new Date().toISOString();
+      }
+
       const distanceMeters = Math.round(parseFloat(formDistanceKm) * 1000);
       const elapsedSeconds = Math.round(parseFloat(formDurationMin) * 60);
       const avgHr = formAvgHr ? parseInt(formAvgHr, 10) : undefined;
       const maxHr = formMaxHr ? parseInt(formMaxHr, 10) : undefined;
       const avgCadence = formCadence ? parseInt(formCadence, 10) : 168;
 
-      const res = await fetch('/api/activities', {
+      const activeAthleteId = currentProfile?.id || getActiveAthleteId() || '';
+
+      const res = await apiFetch('/api/activities', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-athlete-id': activeAthleteId,
+        },
         body: JSON.stringify({
-          name: formName,
+          userId: activeAthleteId,
+          userProfile: currentProfile,
+          name: formName.trim() || 'Rodaje CaCo Galaxy Fit3',
           type: 'Run',
-          start_date: new Date(formDate).toISOString(),
+          start_date: safeStartDate,
           distance: distanceMeters,
           elapsed_time: elapsedSeconds,
           moving_time: elapsedSeconds,
@@ -138,34 +165,65 @@ export const CardioView: React.FC<CardioViewProps> = ({
         }),
       });
 
-      if (res.ok) {
-        setIsAddModalOpen(false);
-        if (onRefresh) onRefresh();
-
-        // Precargar y abrir check-in en tribu automáticamente
-        const distKm = parseFloat(formDistanceKm);
-        const durMin = parseInt(formDurationMin, 10);
-        const avgHr = formAvgHr ? parseInt(formAvgHr, 10) : undefined;
-        setCheckInInitialData({
-          activityType: 'running',
-          title: `Rodaje: ${formName}`,
-          distance_km: distKm,
-          duration_min: durMin,
-          avg_hr: avgHr,
-          metricsNote: formNotes,
-          badge_label: `Rodaje Galaxy Fit3 registrado: ${distKm} km • ${durMin} min`,
-        });
-        setIsCheckInOpen(true);
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Error al guardar el rodaje.');
       }
-    } catch (err) {
+
+      if (json.activity) {
+        setLocalActivities((prev) => [json.activity, ...prev]);
+
+        // Auto-checkin inmediato en la Tribu activa
+        try {
+          const athlete = currentProfile || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('ironman_athlete_profile') || 'null') : null);
+          const effectiveId = athlete?.id || activeAthleteId;
+          if (effectiveId) {
+            const distKm = parseFloat((json.activity.distance / 1000).toFixed(1));
+            const durMin = Math.round((json.activity.elapsed_time || json.activity.moving_time || 0) / 60);
+            try {
+              await apiFetch('/api/checkins', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-athlete-id': effectiveId,
+                },
+                body: JSON.stringify({
+                  userId: effectiveId,
+                  userProfile: athlete,
+                  activityType: 'running',
+                  title: json.activity.name || `Rodaje Aeróbico Z2 (${distKm} km)`,
+                  stravaActivityId: String(json.activity.id),
+                  metrics: {
+                    distance_km: distKm,
+                    duration_min: durMin,
+                    avg_hr: json.activity.avg_hr,
+                    notes: json.activity.notes,
+                  },
+                }),
+              });
+            } catch (cErr) {
+              console.warn('Aviso en check-in:', cErr);
+            }
+          }
+        } catch (checkinErr) {
+          console.warn('Aviso publicando auto-checkin en tribu:', checkinErr);
+        }
+      }
+      setIsAddModalOpen(false);
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 4000);
+
+      if (onRefresh) onRefresh();
+    } catch (err: unknown) {
       console.error('Error registrando rodaje:', err);
+      setCreateError(err instanceof Error ? err.message : 'Error al guardar la actividad');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="space-y-6 pb-24 font-sans">
+    <div className="space-y-6 pb-12 sm:pb-16 font-sans">
       {/* ENCABEZADO MINIMALISTA ESTILO APPLE */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -341,7 +399,7 @@ export const CardioView: React.FC<CardioViewProps> = ({
       </div>
 
       {/* BANNER SUTIL APPLE: PUBLICAR CHECK-IN EN TU TRIBU ⚡ */}
-      {activities.length > 0 && (
+      {localActivities.length > 0 && (
         <div className="p-4 rounded-3xl bg-gradient-to-r from-orange-500/15 via-amber-500/10 to-[#FC5200]/15 border border-[#FC5200]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg shadow-orange-500/5 animate-apple-fade-in apple-interactive-card">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#FC5200] via-orange-600 to-amber-500 flex items-center justify-center text-white shrink-0 shadow-md shadow-orange-500/20">
@@ -349,7 +407,7 @@ export const CardioView: React.FC<CardioViewProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="text-xs sm:text-sm font-bold text-white apple-title">
+                <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)] apple-title">
                   Publicar Check-in en tu Tribu ⚡
                 </h4>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
@@ -357,13 +415,13 @@ export const CardioView: React.FC<CardioViewProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-                Último rodaje: {(activities[0].distance / 1000).toFixed(1)} km • {Math.round(activities[0].elapsed_time / 60)} min {activities[0].avg_hr ? `• ${activities[0].avg_hr} bpm` : ''}
+                Último rodaje: {(localActivities[0].distance / 1000).toFixed(1)} km • {Math.round(localActivities[0].elapsed_time / 60)} min {localActivities[0].avg_hr ? `• ${localActivities[0].avg_hr} bpm` : ''}
               </p>
             </div>
           </div>
 
           <button
-            onClick={() => handleOpenCheckIn(activities[0])}
+            onClick={() => handleOpenCheckIn(localActivities[0])}
             className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#FC5200] via-orange-500 to-amber-500 text-white font-bold text-xs shadow-md shadow-orange-500/20 flex items-center gap-1.5 apple-pressable active:scale-97 self-stretch sm:self-auto justify-center shrink-0"
           >
             <span>Publicar Check-in ⚡</span>
@@ -373,7 +431,7 @@ export const CardioView: React.FC<CardioViewProps> = ({
       )}
 
       {/* LISTA DE ACTIVIDADES ESTILO TARJETA DE HOY */}
-      {activities.length === 0 ? (
+      {localActivities.length === 0 ? (
         <div className="p-8 rounded-3xl liquid-glass-card text-center space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-[#FC5200]/10 text-[#FC5200] flex items-center justify-center mx-auto text-xl">
             🏃
@@ -387,11 +445,11 @@ export const CardioView: React.FC<CardioViewProps> = ({
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] editorial-heading">
-              Sesiones Registradas ({activities.length})
+              Sesiones Registradas ({localActivities.length})
             </span>
           </div>
 
-          {activities.map((activity) => {
+          {localActivities.map((activity) => {
             const distanceKm = (activity.distance / 1000).toFixed(2);
             const paceMinPerKm = activity.moving_time && activity.distance > 0
               ? ((activity.moving_time / 60) / (activity.distance / 1000)).toFixed(2)
@@ -465,12 +523,12 @@ export const CardioView: React.FC<CardioViewProps> = ({
       {/* MODAL PARA REGISTRAR RODAJE FIT3 - APPLE BOTTOM SHEET EN MÓVIL */}
       {isAddModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in"
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsAddModalOpen(false);
           }}
         >
-          <div className="w-full sm:max-w-md max-h-[85vh] overflow-y-auto liquid-glass-sheet p-6 space-y-4 shadow-2xl rounded-t-[32px] sm:rounded-3xl animate-apple-scale-in">
+          <div className="w-full sm:max-w-md max-h-[85vh] overflow-y-auto liquid-glass-sheet p-6 pb-12 sm:pb-8 space-y-4 shadow-2xl rounded-t-[32px] sm:rounded-3xl animate-apple-scale-in">
             {/* Tirador táctil Apple para Bottom Sheet en móvil */}
             <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
 
@@ -487,6 +545,13 @@ export const CardioView: React.FC<CardioViewProps> = ({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {createError && (
+              <div className="p-3 mb-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{createError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleCreateActivity} className="space-y-3.5">
               <div>
@@ -589,12 +654,12 @@ export const CardioView: React.FC<CardioViewProps> = ({
       {/* MODAL DETALLE DE ACTIVIDAD CON GRÁFICA MULTICAPA - APPLE BOTTOM SHEET EN MÓVIL */}
       {selectedActivity && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in"
           onClick={(e) => {
             if (e.target === e.currentTarget) onSelectActivity(null);
           }}
         >
-          <div className="max-h-[85vh] overflow-y-auto w-full sm:max-w-md rounded-t-[32px] sm:rounded-3xl liquid-glass-sheet p-6 space-y-4 shadow-2xl animate-apple-scale-in">
+          <div className="max-h-[85vh] overflow-y-auto w-full sm:max-w-md rounded-t-[32px] sm:rounded-3xl liquid-glass-sheet p-6 pb-12 sm:pb-8 space-y-4 shadow-2xl animate-apple-scale-in">
             {/* Tirador táctil Apple para Bottom Sheet en móvil */}
             <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
 
@@ -716,8 +781,46 @@ export const CardioView: React.FC<CardioViewProps> = ({
       <StravaUploadModal
         isOpen={isStravaModalOpen}
         onClose={() => setIsStravaModalOpen(false)}
-        onActivitySaved={() => {
+        onActivitySaved={(savedAct) => {
           setIsStravaModalOpen(false);
+          if (savedAct) {
+            setLocalActivities((prev) => [savedAct, ...prev]);
+
+            // Auto-checkin inmediato en la Tribu activa
+            try {
+              let athlete = currentProfile;
+              if (!athlete && typeof window !== 'undefined') {
+                const stored = localStorage.getItem('ironman_athlete_profile');
+                if (stored) athlete = JSON.parse(stored);
+              }
+              if (athlete?.id) {
+                const distKm = parseFloat((savedAct.distance / 1000).toFixed(1));
+                const durMin = Math.round((savedAct.elapsed_time || savedAct.moving_time || 0) / 60);
+                fetch('/api/checkins', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-athlete-id': athlete.id,
+                  },
+                  body: JSON.stringify({
+                    userId: athlete.id,
+                    userProfile: athlete,
+                    activityType: 'running',
+                    title: savedAct.name || `Rodaje Strava (${distKm} km)`,
+                    stravaActivityId: String(savedAct.id),
+                    metrics: {
+                      distance_km: distKm,
+                      duration_min: durMin,
+                      avg_hr: savedAct.avg_hr,
+                      notes: savedAct.notes,
+                    },
+                  }),
+                }).catch(() => {});
+              }
+            } catch (err) {
+              console.warn('Aviso auto-checkin Strava:', err);
+            }
+          }
           if (onRefresh) onRefresh();
         }}
       />
@@ -736,7 +839,25 @@ export const CardioView: React.FC<CardioViewProps> = ({
         onClose={() => setIsCheckInOpen(false)}
         onCheckInCreated={() => setIsCheckInOpen(false)}
         initialData={checkInInitialData}
+        currentProfile={currentProfile}
       />
+
+      {/* Toast Flotante de Confirmación Apple */}
+      {showSuccessToast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[110] py-3 px-5 rounded-full bg-emerald-600/95 text-white font-bold text-xs shadow-2xl backdrop-blur-md flex items-center gap-2.5 animate-apple-slide-down border border-emerald-400/30">
+          <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+          <span>¡Rodaje registrado con éxito!</span>
+          <button
+            onClick={() => {
+              setShowSuccessToast(false);
+              handleOpenCheckIn(localActivities[0]);
+            }}
+            className="ml-2 px-2.5 py-1 rounded-full bg-white/20 hover:bg-white/30 text-white text-[11px] font-semibold transition-all"
+          >
+            Compartir en Tribu ⚡
+          </button>
+        </div>
+      )}
     </div>
   );
 };

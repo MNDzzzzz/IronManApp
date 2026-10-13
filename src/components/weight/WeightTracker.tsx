@@ -31,7 +31,7 @@ import { WeightLog } from '@/types/database';
 
 interface WeightTrackerProps {
   logs: WeightLog[];
-  currentWeight: number;
+  currentWeight?: number;
   onAddWeight?: (weightKg: number, notes?: string, date?: string) => Promise<void>;
   onDeleteWeight?: (weightId: string) => Promise<void>;
 }
@@ -40,14 +40,14 @@ type TimeframeType = 'dias' | 'semanas' | 'meses';
 
 export const WeightTracker: React.FC<WeightTrackerProps> = ({
   logs = [],
-  currentWeight = 101.0,
+  currentWeight,
   onAddWeight,
   onDeleteWeight,
 }) => {
   const [isMounted, setIsMounted] = useState(false);
   const [timeframe, setTimeframe] = useState<TimeframeType>('dias');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newWeight, setNewWeight] = useState(String(currentWeight));
+  const [newWeight, setNewWeight] = useState(currentWeight ? String(currentWeight) : '');
   const [notes, setNotes] = useState('Antes de cenar, después de entrenar');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [isSaving, setIsSaving] = useState(false);
@@ -62,17 +62,18 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
   }, [logs]);
 
   // Cálculos estadísticos
-  const initialWeight = chronologicalLogs[0]?.weight_kg || 102.5;
-  const latestWeight = chronologicalLogs[chronologicalLogs.length - 1]?.weight_kg || currentWeight;
-  const totalChangeKg = Number((latestWeight - initialWeight).toFixed(2));
+  const initialWeight = chronologicalLogs[0]?.weight_kg || currentWeight || 0;
+  const latestWeight = chronologicalLogs[chronologicalLogs.length - 1]?.weight_kg || currentWeight || 0;
+  const totalChangeKg = initialWeight > 0 ? Number((latestWeight - initialWeight).toFixed(2)) : 0;
 
   // Estimación fisiológica de grasa corporal y recomposición
   const estimatedBodyFatPct = useMemo(() => {
+    if (!latestWeight) return null;
     const basePct = 19.8;
-    const deltaKg = latestWeight - 101.0;
+    const deltaKg = initialWeight > 0 ? latestWeight - initialWeight : 0;
     const estimated = basePct + (deltaKg * 0.35);
     return Number(Math.max(12, Math.min(30, estimated)).toFixed(1));
-  }, [latestWeight]);
+  }, [latestWeight, initialWeight]);
 
   // Datos para la gráfica según el selector temporal
   const chartData = useMemo(() => {
@@ -200,7 +201,7 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
         <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left min-w-0">
           <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[var(--text-secondary)] block truncate tracking-wider">Actual</span>
           <div className="apple-display text-lg sm:text-2xl font-black text-[var(--text-primary)] mt-0.5 font-mono truncate tabular-nums tracking-tight">
-            {latestWeight.toFixed(1)} <span className="text-[10px] font-normal text-[var(--text-secondary)] font-sans">kg</span>
+            {latestWeight > 0 ? latestWeight.toFixed(1) : '--'} <span className="text-[10px] font-normal text-[var(--text-secondary)] font-sans">kg</span>
           </div>
           <span className="text-[9px] text-[var(--text-tertiary)] block truncate font-mono">Último pesaje</span>
         </div>
@@ -209,7 +210,7 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
         <div className="p-3 rounded-2xl bg-[var(--glass-surface)] border border-[var(--glass-border)] text-left min-w-0">
           <span className="text-[9px] sm:text-[10px] uppercase font-bold text-cyan-500 block truncate tracking-wider">Grasa Est.</span>
           <div className="apple-display text-lg sm:text-2xl font-black text-cyan-500 dark:text-cyan-400 mt-0.5 font-mono truncate tabular-nums tracking-tight">
-            {estimatedBodyFatPct}%
+            {estimatedBodyFatPct != null ? `${estimatedBodyFatPct}%` : '--%'}
           </div>
           <span className="text-[9px] text-cyan-600 dark:text-cyan-400 block truncate font-medium">Recomposición</span>
         </div>
@@ -431,7 +432,7 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
 
       {/* Modal de Registro Rápido */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 animate-apple-fade-in motion-reduce:transition-none">
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 animate-apple-fade-in motion-reduce:transition-none">
           <div className="liquid-glass-sheet rounded-3xl p-5 sm:p-6 max-w-sm w-full space-y-4 border-t border-t-white/30 dark:border-t-white/15 shadow-2xl animate-apple-scale-in">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">

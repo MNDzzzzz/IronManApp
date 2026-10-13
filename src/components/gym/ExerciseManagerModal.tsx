@@ -162,7 +162,7 @@ export const ExerciseManagerModal: React.FC<ExerciseManagerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
       <div className="liquid-glass-card bg-[var(--glass-surface-thick)] border border-[var(--glass-border)] rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Cabecera */}
         <div className="p-5 border-b border-[var(--glass-border)] flex items-center justify-between bg-[var(--glass-surface)]">
@@ -204,7 +204,7 @@ export const ExerciseManagerModal: React.FC<ExerciseManagerModalProps> = ({
 
         {/* Modo Lista */}
         {activeMode === 'list' && (
-          <div className="p-5 space-y-4 overflow-y-auto flex-1">
+          <div className="p-5 pb-8 space-y-4 overflow-y-auto flex-1">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold text-[var(--text-secondary)]">
                 {dayExercises.length} ejercicio{dayExercises.length !== 1 ? 's' : ''} configurado{dayExercises.length !== 1 ? 's' : ''}
@@ -263,7 +263,7 @@ export const ExerciseManagerModal: React.FC<ExerciseManagerModalProps> = ({
 
         {/* Modo Formulario (Añadir / Editar) */}
         {(activeMode === 'add' || activeMode === 'edit') && (
-          <div className="p-5 space-y-4 overflow-y-auto flex-1">
+          <div className="p-5 pb-8 space-y-4 overflow-y-auto flex-1">
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">
                 {activeMode === 'add' ? 'Nuevo Ejercicio' : 'Modificar Ejercicio'}

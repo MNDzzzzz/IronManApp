@@ -1,8 +1,10 @@
 // Endpoint para listar y registrar actividades de cardio (Samsung Galaxy Fit3 / Rodajes)
+// Con aislamiento multi-tenant estricto y protección contra fugas de datos
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import { mockStore } from '@/lib/mockStore';
 import { CardioActivity } from '@/types/database';
+import { getAuthAthlete } from '@/lib/auth/getAuthAthlete';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -13,13 +15,28 @@ const noCacheHeaders = {
   'Vercel-CDN-Cache-Control': 'no-store',
 };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { athleteId, isAlvaro } = getAuthAthlete(request);
+
+    // 0. Si no hay atleta identificado (visitante o anónimo), devolver lista vacía (Zero Data Leakage)
+    if (!athleteId) {
+      return NextResponse.json({ activities: [] }, { headers: noCacheHeaders });
+    }
+
     if (isSupabaseConfigured && supabaseAdmin) {
-      const { data, error } = await supabaseAdmin
+      let query = supabaseAdmin
         .from('strava_activities')
         .select('*')
         .order('start_date', { ascending: false });
+
+      if (isAlvaro) {
+        query = query.or(`user_id.eq.${athleteId},user_id.is.null`);
+      } else {
+        query = query.eq('user_id', athleteId);
+      }
+
+      const { data, error } = await query;
 
       if (!error && data && data.length > 0) {
         // Enriquecer con metadatos guardados en streams_data
@@ -48,7 +65,11 @@ export async function GET() {
     }
 
     // Fallback a almacén en memoria
-    return NextResponse.json({ activities: mockStore.stravaActivities }, { headers: noCacheHeaders });
+    const memoryActivities = mockStore.stravaActivities.filter(
+      (a: any) => isAlvaro || a.user_id === athleteId || !a.user_id
+    );
+
+    return NextResponse.json({ activities: memoryActivities }, { headers: noCacheHeaders });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -57,6 +78,17 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const { athleteId: detectedAuthId, isAlvaro: detectedAlvaro } = getAuthAthlete(request);
+    const athleteId = detectedAuthId || body.userId || body.userProfile?.id || request.headers.get('x-athlete-id') || null;
+
+    if (!athleteId) {
+      return NextResponse.json(
+        { success: false, error: 'No autorizado. Se requiere iniciar sesión.' },
+        { status: 401 }
+      );
+    }
+
+    const isAlvaro = detectedAlvaro || (typeof athleteId === 'string' && athleteId.toLowerCase().includes('alvaro'));
 
     const distanceMeters = Number(body.distance) || 4000;
     const elapsedSeconds = Number(body.elapsed_time) || 2100;
@@ -96,6 +128,7 @@ export async function POST(request: NextRequest) {
       await supabaseAdmin.from('strava_activities').insert([
         {
           id: newActivity.id,
+          user_id: athleteId || null,
           name: newActivity.name,
           type: newActivity.type,
           start_date: newActivity.start_date,
@@ -119,6 +152,7 @@ export async function POST(request: NextRequest) {
       ]);
     }
 
+    // Guardar en almacén en memoria para respuesta inmediata y disponibilidad offline
     mockStore.stravaActivities.unshift(newActivity);
 
     return NextResponse.json(
@@ -134,4 +168,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-

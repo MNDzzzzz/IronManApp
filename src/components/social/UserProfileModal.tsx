@@ -77,7 +77,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label="Perfil y Sesión de Atleta"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in transition-all duration-300"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in transition-all duration-300"
       onClick={onClose}
     >
       <div
@@ -107,10 +107,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           </button>
         </div>
 
-        {/* Contenido scrolleable */}
-        <div className="p-5 overflow-y-auto space-y-5">
+        {/* Contenido scrolleable con padding inferior seguro para no colisionar con pantallas pequeñas */}
+        <div className="p-5 pb-12 sm:pb-8 overflow-y-auto space-y-5">
           {/* Tarjeta de Perfil Activo */}
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-orange-500/10 via-black/40 to-black/20 border border-[var(--glass-border)] flex items-center gap-4">
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-orange-500/15 via-black/5 dark:via-black/40 to-black/5 dark:to-black/20 border border-[var(--glass-border)] flex items-center gap-4">
             <div className="relative">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#D97757] to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/20 text-white font-bold text-2xl">
                 {currentProfile.display_name.charAt(0)}
@@ -121,7 +121,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </div>
 
             <div className="flex-1 min-w-0">
-              <h3 className="text-base font-bold text-white truncate apple-title">
+              <h3 className="text-base font-bold text-[var(--text-primary)] truncate apple-title">
                 {currentProfile.display_name}
               </h3>
               <p className="text-xs text-[var(--accent-coral)] font-mono">
@@ -140,22 +140,22 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
           {/* Estadísticas de Disciplina y Metas */}
           <div className="grid grid-cols-2 gap-2.5">
-            <div className="p-3.5 rounded-2xl bg-black/20 dark:bg-white/[0.03] border border-[var(--glass-border)]">
+            <div className="p-3.5 rounded-2xl bg-black/5 dark:bg-white/[0.04] border border-[var(--glass-border)]">
               <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-tertiary)] uppercase font-semibold">
-                <Target className="w-3.5 h-3.5 text-sky-400" />
+                <Target className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
                 <span>Meta Semanal</span>
               </div>
-              <p className="text-base font-bold text-white mt-1 apple-title font-mono">
+              <p className="text-base font-bold text-[var(--text-primary)] mt-1 apple-title font-mono">
                 {currentProfile.weekly_workout_goal} días / sem
               </p>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-black/20 dark:bg-white/[0.03] border border-[var(--glass-border)]">
+            <div className="p-3.5 rounded-2xl bg-black/5 dark:bg-white/[0.04] border border-[var(--glass-border)]">
               <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-tertiary)] uppercase font-semibold">
-                <Flame className="w-3.5 h-3.5 text-orange-400" />
+                <Flame className="w-3.5 h-3.5 text-orange-500 dark:text-orange-400" />
                 <span>Récord Racha</span>
               </div>
-              <p className="text-base font-bold text-white mt-1 apple-title font-mono">
+              <p className="text-base font-bold text-[var(--text-primary)] mt-1 apple-title font-mono">
                 {currentProfile.best_streak_days} días
               </p>
             </div>
@@ -163,17 +163,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
           {/* Objetivo Deportivo */}
           {currentProfile.target_race_name && (
-            <div className="p-3.5 rounded-2xl bg-black/20 dark:bg-white/[0.03] border border-[var(--glass-border)] flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl bg-black/5 dark:bg-white/[0.04] border border-[var(--glass-border)] flex items-center justify-between">
               <div>
                 <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] font-bold">
                   Objetivo Principal
                 </span>
-                <h4 className="text-xs font-bold text-white mt-0.5">
+                <h4 className="text-xs font-bold text-[var(--text-primary)] mt-0.5">
                   {currentProfile.target_race_name}
                 </h4>
               </div>
               {currentProfile.target_race_date && (
-                <div className="flex items-center gap-1 text-[11px] font-mono text-amber-300 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20">
+                <div className="flex items-center gap-1 text-[11px] font-mono text-amber-600 dark:text-amber-300 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20">
                   <Calendar className="w-3 h-3" />
                   <span>{currentProfile.target_race_date}</span>
                 </div>
@@ -183,7 +183,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
           {/* Biografía */}
           {currentProfile.bio && (
-            <div className="p-3.5 rounded-2xl bg-black/20 dark:bg-white/[0.03] border border-[var(--glass-border)]">
+            <div className="p-3.5 rounded-2xl bg-black/5 dark:bg-white/[0.04] border border-[var(--glass-border)]">
               <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] font-bold">
                 Lema o Biografía
               </span>
@@ -194,23 +194,23 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           )}
 
           {/* Código de Invitación a tu Tribu */}
-          <div className="p-4 rounded-2xl bg-black/20 dark:bg-white/[0.04] border border-[var(--glass-border)]">
+          <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/[0.04] border border-[var(--glass-border)]">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
                 <Share2 className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
                 <span>Invita a Amigos a tu Tribu</span>
               </span>
               <span className="text-[10px] text-[var(--text-tertiary)]">Código de 6 letras</span>
             </div>
             <div className="flex items-center gap-2 mt-2">
-              <div className="flex-1 py-2 px-3 rounded-xl bg-black/40 border border-white/10 font-mono text-center text-sm font-bold tracking-widest text-amber-300">
+              <div className="flex-1 py-2 px-3 rounded-xl bg-black/10 dark:bg-black/40 border border-[var(--glass-border)] font-mono text-center text-sm font-bold tracking-widest text-amber-600 dark:text-amber-300">
                 {inviteCode}
               </div>
               <button
                 onClick={handleCopyInvite}
-                className="py-2 px-3.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold flex items-center gap-1.5 transition-all apple-pressable"
+                className="py-2 px-3.5 rounded-xl bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15 text-[var(--text-primary)] text-xs font-semibold flex items-center gap-1.5 transition-all apple-pressable"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copied ? 'Copiado' : 'Copiar'}</span>
               </button>
             </div>
@@ -224,9 +224,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   onClose();
                   onOpenSwitchAccount();
                 }}
-                className="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white flex items-center justify-center gap-2 transition-all apple-pressable"
+                className="w-full py-2.5 px-4 rounded-xl bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 border border-[var(--glass-border)] text-xs font-semibold text-[var(--text-primary)] flex items-center justify-center gap-2 transition-all apple-pressable"
               >
-                <User className="w-3.5 h-3.5 text-amber-400" />
+                <User className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                 <span>Cambiar de Cuenta o Iniciar Otra Sesión</span>
               </button>
             )}

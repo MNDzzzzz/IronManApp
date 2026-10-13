@@ -38,7 +38,7 @@ export const MemberProfileSheet: React.FC<MemberProfileSheetProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label={`Perfil de ${member.display_name}`}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in transition-all duration-300"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in transition-all duration-300"
       onClick={onClose}
     >
       <div
@@ -62,14 +62,14 @@ export const MemberProfileSheet: React.FC<MemberProfileSheetProps> = ({
           <button
             onClick={onClose}
             aria-label="Cerrar perfil"
-            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-[var(--text-secondary)] hover:text-white apple-pressable apple-btn-spring"
+            className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] apple-pressable apple-btn-spring"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Contenido scrolleable */}
-        <div className="p-5 overflow-y-auto space-y-5">
+        {/* Contenido scrolleable con padding inferior seguro */}
+        <div className="p-5 pb-12 sm:pb-8 overflow-y-auto space-y-5">
           {/* Tarjeta de Identidad Atlética */}
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -103,9 +103,9 @@ export const MemberProfileSheet: React.FC<MemberProfileSheetProps> = ({
           {/* Bento Grid de Disciplina (3 KPIs no-intrusivos) */}
           <div className="grid grid-cols-3 gap-2.5">
             {/* Racha */}
-            <div className="p-3 rounded-2xl bg-black/20 dark:bg-white/[0.04] border border-[var(--glass-border)] flex flex-col items-center justify-center text-center">
+            <div className="p-3 rounded-2xl bg-black/5 dark:bg-white/[0.04] border border-[var(--glass-border)] flex flex-col items-center justify-center text-center">
               <Flame className="w-4 h-4 text-orange-400 mb-1" />
-              <span className="text-lg font-bold text-white tabular-nums apple-display">
+              <span className="text-lg font-bold text-[var(--text-primary)] tabular-nums apple-display">
                 {member.current_streak_days}
               </span>
               <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-tight">
@@ -114,9 +114,9 @@ export const MemberProfileSheet: React.FC<MemberProfileSheetProps> = ({
             </div>
 
             {/* Adherencia */}
-            <div className="p-3 rounded-2xl bg-black/20 dark:bg-white/[0.04] border border-[var(--glass-border)] flex flex-col items-center justify-center text-center">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 mb-1" />
-              <span className="text-lg font-bold text-white tabular-nums apple-display">
+            <div className="p-3 rounded-2xl bg-black/5 dark:bg-white/[0.04] border border-[var(--glass-border)] flex flex-col items-center justify-center text-center">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400 mb-1" />
+              <span className="text-lg font-bold text-[var(--text-primary)] tabular-nums apple-display">
                 {member.weekly_adherence_pct}%
               </span>
               <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-tight">
@@ -125,9 +125,9 @@ export const MemberProfileSheet: React.FC<MemberProfileSheetProps> = ({
             </div>
 
             {/* XP Acumulado */}
-            <div className="p-3 rounded-2xl bg-black/20 dark:bg-white/[0.04] border border-[var(--glass-border)] flex flex-col items-center justify-center text-center">
-              <Sparkles className="w-4 h-4 text-amber-400 mb-1" />
-              <span className="text-lg font-bold text-white tabular-nums apple-display">
+            <div className="p-3 rounded-2xl bg-black/5 dark:bg-white/[0.04] border border-[var(--glass-border)] flex flex-col items-center justify-center text-center">
+              <Sparkles className="w-4 h-4 text-amber-500 dark:text-amber-400 mb-1" />
+              <span className="text-lg font-bold text-[var(--text-primary)] tabular-nums apple-display">
                 {member.total_xp}
               </span>
               <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-tight">
@@ -148,7 +148,7 @@ export const MemberProfileSheet: React.FC<MemberProfileSheetProps> = ({
                   <Route className="w-4 h-4 text-sky-400" />
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-white tabular-nums">
+                  <div className="text-sm font-bold text-[var(--text-primary)] tabular-nums">
                     {member.weekly_km_total} km
                   </div>
                   <div className="text-[10px] text-[var(--text-tertiary)]">Carrera y Cardio</div>
@@ -160,7 +160,7 @@ export const MemberProfileSheet: React.FC<MemberProfileSheetProps> = ({
                   <Dumbbell className="w-4 h-4 text-purple-400" />
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-white tabular-nums">
+                  <div className="text-sm font-bold text-[var(--text-primary)] tabular-nums">
                     {member.weekly_strength_sets} series
                   </div>
                   <div className="text-[10px] text-[var(--text-tertiary)]">Fuerza en Sala</div>
@@ -173,20 +173,20 @@ export const MemberProfileSheet: React.FC<MemberProfileSheetProps> = ({
           {member.badges && member.badges.length > 0 && (
             <div>
               <h4 className="text-xs font-semibold text-[var(--text-secondary)] mb-2 flex items-center gap-1.5">
-                <Award className="w-3.5 h-3.5 text-amber-400" />
+                <Award className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                 <span>Vitrina de Medallas ({member.badges_count})</span>
               </h4>
               <div className="grid grid-cols-2 gap-2">
                 {member.badges.map((b) => (
                   <div
                     key={b.id}
-                    className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-center gap-2"
+                    className="p-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/5 dark:border-white/10 flex items-center gap-2"
                   >
-                    <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-300 shrink-0">
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-300 shrink-0">
                       🏅
                     </div>
                     <div className="min-w-0">
-                      <div className="text-[11px] font-bold text-white truncate">{b.title}</div>
+                      <div className="text-[11px] font-bold text-[var(--text-primary)] truncate">{b.title}</div>
                       <div className="text-[9px] text-[var(--text-tertiary)] truncate">
                         {b.description}
                       </div>
@@ -206,19 +206,19 @@ export const MemberProfileSheet: React.FC<MemberProfileSheetProps> = ({
               {member.recent_checkins.map((c) => (
                 <div
                   key={c.id}
-                  className="p-3 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between"
+                  className="p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/5 dark:border-white/10 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-2.5">
                     <span className="text-base">
                       {c.activity_type === 'running' ? '🏃' : '🏋️'}
                     </span>
                     <div>
-                      <div className="text-xs font-semibold text-white">{c.title}</div>
+                      <div className="text-xs font-semibold text-[var(--text-primary)]">{c.title}</div>
                       <div className="text-[10px] text-[var(--text-tertiary)] font-mono">{c.date}</div>
                     </div>
                   </div>
                   {c.is_gold_checkin && (
-                    <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-[9px] font-bold text-amber-300 flex items-center gap-1">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-[9px] font-bold text-amber-600 dark:text-amber-300 flex items-center gap-1">
                       <span>👑</span> Oro
                     </span>
                   )}
@@ -228,8 +228,8 @@ export const MemberProfileSheet: React.FC<MemberProfileSheetProps> = ({
           </div>
 
           {/* Nota de Privacidad Apple */}
-          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2 text-[11px] text-emerald-300">
-            <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />
+          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2 text-[11px] text-emerald-700 dark:text-emerald-300">
+            <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
             <span>
               Tus datos de peso, calorías y parámetros de salud permanecen 100% privados y encriptados en tu dispositivo.
             </span>

@@ -26,6 +26,8 @@ import {
   Hash,
 } from 'lucide-react';
 import { SquadGroup, UserProfile } from '@/types/social';
+import { SQUAD_STORAGE_KEY } from '@/lib/socialManager';
+import { apiFetch, getActiveAthleteId } from '@/lib/api/apiClient';
 
 interface EmptySquadViewProps {
   currentProfile: UserProfile;
@@ -124,20 +126,35 @@ export const EmptySquadView: React.FC<EmptySquadViewProps> = ({
     setCreateError('');
 
     try {
-      const res = await fetch('/api/groups', {
+      const effectiveId = currentProfile?.id || getActiveAthleteId() || '';
+
+      const res = await apiFetch('/api/groups', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-athlete-id': effectiveId,
+        },
         body: JSON.stringify({
           name: createName.trim(),
           description: createDesc.trim() || undefined,
           avatarEmoji: selectedEmoji,
-          userId: currentProfile.id,
+          userId: effectiveId,
+          userProfile: currentProfile,
         }),
       });
 
       const json = await res.json();
       if (!res.ok || !json.success) {
         throw new Error(json.error || 'Error al fundar la tribu');
+      }
+
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem(SQUAD_STORAGE_KEY);
+          const existing = cached ? JSON.parse(cached) : [];
+          const updated = [json.data, ...existing.filter((g: any) => g.id !== json.data.id)];
+          localStorage.setItem(SQUAD_STORAGE_KEY, JSON.stringify(updated));
+        } catch {}
       }
 
       setIsCreateModalOpen(false);
@@ -161,18 +178,32 @@ export const EmptySquadView: React.FC<EmptySquadViewProps> = ({
     setJoinError('');
 
     try {
-      const res = await fetch('/api/groups/join', {
+      const effectiveId = currentProfile?.id || getActiveAthleteId() || '';
+
+      const res = await apiFetch('/api/groups/join', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-athlete-id': effectiveId,
+        },
         body: JSON.stringify({
           code: currentPinCode,
-          userId: currentProfile.id,
+          userId: effectiveId,
         }),
       });
 
       const json = await res.json();
       if (!res.ok || !json.success) {
         throw new Error(json.error || 'Código de invitación no válido o tribu llena');
+      }
+
+      if (typeof window !== 'undefined') {
+        try {
+          const cached = localStorage.getItem(SQUAD_STORAGE_KEY);
+          const existing = cached ? JSON.parse(cached) : [];
+          const updated = [json.data, ...existing.filter((g: any) => g.id !== json.data.id)];
+          localStorage.setItem(SQUAD_STORAGE_KEY, JSON.stringify(updated));
+        } catch {}
       }
 
       setIsJoinModalOpen(false);
@@ -200,7 +231,7 @@ export const EmptySquadView: React.FC<EmptySquadViewProps> = ({
         </div>
 
         {/* Título y Subtítulo Apple Optical */}
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-white apple-display tracking-tight mb-3">
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)] apple-display tracking-tight mb-3">
           Tu Tribu de Rendimiento
         </h2>
         <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto leading-relaxed mb-8">
@@ -210,36 +241,36 @@ export const EmptySquadView: React.FC<EmptySquadViewProps> = ({
 
         {/* Bento de Beneficios Apple Design */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left mb-8">
-          <div className="p-3.5 rounded-2xl bg-black/20 dark:bg-white/[0.03] border border-[var(--glass-border)] flex flex-col justify-between">
+          <div className="p-3.5 rounded-2xl bg-black/[0.04] dark:bg-white/[0.03] border border-[var(--glass-border)] flex flex-col justify-between">
             <div className="w-8 h-8 rounded-xl bg-orange-500/15 flex items-center justify-center text-orange-400 mb-2">
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <h4 className="text-xs font-bold text-white mb-0.5">Check-in de Oro</h4>
+              <h4 className="text-xs font-bold text-[var(--text-primary)] mb-0.5">Check-in de Oro</h4>
               <p className="text-[11px] text-[var(--text-secondary)] leading-tight">
                 Verifica tus fotos de máquina con IA para ganar +50 XP adicionales.
               </p>
             </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-black/20 dark:bg-white/[0.03] border border-[var(--glass-border)] flex flex-col justify-between">
+          <div className="p-3.5 rounded-2xl bg-black/[0.04] dark:bg-white/[0.03] border border-[var(--glass-border)] flex flex-col justify-between">
             <div className="w-8 h-8 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-400 mb-2">
               <Trophy className="w-4 h-4" />
             </div>
             <div>
-              <h4 className="text-xs font-bold text-white mb-0.5">Leaderboard Semanal</h4>
+              <h4 className="text-xs font-bold text-[var(--text-primary)] mb-0.5">Leaderboard Semanal</h4>
               <p className="text-[11px] text-[var(--text-secondary)] leading-tight">
                 Podio semanal basado en constancia, rachas y volumen de entrenamiento.
               </p>
             </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-black/20 dark:bg-white/[0.03] border border-[var(--glass-border)] flex flex-col justify-between">
+          <div className="p-3.5 rounded-2xl bg-black/[0.04] dark:bg-white/[0.03] border border-[var(--glass-border)] flex flex-col justify-between">
             <div className="w-8 h-8 rounded-xl bg-sky-500/15 flex items-center justify-center text-sky-400 mb-2">
               <Shield className="w-4 h-4" />
             </div>
             <div>
-              <h4 className="text-xs font-bold text-white mb-0.5">Máximo 15 Atletas</h4>
+              <h4 className="text-xs font-bold text-[var(--text-primary)] mb-0.5">Máximo 15 Atletas</h4>
               <p className="text-[11px] text-[var(--text-secondary)] leading-tight">
                 Grupos cerrados, privados y sin ruido para asegurar verdadero compromiso.
               </p>
@@ -278,7 +309,7 @@ export const EmptySquadView: React.FC<EmptySquadViewProps> = ({
           role="dialog"
           aria-modal="true"
           aria-label="Crear Nueva Tribu"
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in"
           onClick={() => setIsCreateModalOpen(false)}
         >
           <div
@@ -302,14 +333,14 @@ export const EmptySquadView: React.FC<EmptySquadViewProps> = ({
               <button
                 onClick={() => setIsCreateModalOpen(false)}
                 aria-label="Cerrar modal"
-                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-[var(--text-secondary)] hover:text-white apple-btn-spring"
+                className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] apple-btn-spring"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Formulario */}
-            <form onSubmit={handleCreateSubmit} className="p-5 overflow-y-auto space-y-4">
+            {/* Formulario con padding inferior seguro */}
+            <form onSubmit={handleCreateSubmit} className="p-5 pb-12 sm:pb-8 overflow-y-auto space-y-4">
               {createError && (
                 <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/25 flex items-center gap-2 text-xs text-rose-300">
                   <AlertCircle className="w-4 h-4 shrink-0" />
@@ -351,7 +382,7 @@ export const EmptySquadView: React.FC<EmptySquadViewProps> = ({
                   onChange={(e) => setCreateName(e.target.value)}
                   placeholder="ej: Tribu 21K 2027 o Los Sub-2h"
                   required
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[#D97757] transition-all"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[#D97757] transition-all"
                 />
               </div>
 
@@ -365,7 +396,7 @@ export const EmptySquadView: React.FC<EmptySquadViewProps> = ({
                   onChange={(e) => setCreateDesc(e.target.value)}
                   placeholder="ej: Preparación estricta para Media Maratón y fuerza hipertrofia."
                   rows={2}
-                  className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[#D97757] transition-all resize-none"
+                  className="w-full px-3.5 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-xs text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[#D97757] transition-all resize-none"
                 />
               </div>
 
@@ -400,7 +431,7 @@ export const EmptySquadView: React.FC<EmptySquadViewProps> = ({
           role="dialog"
           aria-modal="true"
           aria-label="Unirme a una Tribu con Código"
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in"
           onClick={() => setIsJoinModalOpen(false)}
         >
           <div
@@ -415,7 +446,7 @@ export const EmptySquadView: React.FC<EmptySquadViewProps> = ({
             {/* Cabecera */}
             <div className="flex items-center justify-between px-5 pt-3 pb-2 border-b border-[var(--glass-border)] shrink-0">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono uppercase tracking-wider text-amber-400 font-bold">
+                <span className="text-xs font-mono uppercase tracking-wider text-amber-500 dark:text-amber-400 font-bold">
                   Código de Invitación
                 </span>
                 <span className="w-1 h-1 rounded-full bg-amber-400" />
@@ -424,25 +455,25 @@ export const EmptySquadView: React.FC<EmptySquadViewProps> = ({
               <button
                 onClick={() => setIsJoinModalOpen(false)}
                 aria-label="Cerrar modal"
-                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-[var(--text-secondary)] hover:text-white apple-btn-spring"
+                className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] apple-btn-spring"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Formulario de PIN */}
-            <form onSubmit={handleJoinSubmit} className="p-5 overflow-y-auto space-y-5 text-center">
+            {/* Formulario de PIN con padding inferior seguro */}
+            <form onSubmit={handleJoinSubmit} className="p-5 pb-12 sm:pb-8 overflow-y-auto space-y-5 text-center">
               <div>
-                <h3 className="text-base font-bold text-white apple-title mb-1">
+                <h3 className="text-base font-bold text-[var(--text-primary)] apple-title mb-1">
                   Introduce el Código de tu Tribu
                 </h3>
                 <p className="text-xs text-[var(--text-secondary)]">
-                  Pídele el código de 6 letras (ej: <span className="font-mono text-amber-300 font-bold">IRON27</span>) al creador del grupo.
+                  Pídele el código de 6 letras (ej: <span className="font-mono text-amber-500 dark:text-amber-300 font-bold">IRON27</span>) al creador del grupo.
                 </p>
               </div>
 
               {joinError && (
-                <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/25 flex items-center gap-2 text-xs text-rose-300 text-left">
+                <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/25 flex items-center gap-2 text-xs text-rose-500 dark:text-rose-300 text-left">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{joinError}</span>
                 </div>
@@ -463,7 +494,7 @@ export const EmptySquadView: React.FC<EmptySquadViewProps> = ({
                     onKeyDown={(e) => handlePinKeyDown(idx, e)}
                     onPaste={idx === 0 ? handlePinPaste : undefined}
                     autoFocus={idx === 0}
-                    className="w-11 h-14 sm:w-12 sm:h-16 text-center text-xl sm:text-2xl font-black font-mono uppercase rounded-2xl bg-black/40 border-2 border-white/15 focus:border-amber-400 focus:bg-white/10 text-white focus:outline-none focus:ring-2 focus:ring-amber-400/30 transition-all shadow-inner"
+                    className="w-11 h-14 sm:w-12 sm:h-16 text-center text-xl sm:text-2xl font-black font-mono uppercase rounded-2xl bg-black/5 dark:bg-black/40 border-2 border-black/15 dark:border-white/15 focus:border-amber-500 dark:focus:border-amber-400 focus:bg-white dark:focus:bg-white/10 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all shadow-inner"
                   />
                 ))}
               </div>

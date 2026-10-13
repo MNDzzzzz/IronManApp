@@ -116,9 +116,26 @@ export function getUserProfile(userId: string): UserProfile | null {
   return profile ? { ...profile } : null;
 }
 
+// Normalizador de texto para búsquedas de atletas (sin tildes, minúsculas, sin @)
+export function normalizeAthleteText(str: string): string {
+  if (!str) return '';
+  return str
+    .trim()
+    .toLowerCase()
+    .replace(/^@/, '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 export function getUserProfileByUsername(username: string): UserProfile | null {
+  if (!username) return null;
   const clean = username.replace(/^@/, '').toLowerCase().trim();
-  const profile = socialStore.profiles.find((p) => p.username.toLowerCase() === clean);
+  const normalized = normalizeAthleteText(username);
+  const profile = socialStore.profiles.find(
+    (p) =>
+      p.username.toLowerCase() === clean ||
+      normalizeAthleteText(p.username) === normalized
+  );
   return profile ? { ...profile } : null;
 }
 
@@ -173,11 +190,43 @@ export function registerAthleteProfile(input: RegisterProfileInput): UserProfile
   return { ...newProfile };
 }
 
-// Búsqueda para login por username o email
+// Búsqueda inteligente para login por @username, email, nombre completo o sin acentos
 export function loginAthlete(identifier: string): UserProfile | null {
+  if (!identifier) return null;
   const clean = identifier.replace(/^@/, '').toLowerCase().trim();
-  const profile = socialStore.profiles.find((p) => p.username.toLowerCase() === clean);
-  return profile ? { ...profile } : null;
+  const normalized = normalizeAthleteText(identifier);
+
+  // 1. Coincidencia exacta de username o email
+  let found = socialStore.profiles.find(
+    (p) =>
+      p.username.toLowerCase() === clean ||
+      (p.email && p.email.toLowerCase() === clean)
+  );
+  if (found) return { ...found };
+
+  // 2. Coincidencia sin tildes ni diacríticos en username o email
+  found = socialStore.profiles.find(
+    (p) =>
+      normalizeAthleteText(p.username) === normalized ||
+      (p.email && normalizeAthleteText(p.email) === normalized)
+  );
+  if (found) return { ...found };
+
+  // 3. Coincidencia por display_name (exacta o normalizada)
+  found = socialStore.profiles.find(
+    (p) =>
+      p.display_name.toLowerCase() === clean ||
+      normalizeAthleteText(p.display_name) === normalized
+  );
+  if (found) return { ...found };
+
+  // 4. Coincidencia si el display_name contiene el término de búsqueda
+  found = socialStore.profiles.find((p) =>
+    normalizeAthleteText(p.display_name).includes(normalized)
+  );
+  if (found) return { ...found };
+
+  return null;
 }
 
 // Compatibilidad tipada (100% vacíos en estado cero)
@@ -486,10 +535,10 @@ export function getMemberPublicSummary(userId: string): MemberPublicSummary | nu
   let workoutDaysCount = 0;
 
   userCheckins.forEach((c) => {
-    if (c.metrics_summary.distance_km) {
+    if (c.metrics_summary?.distance_km) {
       weeklyKm += c.metrics_summary.distance_km;
     }
-    if (c.metrics_summary.volume_sets) {
+    if (c.metrics_summary?.volume_sets) {
       weeklySets += c.metrics_summary.volume_sets;
     }
     if (c.activity_type !== 'rest_day') {

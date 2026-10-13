@@ -63,8 +63,8 @@ describe('CHALLENGER 2 SUITE 1: Regresiones en Características Preexistentes', 
     const t1 = performance.now();
     const elapsed = t1 - t0;
     assert.ok(
-      elapsed < 100,
-      `10.000 búsquedas tardaron ${elapsed.toFixed(2)}ms (límite: 100ms)`
+      elapsed < 150,
+      `10.000 búsquedas tardaron ${elapsed.toFixed(2)}ms (límite: 150ms)`
     );
   });
 

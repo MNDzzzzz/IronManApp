@@ -86,7 +86,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Estado del protocolo personal del atleta
-  const [weightKg, setWeightKg] = useState(101.0);
+  const [weightKg, setWeightKg] = useState<number | null>(null);
   const [dayType, setDayTypeState] = useState<DayType>('running');
   const [targetCalories, setTargetCalories] = useState(2400);
   const [targetProtein, setTargetProtein] = useState(202);
@@ -128,7 +128,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
       .then((res) => res.json())
       .then((data) => {
         if (data.protocol) {
-          setWeightKg(data.protocol.weight_kg || 101.0);
+          if (data.protocol.weight_kg) setWeightKg(data.protocol.weight_kg);
           setDayTypeState(data.protocol.day_type || 'running');
           setTargetCalories(data.protocol.target_calories || 2400);
           setTargetProtein(data.protocol.target_protein || 202);
@@ -493,7 +493,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-5 pb-24 px-3.5 pt-1 font-sans animate-in fade-in duration-300">
+    <div className="w-full max-w-4xl mx-auto space-y-5 pb-12 sm:pb-16 px-3.5 pt-1 font-sans animate-in fade-in duration-300">
       {/* CABECERA Y BOTONES DE ACCIÓN */}
       <div className="flex items-center justify-between">
         <div>
@@ -501,7 +501,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
             Dieta & Nutrición
           </h1>
           <p className="text-xs text-[var(--text-secondary)] font-medium">
-            Protocolo Maratón + Fuerza • <span className="text-[#D97757] font-bold font-mono tabular-nums">{weightKg} kg</span>
+            Protocolo Maratón + Fuerza • <span className="text-[#D97757] font-bold font-mono tabular-nums">{weightKg ? `${weightKg} kg` : '-- kg'}</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1174,7 +1174,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
       {/* MODAL DE AJUSTES DE PROTOCOLO */}
       {showProtocolModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 animate-apple-fade-in motion-reduce:transition-none">
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 animate-apple-fade-in motion-reduce:transition-none">
           <div className="w-full max-w-sm liquid-glass-sheet rounded-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto border-t border-t-white/30 dark:border-t-white/15 shadow-2xl animate-apple-scale-in">
             <div className="flex items-center justify-between border-b border-[var(--glass-border)] pb-3">
               <div className="flex items-center gap-2">
@@ -1195,7 +1195,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
                 <input
                   type="number"
                   step="0.1"
-                  value={weightKg}
+                  value={weightKg ?? ''}
                   onChange={(e) => {
                     const w = parseFloat(e.target.value);
                     setWeightKg(w);
@@ -1318,7 +1318,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
       {/* MODAL PARA AÑADIR COMIDA (MANUAL O PEGAR DE GEMINI / IA) */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 animate-apple-fade-in motion-reduce:transition-none">
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 animate-apple-fade-in motion-reduce:transition-none">
           <div className="w-full max-w-md liquid-glass-sheet rounded-3xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto border-t border-t-white/30 dark:border-t-white/15 shadow-2xl animate-apple-scale-in">
             <div className="flex items-center justify-between border-b border-[var(--glass-border)] pb-3">
               <div className="flex items-center gap-2">
@@ -1556,7 +1556,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
       {/* MODAL DE CONFIRMACIÓN: DÍA TÍPICO CUMPLIDO */}
       {showTypicalConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 animate-apple-fade-in motion-reduce:transition-none">
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 animate-apple-fade-in motion-reduce:transition-none">
           <div className="w-full max-w-sm liquid-glass-sheet rounded-3xl p-5 space-y-4 border-t border-t-white/30 dark:border-t-white/15 shadow-2xl animate-apple-scale-in">
             <div className="flex items-center justify-between border-b border-[var(--glass-border)] pb-3">
               <div className="flex items-center gap-2">
@@ -1627,7 +1627,7 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
 
       {/* MODAL SELECTOR DE PLANTILLAS FRECUENTES (8 BLOQUES) */}
       {showPresetsModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 animate-apple-fade-in motion-reduce:transition-none">
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 animate-apple-fade-in motion-reduce:transition-none">
           <div className="w-full max-w-md liquid-glass-sheet rounded-3xl p-5 space-y-4 max-h-[90vh] overflow-y-auto border-t border-t-white/30 dark:border-t-white/15 shadow-2xl animate-apple-scale-in">
             <div className="flex items-center justify-between border-b border-[var(--glass-border)] pb-3">
               <div className="flex items-center gap-2">

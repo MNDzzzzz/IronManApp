@@ -58,7 +58,7 @@ export const TopBar: React.FC<TopBarProps> = ({
     <header className="sticky top-0 z-40 bg-[var(--glass-surface-thick)] backdrop-blur-2xl backdrop-saturate-150 border-b border-[var(--glass-border)] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05),inset_0_-0.5px_0_0_rgba(255,255,255,0.15)] dark:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.4),inset_0_-0.5px_0_0_rgba(255,255,255,0.06)] pt-[max(env(safe-area-inset-top,0px),14px)] px-3 sm:px-6 pb-2.5 sm:pb-3 transition-colors duration-300">
       <div className="max-w-5xl xl:max-w-6xl mx-auto flex items-center justify-between gap-3">
         {/* Identidad de Marca y Fecha Nativa Apple */}
-        <div className="flex flex-col min-w-0">
+        <div className="flex flex-col min-w-0 shrink-0">
           <div className="flex items-center gap-1.5">
             <span className="text-xs sm:text-sm font-bold tracking-[0.2em] text-[var(--text-primary)] editorial-heading apple-title">
               IRONMAN
@@ -130,20 +130,20 @@ export const TopBar: React.FC<TopBarProps> = ({
               title={isAuthenticated ? 'Perfil de Atleta y Tribu' : 'Iniciar Sesión o Registrarse'}
               className={`h-8 sm:h-9 px-2 sm:px-2.5 rounded-full border flex items-center gap-1.5 apple-pressable apple-btn-spring touch-manipulation transition-all duration-200 ${
                 isAuthenticated
-                  ? 'bg-gradient-to-r from-orange-500/20 to-amber-500/20 border-orange-500/30 text-white'
+                  ? 'bg-gradient-to-r from-orange-500/15 to-amber-500/15 border-orange-500/30 text-[var(--text-primary)]'
                   : 'bg-white/40 dark:bg-white/[0.06] border-white/60 dark:border-white/10 text-[var(--accent-coral)] hover:bg-orange-500/10'
               }`}
             >
               {isAuthenticated ? (
                 <>
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#D97757] to-amber-500 flex items-center justify-center text-[10px] font-bold text-white">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#D97757] to-amber-500 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
                     {athleteName ? athleteName.charAt(0) : 'A'}
                   </div>
-                  <span className="hidden sm:inline text-[11px] font-semibold truncate max-w-[80px]">
+                  <span className="hidden sm:inline text-[11px] font-semibold truncate max-w-[80px] text-[var(--text-primary)]">
                     {athleteName}
                   </span>
                   {typeof athleteLevel === 'number' && (
-                    <span className="text-[9px] px-1 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-bold">
+                    <span className="text-[9px] px-1 py-0.2 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-mono font-bold">
                       Nv.{athleteLevel}
                     </span>
                   )}
@@ -151,7 +151,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               ) : (
                 <>
                   <Users className="w-3.5 h-3.5 text-[var(--accent-coral)]" />
-                  <span className="hidden sm:inline text-[11px] font-semibold text-white">
+                  <span className="hidden sm:inline text-[11px] font-semibold text-[var(--text-primary)]">
                     Acceder
                   </span>
                 </>

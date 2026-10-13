@@ -11,6 +11,7 @@ import {
   getPendingMutationsCount,
   OfflineMutation,
 } from './offlineStore';
+import { getActiveAthleteId } from '@/lib/api/apiClient';
 
 export interface SyncState {
   isOnline: boolean;
@@ -128,9 +129,15 @@ class OfflineSyncManager {
         await updateMutationStatus(mutation.id, 'syncing');
 
         try {
+          const athleteId = getActiveAthleteId();
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (athleteId) {
+            headers['x-athlete-id'] = athleteId;
+          }
+
           const res = await fetch(mutation.endpoint, {
             method: mutation.method,
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: mutation.payload ? JSON.stringify(mutation.payload) : undefined,
           });
 

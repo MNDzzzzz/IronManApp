@@ -38,6 +38,7 @@ import {
 } from '@/lib/gymOverload';
 import dynamic from 'next/dynamic';
 import { DailyCheckInSheet, DailyCheckInInitialData } from '@/components/social/DailyCheckInSheet';
+import { UserProfile } from '@/types/social';
 
 const ScheduleManagerModal = dynamic(
   () => import('@/components/schedule/ScheduleManagerModal').then((m) => m.ScheduleManagerModal),
@@ -57,9 +58,10 @@ interface GymViewProps {
   logs: GymWorkoutLog[];
   onAddSet: (logData: { exercise_id: string; set_number: number; reps: number; weight_kg: number; rpe?: number }) => Promise<void>;
   onDeleteSet?: (logId: string) => Promise<void>;
+  currentProfile?: UserProfile | null;
 }
 
-export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onDeleteSet }) => {
+export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onDeleteSet, currentProfile }) => {
   const todayStr = new Date().toISOString().split('T')[0];
 
   // Filtro de día (Por defecto el día correspondiente de la semana o Día 1)
@@ -318,7 +320,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
 
   if (exercises.length === 0) {
     return (
-      <div className="space-y-4 pb-24 px-4 pt-2">
+      <div className="space-y-4 pb-12 sm:pb-16 px-4 pt-2">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Fuerza & Gimnasio</h1>
@@ -341,7 +343,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
   }
 
   return (
-    <div className="space-y-4 pb-24 px-4 pt-2">
+    <div className="space-y-4 pb-12 sm:pb-16 px-4 pt-2">
       {/* CABECERA */}
       <div className="flex items-center justify-between">
         <div>
@@ -430,7 +432,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="text-xs sm:text-sm font-bold text-white apple-title">
+                <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)] apple-title">
                   Publicar Check-in en tu Tribu ⚡
                 </h4>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
@@ -1107,6 +1109,7 @@ export const GymView: React.FC<GymViewProps> = ({ exercises, logs, onAddSet, onD
         isOpen={isCheckInSheetOpen}
         onClose={() => setIsCheckInSheetOpen(false)}
         onCheckInCreated={() => setIsCheckInSheetOpen(false)}
+        currentProfile={currentProfile}
         initialData={{
           activityType: 'strength',
           title: `Fuerza: ${selectedDay !== 'Todos' ? selectedDay : 'Sesión en Sala'} (${todayLogs.length} series)`,

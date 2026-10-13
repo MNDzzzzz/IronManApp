@@ -24,7 +24,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab, i
     <nav
       role="navigation"
       aria-label="Navegación principal"
-      className="fixed bottom-3 sm:bottom-4 left-0 right-0 z-50 flex justify-center pointer-events-none px-4 pb-[max(env(safe-area-inset-bottom,0px),8px)] md:hidden"
+      className="fixed bottom-3 sm:bottom-4 left-0 right-0 z-40 flex justify-center pointer-events-none px-4 pb-[max(env(safe-area-inset-bottom,0px),8px)] md:hidden"
     >
       <div className="pointer-events-auto max-w-[360px] sm:max-w-sm w-full rounded-full liquid-glass-dock p-1.5 flex items-center justify-between transition-all duration-300">
         {tabs.map((tab) => {

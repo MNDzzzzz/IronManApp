@@ -225,7 +225,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label="Acceso y Perfil de Atleta"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in transition-all duration-300"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in transition-all duration-300"
       onClick={onClose}
     >
       <div
@@ -302,12 +302,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
-        {/* Contenido scrolleable */}
-        <div className="p-5 overflow-y-auto space-y-4">
+        {/* Contenido scrolleable con padding inferior seguro */}
+        <div className="p-5 pb-12 sm:pb-8 overflow-y-auto space-y-4">
           {tab === 'register' ? (
             <form onSubmit={handleRegister} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-white mb-1">
+                <label className="block text-xs font-medium text-[var(--text-primary)] mb-1">
                   Tu Nombre o Apodo
                 </label>
                 <input
@@ -316,12 +316,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   placeholder="ej. Álvaro"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/30 border border-white/10 text-xs text-white placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-coral)]"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-black/30 border border-[var(--glass-border)] text-xs text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-coral)]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-white mb-1">
+                <label className="block text-xs font-medium text-[var(--text-primary)] mb-1">
                   Nombre de Usuario Único (@username)
                 </label>
                 <div className="relative">
@@ -336,7 +336,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     onChange={(e) =>
                       setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase())
                     }
-                    className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-black/30 border border-white/10 text-xs font-mono text-white placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-coral)]"
+                    className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-black/30 border border-[var(--glass-border)] text-xs font-mono text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-coral)]"
                   />
                 </div>
                 <p className="text-[10px] text-[var(--text-tertiary)] mt-1">
@@ -345,7 +345,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-white mb-1">
+                <label className="block text-xs font-medium text-[var(--text-primary)] mb-1">
                   Correo Electrónico (Opcional)
                 </label>
                 <div className="relative">
@@ -355,13 +355,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     placeholder="atleta@ejemplo.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-black/30 border border-white/10 text-xs text-white placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-coral)]"
+                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-black/30 border border-[var(--glass-border)] text-xs text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-coral)]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-white mb-1">
+                <label className="block text-xs font-medium text-[var(--text-primary)] mb-1">
                   Meta Semanal de Entrenamientos
                 </label>
                 <div className="grid grid-cols-5 gap-1.5">
@@ -373,7 +373,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       className={`py-2 rounded-xl text-xs font-bold font-mono transition-all apple-pressable ${
                         weeklyGoal === num
                           ? 'bg-[#D97757] text-white shadow-sm'
-                          : 'bg-white/5 hover:bg-white/10 text-[var(--text-secondary)] border border-white/5'
+                          : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-[var(--text-secondary)] border border-[var(--glass-border)]'
                       }`}
                     >
                       {num} d/sem
@@ -383,7 +383,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-white mb-1">
+                <label className="block text-xs font-medium text-[var(--text-primary)] mb-1">
                   Objetivo Principal
                 </label>
                 <input
@@ -391,12 +391,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   placeholder="ej. Media Maratón 21K 2027"
                   value={targetRaceName}
                   onChange={(e) => setTargetRaceName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/30 border border-white/10 text-xs text-white placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-coral)]"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-black/30 border border-[var(--glass-border)] text-xs text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-coral)]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-white mb-1">
+                <label className="block text-xs font-medium text-[var(--text-primary)] mb-1">
                   Biografía Deportiva
                 </label>
                 <textarea
@@ -404,7 +404,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   placeholder="Disciplina, fuerza y constancia..."
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/30 border border-white/10 text-xs text-white placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-coral)] resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-black/30 border border-[var(--glass-border)] text-xs text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-coral)] resize-none"
                 />
               </div>
 
@@ -427,7 +427,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <form onSubmit={handleLogin} className="space-y-4">
               {!isPinMode ? (
                 <div>
-                  <label className="block text-xs font-medium text-white mb-1">
+                  <label className="block text-xs font-medium text-[var(--text-primary)] mb-1">
                     Tu @username o Email Registrado
                   </label>
                   <div className="relative">
@@ -440,13 +440,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="alvaro_ironman o correo@ejemplo.com"
                       value={loginIdentifier}
                       onChange={(e) => setLoginIdentifier(e.target.value)}
-                      className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-black/30 border border-white/10 text-xs text-white placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-coral)]"
+                      className="w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-black/30 border border-[var(--glass-border)] text-xs text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-coral)]"
                     />
                   </div>
                 </div>
               ) : (
                 <div>
-                  <label className="block text-xs font-medium text-white mb-1">
+                  <label className="block text-xs font-medium text-[var(--text-primary)] mb-1">
                     PIN Maestro de Safari / App
                   </label>
                   <div className="relative">
@@ -457,7 +457,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       placeholder="Introduce el PIN Maestro"
                       value={pinCode}
                       onChange={(e) => setPinCode(e.target.value)}
-                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-black/30 border border-white/10 text-xs font-mono text-white placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-coral)]"
+                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-black/5 dark:bg-black/30 border border-[var(--glass-border)] text-xs font-mono text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-coral)]"
                     />
                   </div>
                 </div>

@@ -1,10 +1,12 @@
 // Endpoint para consultar y añadir registros de nutrición e hidratación
+// Con aislamiento multi-tenant estricto y protección contra fugas de datos
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isSupabaseConfigured } from '@/lib/supabase';
 import { mockStore } from '@/lib/mockStore';
 import { NutritionLog, WaterLog } from '@/types/database';
 import { activeProtocol } from '@/lib/nutritionProtocol';
 import { getSpainTodayStr } from '@/lib/coach/coachCore';
+import { getAuthAthlete } from '@/lib/auth/getAuthAthlete';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -19,6 +21,29 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date') || getSpainTodayStr();
+    const { athleteId, isAlvaro } = getAuthAthlete(request);
+
+    // 0. Si no hay atleta identificado (visitante o anónimo), devolver conjunto vacío (Zero Data Leakage)
+    if (!athleteId) {
+      return NextResponse.json(
+        {
+          date,
+          meals: [],
+          water_logs: [],
+          all_meals: [],
+          all_water: [],
+          protocol: null,
+          totals: {
+            calories: 0,
+            protein_g: 0,
+            carbs_g: 0,
+            fat_g: 0,
+            water_ml: 0,
+          },
+        },
+        { headers: noCacheHeaders }
+      );
+    }
 
     let meals: NutritionLog[] = [];
     let waterLogs: WaterLog[] = [];
@@ -26,21 +51,32 @@ export async function GET(request: NextRequest) {
     let allWater: WaterLog[] = [];
 
     if (isSupabaseConfigured && supabaseAdmin) {
-      const { data: dbAllMeals } = await supabaseAdmin
+      let mealsQuery = supabaseAdmin
         .from('nutrition_logs')
         .select('*')
         .order('timestamp', { ascending: false });
 
-      const { data: dbAllWater } = await supabaseAdmin
+      let waterQuery = supabaseAdmin
         .from('water_logs')
         .select('*')
         .order('timestamp', { ascending: false });
+
+      if (isAlvaro) {
+        mealsQuery = mealsQuery.or(`user_id.eq.${athleteId},user_id.is.null`);
+        waterQuery = waterQuery.or(`user_id.eq.${athleteId},user_id.is.null`);
+      } else {
+        mealsQuery = mealsQuery.eq('user_id', athleteId);
+        waterQuery = waterQuery.eq('user_id', athleteId);
+      }
+
+      const { data: dbAllMeals } = await mealsQuery;
+      const { data: dbAllWater } = await waterQuery;
 
       allMeals = (dbAllMeals || []).filter((m) => m.meal_type !== 'PESO_CORPORAL');
       allWater = dbAllWater || [];
       meals = allMeals.filter((m) => m.date === date);
       waterLogs = allWater.filter((w) => w.date === date);
-    } else {
+    } else if (isAlvaro) {
       allMeals = (mockStore.nutritionLogs || []).filter((m) => m.meal_type !== 'PESO_CORPORAL');
       allWater = mockStore.waterLogs || [];
       meals = allMeals.filter((m) => m.date === date);
@@ -60,7 +96,7 @@ export async function GET(request: NextRequest) {
         water_logs: waterLogs,
         all_meals: allMeals,
         all_water: allWater,
-        protocol: activeProtocol,
+        protocol: isAlvaro ? activeProtocol : null,
         totals: {
           calories: totalCalories,
           protein_g: Number(totalProtein.toFixed(1)),
@@ -76,9 +112,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
-
 export async function POST(request: NextRequest) {
   try {
+    const { athleteId, isAlvaro } = getAuthAthlete(request);
+
+    if (!athleteId) {
+      return NextResponse.json(
+        { success: false, error: 'No autorizado. Se requiere iniciar sesión.' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const todayStr = getSpainTodayStr();
     const logDate = body.date || todayStr;
@@ -87,13 +131,15 @@ export async function POST(request: NextRequest) {
     if (body.action === 'delete_water' && body.id) {
       const id = body.id;
       if (isSupabaseConfigured && supabaseAdmin) {
-        await supabaseAdmin.from('water_logs').delete().eq('id', id);
+        let q = supabaseAdmin.from('water_logs').delete().eq('id', id);
+        if (athleteId) q = q.eq('user_id', athleteId);
+        await q;
       }
       mockStore.waterLogs = mockStore.waterLogs.filter((w) => w.id !== id);
       return NextResponse.json({ success: true, deleted: id, type: 'water' });
     }
 
-    // Registro o resta de agua polimórfico (acepta type: 'water' o action: 'add_water')
+    // Registro o resta de agua polimórfico
     const isWaterAction =
       body.type === 'water' ||
       body.action === 'add_water' ||
@@ -109,11 +155,15 @@ export async function POST(request: NextRequest) {
         let deletedOrUpdated = false;
 
         if (isSupabaseConfigured && supabaseAdmin) {
-          const { data: dbWater } = await supabaseAdmin
+          let waterQ = supabaseAdmin
             .from('water_logs')
             .select('*')
             .eq('date', logDate)
             .order('timestamp', { ascending: false });
+
+          if (athleteId) waterQ = waterQ.eq('user_id', athleteId);
+
+          const { data: dbWater } = await waterQ;
 
           if (dbWater && dbWater.length > 0) {
             const latest = dbWater[0];
@@ -129,36 +179,41 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // MockStore fallback
-        const mockIdx = mockStore.waterLogs.findIndex((w) => w.date === logDate);
-        if (mockIdx >= 0) {
-          if (mockStore.waterLogs[mockIdx].amount_ml <= subAmount) {
-            mockStore.waterLogs.splice(mockIdx, 1);
-          } else {
-            mockStore.waterLogs[mockIdx].amount_ml -= subAmount;
+        // MockStore fallback si es Álvaro
+        if (isAlvaro) {
+          const mockIdx = mockStore.waterLogs.findIndex((w) => w.date === logDate);
+          if (mockIdx >= 0) {
+            if (mockStore.waterLogs[mockIdx].amount_ml <= subAmount) {
+              mockStore.waterLogs.splice(mockIdx, 1);
+            } else {
+              mockStore.waterLogs[mockIdx].amount_ml -= subAmount;
+            }
+            deletedOrUpdated = true;
           }
-          deletedOrUpdated = true;
         }
 
         return NextResponse.json({ success: true, action: 'subtracted', amount_ml: subAmount, date: logDate, modified: deletedOrUpdated });
       }
 
       // Adición normal de agua
-      const newWater: WaterLog = {
+      const newWater: WaterLog & { user_id?: string | null } = {
         id: `water-${Date.now()}`,
         timestamp: new Date().toISOString(),
         date: logDate,
         amount_ml: amount || 250,
+        user_id: athleteId || null,
       };
 
       if (isSupabaseConfigured && supabaseAdmin) {
         await supabaseAdmin.from('water_logs').insert([newWater]);
       }
-      mockStore.waterLogs.unshift(newWater);
+      if (isAlvaro) {
+        mockStore.waterLogs.unshift(newWater);
+      }
       return NextResponse.json({ success: true, water: newWater });
     }
 
-    // Inserción por lotes (Plantillas o Día Típico Cumplido)
+    // Inserción por lotes
     const isBatch =
       body.action === 'batch_insert' ||
       Array.isArray(body.meals) ||
@@ -175,8 +230,9 @@ export async function POST(request: NextRequest) {
         : [];
       const targetDate = body.date || logDate;
 
-      const createdMeals: NutritionLog[] = rawMeals.map((m: any, idx: number) => ({
+      const createdMeals: (NutritionLog & { user_id?: string | null })[] = rawMeals.map((m: any, idx: number) => ({
         id: m.id || `nutri-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}`,
+        user_id: athleteId || null,
         timestamp: m.timestamp || new Date(Date.now() + idx * 1000).toISOString(),
         date: m.date || targetDate,
         meal_type: m.meal_type || 'Snack',
@@ -191,19 +247,21 @@ export async function POST(request: NextRequest) {
       if (isSupabaseConfigured && supabaseAdmin && createdMeals.length > 0) {
         await supabaseAdmin.from('nutrition_logs').insert(createdMeals);
       }
-      if (createdMeals.length > 0) {
+      if (isAlvaro && createdMeals.length > 0) {
         mockStore.nutritionLogs.unshift(...createdMeals);
       }
 
       // Recalcular totales diarios para la fecha de registro
       let dayMeals: NutritionLog[] = [];
       if (isSupabaseConfigured && supabaseAdmin) {
-        const { data: dbMeals } = await supabaseAdmin
+        let dayQ = supabaseAdmin
           .from('nutrition_logs')
           .select('*')
           .eq('date', targetDate);
+        if (athleteId) dayQ = dayQ.eq('user_id', athleteId);
+        const { data: dbMeals } = await dayQ;
         dayMeals = (dbMeals || []).filter((m) => m.meal_type !== 'PESO_CORPORAL');
-      } else {
+      } else if (isAlvaro) {
         dayMeals = (mockStore.nutritionLogs || []).filter(
           (m) => m.date === targetDate && m.meal_type !== 'PESO_CORPORAL'
         );
@@ -229,8 +287,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Registro de comida manual
-    const newMeal: NutritionLog = {
+    const newMeal: NutritionLog & { user_id?: string | null } = {
       id: `nutri-${Date.now()}`,
+      user_id: athleteId || null,
       timestamp: new Date().toISOString(),
       date: logDate,
       meal_type: body.meal_type || 'Snack',
@@ -244,7 +303,9 @@ export async function POST(request: NextRequest) {
     if (isSupabaseConfigured && supabaseAdmin) {
       await supabaseAdmin.from('nutrition_logs').insert([newMeal]);
     }
-    mockStore.nutritionLogs.unshift(newMeal);
+    if (isAlvaro) {
+      mockStore.nutritionLogs.unshift(newMeal);
+    }
 
     return NextResponse.json({ success: true, meal: newMeal });
   } catch (error: any) {
@@ -254,6 +315,15 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const { athleteId, isAlvaro } = getAuthAthlete(request);
+
+    if (!athleteId) {
+      return NextResponse.json(
+        { success: false, error: 'No autorizado. Se requiere iniciar sesión.' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     let id = searchParams.get('id');
     let type = searchParams.get('type');
@@ -274,19 +344,26 @@ export async function DELETE(request: NextRequest) {
 
     if (isWater) {
       if (isSupabaseConfigured && supabaseAdmin) {
-        await supabaseAdmin.from('water_logs').delete().eq('id', id);
+        let q = supabaseAdmin.from('water_logs').delete().eq('id', id);
+        if (!isAlvaro) q = q.eq('user_id', athleteId);
+        await q;
       }
-      mockStore.waterLogs = mockStore.waterLogs.filter((w) => w.id !== id);
+      if (isAlvaro) {
+        mockStore.waterLogs = mockStore.waterLogs.filter((w) => w.id !== id);
+      }
       return NextResponse.json({ success: true, deleted: id, type: 'water' });
     } else {
       if (isSupabaseConfigured && supabaseAdmin) {
-        await supabaseAdmin.from('nutrition_logs').delete().eq('id', id);
+        let q = supabaseAdmin.from('nutrition_logs').delete().eq('id', id);
+        if (!isAlvaro) q = q.eq('user_id', athleteId);
+        await q;
       }
-      mockStore.nutritionLogs = mockStore.nutritionLogs.filter((m) => m.id !== id);
+      if (isAlvaro) {
+        mockStore.nutritionLogs = mockStore.nutritionLogs.filter((m) => m.id !== id);
+      }
       return NextResponse.json({ success: true, deleted: id, type: 'meal' });
     }
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-

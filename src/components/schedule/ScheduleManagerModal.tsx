@@ -231,7 +231,7 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in motion-reduce:transition-none"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in motion-reduce:transition-none"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -298,7 +298,7 @@ export const ScheduleManagerModal: React.FC<ScheduleManagerModalProps> = ({
         </div>
 
         {/* Contenido según pestaña */}
-        <div className="p-5 overflow-y-auto space-y-4 flex-1">
+        <div className="p-5 pb-12 sm:pb-8 overflow-y-auto space-y-4 flex-1">
           {/* Alerta de Feedback */}
           {feedback && (
             <div

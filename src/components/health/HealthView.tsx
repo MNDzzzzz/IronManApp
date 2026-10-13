@@ -42,7 +42,7 @@ export const HealthView: React.FC<HealthViewProps> = ({
   health,
   history,
   weightLogs = [],
-  currentWeight = 101.0,
+  currentWeight,
   onAddWeight,
   onDeleteWeight,
 }) => {
@@ -178,7 +178,7 @@ export const HealthView: React.FC<HealthViewProps> = ({
   }, [hrSamples]);
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-5 pb-24 px-3.5 pt-1 font-sans animate-in fade-in duration-300">
+    <div className="w-full max-w-4xl mx-auto space-y-5 pb-12 sm:pb-16 px-3.5 pt-1 font-sans animate-in fade-in duration-300">
       {/* Encabezado */}
       <div className="flex items-center justify-between">
         <div>

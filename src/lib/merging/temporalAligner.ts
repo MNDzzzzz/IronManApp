@@ -245,7 +245,11 @@ export function fuseStravaSplitsWithFit3(
   const extractedHr = extractHeartRateFromText(combinedText);
 
   // 2. Extraer fecha objetivo de la actividad
-  const rawDate = activityData.start_date || new Date().toISOString();
+  const rawDate =
+    activityData.start_date ||
+    (activityData as any).activity_date ||
+    (activityData as any).date ||
+    new Date().toISOString();
   const targetDateStr = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
 
   // 3. Filtrar muestras de la Galaxy Fit3 que coincidan con la fecha de la actividad

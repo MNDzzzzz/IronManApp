@@ -33,6 +33,8 @@ import {
   MemberPublicSummary,
   UserProfile,
 } from '@/types/social';
+import { SQUAD_STORAGE_KEY } from '@/lib/socialManager';
+import { apiFetch } from '@/lib/api/apiClient';
 import { DailyCheckInSheet } from './DailyCheckInSheet';
 import { MemberProfileSheet } from './MemberProfileSheet';
 import { EmptySquadView } from './EmptySquadView';
@@ -54,7 +56,7 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
   const [inviteCopied, setInviteCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Cargar Grupos Reales del Usuario
+  // Cargar Grupos Reales del Usuario con persistencia híbrida (Offline-First)
   const loadUserGroups = useCallback(async () => {
     if (!currentProfile) {
       setGroups([]);
@@ -63,23 +65,61 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
       return;
     }
 
-    setIsLoading(true);
+    // 1. Fallback instantáneo desde localStorage (0 ms)
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(SQUAD_STORAGE_KEY);
+        if (cached) {
+          const parsedGroups: SquadGroup[] = JSON.parse(cached);
+          if (Array.isArray(parsedGroups) && parsedGroups.length > 0) {
+            setGroups(parsedGroups);
+            setCurrentGroup((prev) => {
+              const found = parsedGroups.find((g) => g.id === prev?.id);
+              return found || parsedGroups[0];
+            });
+            setIsLoading(false);
+          }
+        }
+      } catch {}
+    }
+
+    // 2. Fetch fresco desde la API
     try {
-      const res = await fetch(`/api/groups?userId=${encodeURIComponent(currentProfile.id)}`, {
+      const res = await apiFetch(`/api/groups?userId=${encodeURIComponent(currentProfile.id)}`, {
         cache: 'no-store',
       });
       if (res.ok) {
         const json = await res.json();
         const userGroups: SquadGroup[] = json.data || [];
-        setGroups(userGroups);
         if (userGroups.length > 0) {
-          // Mantener grupo seleccionado si aún existe, o elegir el primero
+          setGroups(userGroups);
           setCurrentGroup((prev) => {
             const found = userGroups.find((g) => g.id === prev?.id);
             return found || userGroups[0];
           });
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem(SQUAD_STORAGE_KEY, JSON.stringify(userGroups));
+            } catch {}
+          }
         } else {
-          setCurrentGroup(null);
+          // Si la API devolvió vacío, verificar si en localStorage tenemos el grupo
+          if (typeof window !== 'undefined') {
+            const cached = localStorage.getItem(SQUAD_STORAGE_KEY);
+            if (cached) {
+              const parsed: SquadGroup[] = JSON.parse(cached);
+              if (parsed.length > 0) {
+                setGroups(parsed);
+                setCurrentGroup((prev) => prev || parsed[0]);
+              } else {
+                setGroups([]);
+                setCurrentGroup(null);
+              }
+            } else {
+              setGroups([]);
+              setCurrentGroup(null);
+            }
+          }
         }
       }
     } catch (err) {
@@ -94,8 +134,8 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
     if (!groupId) return;
     try {
       const [resFeed, resLead] = await Promise.all([
-        fetch(`/api/groups/${groupId}/feed`, { cache: 'no-store' }),
-        fetch(
+        apiFetch(`/api/groups/${groupId}/feed`, { cache: 'no-store' }),
+        apiFetch(
           `/api/groups/${groupId}/leaderboard${
             currentProfile ? `?userId=${encodeURIComponent(currentProfile.id)}` : ''
           }`,
@@ -122,13 +162,14 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
   }, [loadUserGroups]);
 
   useEffect(() => {
-    if (currentGroup) {
-      loadGroupDetails(currentGroup.id);
+    const targetGroup = currentGroup || (groups.length > 0 ? groups[0] : null);
+    if (targetGroup) {
+      loadGroupDetails(targetGroup.id);
     } else {
       setFeed([]);
       setLeaderboard([]);
     }
-  }, [currentGroup, loadGroupDetails]);
+  }, [currentGroup, groups, loadGroupDetails]);
 
   const handleCopyInvite = () => {
     if (!currentGroup) return;
@@ -144,7 +185,7 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
     }
 
     try {
-      const res = await fetch('/api/checkins/reactions', {
+      const res = await apiFetch('/api/checkins/reactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -165,9 +206,9 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
   };
 
   const handleOpenMemberProfile = async (userId: string) => {
-    if (!currentGroup) return;
+    if (!activeGroup) return;
     try {
-      const res = await fetch(`/api/groups/${currentGroup.id}/members/${userId}`);
+      const res = await apiFetch(`/api/groups/${activeGroup.id}/members/${userId}`);
       if (res.ok) {
         const json = await res.json();
         if (json.data) {
@@ -181,26 +222,35 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
   };
 
   const handleCheckInCreated = (newCheckin: WorkoutCheckIn) => {
-    setFeed((prev) => [newCheckin, ...prev]);
-    if (currentGroup) {
-      loadGroupDetails(currentGroup.id);
+    setFeed((prev) => [newCheckin, ...prev.filter((c) => c.id !== newCheckin.id)]);
+    const targetGroup = currentGroup || (groups.length > 0 ? groups[0] : null);
+    if (targetGroup) {
+      loadGroupDetails(targetGroup.id);
     }
   };
 
   const handleGroupCreatedOrJoined = (newGroup: SquadGroup) => {
-    setGroups((prev) => [newGroup, ...prev.filter((g) => g.id !== newGroup.id)]);
+    setGroups((prev) => {
+      const updated = [newGroup, ...prev.filter((g) => g.id !== newGroup.id)];
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(SQUAD_STORAGE_KEY, JSON.stringify(updated));
+        } catch {}
+      }
+      return updated;
+    });
     setCurrentGroup(newGroup);
   };
 
   // 1. ESTADO: USUARIO NO IDENTIFICADO (Invitar a crear perfil / iniciar sesión)
   if (!currentProfile) {
     return (
-      <div className="space-y-6 pb-24 max-w-xl mx-auto px-4 text-center">
+      <div className="space-y-6 pb-12 sm:pb-16 max-w-xl mx-auto px-4 text-center">
         <div className="liquid-glass-card rounded-[32px] p-8 border border-[var(--glass-border)] shadow-2xl relative overflow-hidden">
           <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br from-[#D97757]/20 via-black/40 to-amber-500/10 border border-[#D97757]/30 flex items-center justify-center text-4xl shadow-inner mb-5">
             👥
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-white apple-display tracking-tight">
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] apple-display tracking-tight">
             Tribu & Comunidad Atlética
           </h2>
           <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-2 leading-relaxed max-w-md mx-auto">
@@ -232,7 +282,8 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
   }
 
   // 3. ESTADO CERO REAL: El usuario no tiene tribus todavía
-  if (groups.length === 0 || !currentGroup) {
+  const activeGroup = currentGroup || (groups.length > 0 ? groups[0] : null);
+  if (groups.length === 0 || !activeGroup) {
     return (
       <EmptySquadView
         currentProfile={currentProfile}
@@ -243,25 +294,25 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
 
   // 4. ESTADO ACTIVO: El usuario tiene tribu y está en ella
   return (
-    <div className="space-y-4 pb-24 max-w-4xl mx-auto px-3 sm:px-4">
+    <div className="space-y-4 pb-12 sm:pb-16 max-w-4xl mx-auto px-3 sm:px-4">
       {/* 1. Header de Tribu (Liquid Glass Card) */}
       <div className="liquid-glass-card rounded-3xl p-4 sm:p-5 border border-[var(--glass-border)] shadow-xl relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#D97757]/20 to-amber-500/20 border border-[#D97757]/30 flex items-center justify-center text-2xl shadow-inner shrink-0">
-              {currentGroup.avatar_emoji || '⚡'}
+              {activeGroup.avatar_emoji || '⚡'}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg sm:text-xl font-bold text-white apple-title">
-                  {currentGroup.name}
+                <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] apple-title">
+                  {activeGroup.name}
                 </h2>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
-                  {currentGroup.members_count || 1} / {currentGroup.max_members} atletas
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold">
+                  {activeGroup.members_count || 1} / {activeGroup.max_members} atletas
                 </span>
               </div>
               <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                {currentGroup.description}
+                {activeGroup.description}
               </p>
             </div>
           </div>
@@ -271,15 +322,15 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
             {/* Si el usuario pertenece a más de 1 grupo, selector rápido */}
             {groups.length > 1 && (
               <select
-                value={currentGroup.id}
+                value={activeGroup.id}
                 onChange={(e) => {
                   const g = groups.find((grp) => grp.id === e.target.value);
                   if (g) setCurrentGroup(g);
                 }}
-                className="py-2 px-2.5 rounded-xl bg-white/10 border border-white/10 text-xs font-semibold text-white focus:outline-none"
+                className="py-2 px-2.5 rounded-xl bg-black/5 dark:bg-white/10 border border-[var(--glass-border)] text-xs font-semibold text-[var(--text-primary)] focus:outline-none"
               >
                 {groups.map((g) => (
-                  <option key={g.id} value={g.id} className="bg-neutral-900 text-white">
+                  <option key={g.id} value={g.id} className="bg-[var(--background)] text-[var(--text-primary)]">
                     {g.avatar_emoji} {g.name}
                   </option>
                 ))}
@@ -289,18 +340,18 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
             {/* Botón Copiar Código */}
             <button
               onClick={handleCopyInvite}
-              className="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-xs font-semibold text-white flex items-center gap-1.5 transition-all apple-pressable"
+              className="py-2 px-3 rounded-xl bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 border border-[var(--glass-border)] text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5 transition-all apple-pressable"
               title="Copiar código de invitación"
             >
               {inviteCopied ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-emerald-400">¡Copiado!</span>
+                  <Check className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="text-emerald-500">¡Copiado!</span>
                 </>
               ) : (
                 <>
-                  <Share2 className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="font-mono text-amber-300 font-bold">{currentGroup.invite_code}</span>
+                  <Share2 className="w-3.5 h-3.5 text-amber-500" />
+                  <span className="font-mono text-amber-500 font-bold">{activeGroup.invite_code}</span>
                 </>
               )}
             </button>
@@ -318,13 +369,13 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
       </div>
 
       {/* 2. Selector Segmentado de Sub-Vistas (Apple Segmented Control) */}
-      <div className="p-1 rounded-2xl bg-black/20 dark:bg-white/[0.04] border border-[var(--glass-border)] grid grid-cols-3 gap-1">
+      <div className="p-1 rounded-2xl bg-black/5 dark:bg-white/[0.04] border border-[var(--glass-border)] grid grid-cols-3 gap-1">
         <button
           onClick={() => setActiveSubTab('feed')}
           className={`py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all apple-pressable ${
             activeSubTab === 'feed'
-              ? 'bg-white/60 dark:bg-white/15 text-[#D97757] dark:text-[#E28464] font-bold shadow-sm'
-              : 'text-[var(--text-secondary)] hover:text-white'
+              ? 'bg-white/80 dark:bg-white/15 text-[#D97757] dark:text-[#E28464] font-bold shadow-sm'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
           <Flame className="w-3.5 h-3.5" />
@@ -335,8 +386,8 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
           onClick={() => setActiveSubTab('leaderboard')}
           className={`py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all apple-pressable ${
             activeSubTab === 'leaderboard'
-              ? 'bg-white/60 dark:bg-white/15 text-[#D97757] dark:text-[#E28464] font-bold shadow-sm'
-              : 'text-[var(--text-secondary)] hover:text-white'
+              ? 'bg-white/80 dark:bg-white/15 text-[#D97757] dark:text-[#E28464] font-bold shadow-sm'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
           <Trophy className="w-3.5 h-3.5" />
@@ -347,8 +398,8 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
           onClick={() => setActiveSubTab('challenges')}
           className={`py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all apple-pressable ${
             activeSubTab === 'challenges'
-              ? 'bg-white/60 dark:bg-white/15 text-[#D97757] dark:text-[#E28464] font-bold shadow-sm'
-              : 'text-[var(--text-secondary)] hover:text-white'
+              ? 'bg-white/80 dark:bg-white/15 text-[#D97757] dark:text-[#E28464] font-bold shadow-sm'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
           <Target className="w-3.5 h-3.5" />
@@ -364,7 +415,7 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
               <div className="w-14 h-14 mx-auto rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-2xl text-orange-400">
                 🔥
               </div>
-              <h3 className="text-base font-bold text-white apple-title">
+              <h3 className="text-base font-bold text-[var(--text-primary)] apple-title">
                 Aún no hay check-ins hoy
               </h3>
               <p className="text-xs text-[var(--text-secondary)] max-w-sm mx-auto leading-relaxed">
@@ -402,11 +453,11 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm font-bold text-white group-hover:text-[var(--accent-coral)] transition-colors">
+                          <span className="text-sm font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-coral)] transition-colors">
                             {author.display_name}
                           </span>
                           {isUser && (
-                            <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 text-[9px] font-semibold">
+                            <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[9px] font-semibold">
                               Tú
                             </span>
                           )}
@@ -419,8 +470,8 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
 
                     <div className="flex items-center gap-2">
                       {item.is_gold_checkin && (
-                        <span className="px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold flex items-center gap-1 shadow-sm">
-                          <Crown className="w-3 h-3 text-amber-400" />
+                        <span className="px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-600 dark:text-amber-300 text-[10px] font-bold flex items-center gap-1 shadow-sm">
+                          <Crown className="w-3 h-3 text-amber-500 dark:text-amber-400" />
                           <span>Check-in de Oro</span>
                         </span>
                       )}
@@ -431,40 +482,40 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
                   </div>
 
                   {/* Título y Resumen Deportivo */}
-                  <div className="p-3 rounded-xl bg-black/20 dark:bg-white/[0.03] border border-white/5 space-y-2">
+                  <div className="p-3 rounded-xl bg-black/5 dark:bg-white/[0.03] border border-black/5 dark:border-white/5 space-y-2">
                     <div className="flex items-center gap-2">
                       <span className="text-base">
                         {item.activity_type === 'running' ? '🏃' : '🏋️'}
                       </span>
-                      <h3 className="text-sm font-bold text-white apple-title">
+                      <h3 className="text-sm font-bold text-[var(--text-primary)] apple-title">
                         {item.title}
                       </h3>
                     </div>
 
                     {/* Métricas destacadas */}
                     <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--text-secondary)]">
-                      {item.metrics_summary.distance_km && (
-                        <span className="flex items-center gap-1 font-semibold text-sky-400">
+                      {item.metrics_summary?.distance_km && (
+                        <span className="flex items-center gap-1 font-semibold text-sky-600 dark:text-sky-400">
                           <Route className="w-3.5 h-3.5" />
-                          {item.metrics_summary.distance_km} km ({item.metrics_summary.avg_pace || '5:35 /km'})
+                          {item.metrics_summary.distance_km} km ({item.metrics_summary?.avg_pace || '5:35 /km'})
                         </span>
                       )}
 
-                      {item.metrics_summary.volume_sets && (
-                        <span className="flex items-center gap-1 font-semibold text-purple-400">
+                      {item.metrics_summary?.volume_sets && (
+                        <span className="flex items-center gap-1 font-semibold text-purple-600 dark:text-purple-400">
                           <Dumbbell className="w-3.5 h-3.5" />
                           {item.metrics_summary.volume_sets} series completadas
                         </span>
                       )}
 
-                      {item.metrics_summary.muscle_groups && (
+                      {item.metrics_summary?.muscle_groups && item.metrics_summary.muscle_groups.length > 0 && (
                         <span className="text-[11px] text-[var(--text-tertiary)]">
                           Músculos: {item.metrics_summary.muscle_groups.join(', ')}
                         </span>
                       )}
                     </div>
 
-                    {item.metrics_summary.notes && (
+                    {item.metrics_summary?.notes && (
                       <p className="text-xs text-[var(--text-secondary)] italic pt-1 border-t border-white/5">
                         "{item.metrics_summary.notes}"
                       </p>
@@ -555,13 +606,13 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
                         2
                       </span>
                     </div>
-                    <span className="text-xs font-bold text-white truncate max-w-[80px]">
+                    <span className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[80px]">
                       {leaderboard[1].display_name}
                     </span>
-                    <span className="text-[10px] font-mono text-amber-300 font-semibold">
+                    <span className="text-[10px] font-mono text-amber-600 dark:text-amber-300 font-semibold">
                       {leaderboard[1].weekly_xp} XP
                     </span>
-                    <div className="w-full h-16 rounded-t-xl bg-slate-400/10 border-t border-x border-slate-400/20 mt-2 flex items-center justify-center text-xs font-bold text-slate-300">
+                    <div className="w-full h-16 rounded-t-xl bg-slate-400/10 border-t border-x border-slate-400/20 mt-2 flex items-center justify-center text-xs font-bold text-slate-400">
                       🥈
                     </div>
                   </div>
@@ -573,7 +624,7 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
                     onClick={() => handleOpenMemberProfile(leaderboard[0].user_id)}
                     className="flex-1 flex flex-col items-center cursor-pointer group -mt-4"
                   >
-                    <Crown className="w-5 h-5 text-amber-400 animate-bounce mb-1" />
+                    <Crown className="w-5 h-5 text-amber-500 dark:text-amber-400 animate-bounce mb-1" />
                     <div className="relative mb-2">
                       <div className="w-14 h-14 rounded-2xl bg-amber-500/25 border-2 border-amber-400 flex items-center justify-center font-bold text-white text-lg shadow-lg shadow-amber-500/30 group-hover:scale-105 transition-transform">
                         {leaderboard[0].display_name.charAt(0)}
@@ -582,13 +633,13 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
                         1
                       </span>
                     </div>
-                    <span className="text-xs font-extrabold text-amber-300 truncate max-w-[90px]">
+                    <span className="text-xs font-extrabold text-amber-600 dark:text-amber-300 truncate max-w-[90px]">
                       {leaderboard[0].display_name}
                     </span>
-                    <span className="text-[11px] font-mono text-amber-300 font-bold">
+                    <span className="text-[11px] font-mono text-amber-600 dark:text-amber-300 font-bold">
                       {leaderboard[0].weekly_xp} XP
                     </span>
-                    <div className="w-full h-24 rounded-t-xl bg-amber-500/15 border-t border-x border-amber-400/40 mt-2 flex items-center justify-center text-base font-bold text-amber-300">
+                    <div className="w-full h-24 rounded-t-xl bg-amber-500/15 border-t border-x border-amber-400/40 mt-2 flex items-center justify-center text-base font-bold text-amber-600 dark:text-amber-300">
                       🥇
                     </div>
                   </div>
@@ -608,13 +659,13 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
                         3
                       </span>
                     </div>
-                    <span className="text-xs font-bold text-white truncate max-w-[80px]">
+                    <span className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[80px]">
                       {leaderboard[2].display_name}
                     </span>
-                    <span className="text-[10px] font-mono text-amber-300 font-semibold">
+                    <span className="text-[10px] font-mono text-amber-600 dark:text-amber-300 font-semibold">
                       {leaderboard[2].weekly_xp} XP
                     </span>
-                    <div className="w-full h-12 rounded-t-xl bg-amber-700/10 border-t border-x border-amber-700/20 mt-2 flex items-center justify-center text-xs font-bold text-amber-600">
+                    <div className="w-full h-12 rounded-t-xl bg-amber-700/10 border-t border-x border-amber-700/20 mt-2 flex items-center justify-center text-xs font-bold text-amber-700 dark:text-amber-500">
                       🥉
                     </div>
                   </div>
@@ -645,11 +696,11 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-white">
+                        <span className="text-xs font-bold text-[var(--text-primary)]">
                           {member.display_name}
                         </span>
                         {member.is_current_user && (
-                          <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 text-[9px] font-bold">
+                          <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[9px] font-bold">
                             Tú
                           </span>
                         )}
@@ -661,7 +712,7 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
                   </div>
 
                   <div className="text-right">
-                    <span className="text-sm font-mono font-extrabold text-amber-300">
+                    <span className="text-sm font-mono font-extrabold text-amber-600 dark:text-amber-300">
                       {member.weekly_xp} XP
                     </span>
                     <p className="text-[10px] text-[var(--text-tertiary)]">
@@ -682,18 +733,18 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-lg">🏃</span>
-                <h4 className="text-sm font-bold text-white apple-title">
+                <h4 className="text-sm font-bold text-[var(--text-primary)] apple-title">
                   Volumen Semanal Colectivo
                 </h4>
               </div>
-              <span className="text-xs font-mono font-bold text-sky-400">
+              <span className="text-xs font-mono font-bold text-sky-600 dark:text-sky-400">
                 Meta: 60 km
               </span>
             </div>
             <p className="text-xs text-[var(--text-secondary)]">
               Sumad los kilómetros de carrera de todos los atletas de la tribu esta semana.
             </p>
-            <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-black/5 dark:bg-white/5 rounded-full h-2 overflow-hidden">
               <div
                 className="bg-gradient-to-r from-sky-500 to-indigo-500 h-2 rounded-full transition-all duration-500"
                 style={{ width: '45%' }}
@@ -705,18 +756,18 @@ export const SquadView: React.FC<SquadViewProps> = ({ currentProfile, onOpenAuth
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-lg">🏋️</span>
-                <h4 className="text-sm font-bold text-white apple-title">
+                <h4 className="text-sm font-bold text-[var(--text-primary)] apple-title">
                   Disciplina de Sala (Fuerza)
                 </h4>
               </div>
-              <span className="text-xs font-mono font-bold text-purple-400">
+              <span className="text-xs font-mono font-bold text-purple-600 dark:text-purple-400">
                 Meta: 15 sesiones
               </span>
             </div>
             <p className="text-xs text-[var(--text-secondary)]">
               Completar 15 sesiones de fuerza combinadas entre todos los miembros.
             </p>
-            <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-black/5 dark:bg-white/5 rounded-full h-2 overflow-hidden">
               <div
                 className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-500"
                 style={{ width: '60%' }}

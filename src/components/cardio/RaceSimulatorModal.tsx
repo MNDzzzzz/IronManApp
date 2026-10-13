@@ -66,12 +66,12 @@ export const RaceSimulatorModal: React.FC<RaceSimulatorModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="race-sim-title"
-      className="fixed inset-0 z-50 bg-[#0A0D14]/90 backdrop-blur-xl flex items-end sm:items-center justify-center p-0 sm:p-4 animate-apple-fade-in"
+      className="fixed inset-0 z-[100] bg-[#0A0D14]/90 backdrop-blur-xl flex items-end sm:items-center justify-center p-0 sm:p-4 animate-apple-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="liquid-glass-card border border-[var(--glass-border)] rounded-t-[32px] sm:rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-2xl space-y-5 text-[var(--text-primary)] animate-apple-scale-in">
+      <div className="liquid-glass-card border border-[var(--glass-border)] rounded-t-[32px] sm:rounded-3xl p-5 pb-12 sm:p-6 sm:pb-8 max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-2xl space-y-5 text-[var(--text-primary)] animate-apple-scale-in">
         {/* Tirador táctil Apple para Bottom Sheet en móvil */}
         <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-2 sm:hidden shrink-0" />
         {/* Cabecera */}

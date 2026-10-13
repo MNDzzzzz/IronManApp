@@ -113,12 +113,12 @@ export const StravaUploadModal: React.FC<StravaUploadModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xl animate-apple-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full sm:max-w-lg rounded-t-[32px] sm:rounded-3xl liquid-glass-card border border-[var(--glass-border)] shadow-2xl p-6 max-h-[85vh] overflow-y-auto flex flex-col animate-apple-scale-in">
+      <div className="relative w-full sm:max-w-lg rounded-t-[32px] sm:rounded-3xl liquid-glass-card border border-[var(--glass-border)] shadow-2xl p-6 pb-12 sm:pb-8 max-h-[85vh] overflow-y-auto flex flex-col animate-apple-scale-in">
         {/* Tirador táctil Apple para Bottom Sheet en móvil */}
         <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
 

@@ -89,13 +89,13 @@ export const CoachResponseModal: React.FC<CoachResponseModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-end sm:items-center justify-center p-3 sm:p-4 animate-apple-fade-in motion-reduce:transition-none"
+      className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xl flex items-end sm:items-center justify-center p-3 sm:p-4 animate-apple-fade-in motion-reduce:transition-none"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="w-full max-w-lg liquid-glass-sheet border-t border-t-white/30 dark:border-t-white/15 rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl animate-apple-scale-in max-h-[85vh] overflow-y-auto"
+        className="w-full max-w-lg liquid-glass-sheet border-t border-t-white/30 dark:border-t-white/15 rounded-3xl p-5 sm:p-6 pb-12 sm:pb-8 space-y-4 shadow-2xl animate-apple-scale-in max-h-[85vh] overflow-y-auto"
         role="dialog"
         aria-modal="true"
         aria-labelledby="coach-response-title"

@@ -368,7 +368,7 @@ export const CoachCommandBar: React.FC<CoachCommandBarProps> = ({
         </button>
         <button
           type="button"
-          onClick={() => handleSendText('Registrar peso 101.0 kg')}
+          onClick={() => handleSendText('Registrar mi peso de hoy')}
           className="shrink-0 text-[10.5px] px-3 py-1 rounded-full bg-white/50 dark:bg-white/[0.05] border border-white/60 dark:border-white/10 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-purple-500/40 shadow-[var(--glass-specular-bevel)] transition-all touch-manipulation apple-pressable apple-btn-spring active:scale-[0.96] apple-caption"
         >
           ⚖️ Log peso hoy
