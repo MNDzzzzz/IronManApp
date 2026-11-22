@@ -19,6 +19,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
+  // Evita que Android Chrome empuje elementos flotantes al centro al abrir el teclado virtual
+  interactiveWidget: 'resizes-content',
 };
 
 export default function RootLayout({

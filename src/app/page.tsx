@@ -561,6 +561,7 @@ export default function Home() {
       <BottomNav
         currentTab={currentTab}
         isReportOpen={isReportOpen}
+        isModalOpen={isSettingsOpen || isProfileModalOpen || isAuthModalOpen}
         onSelectTab={(tab) => {
           setIsReportOpen(false);
           setCurrentTab(tab);

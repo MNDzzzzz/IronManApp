@@ -313,7 +313,7 @@ export const CoachCommandBar: React.FC<CoachCommandBarProps> = ({
               onChange={(e) => setInputText(e.target.value)}
               placeholder={placeholder}
               disabled={isProcessing}
-              className="w-full bg-transparent px-2 py-1.5 text-xs sm:text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none font-sans"
+              className="w-full bg-transparent px-2 py-1.5 text-base sm:text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none font-sans"
             />
             <button
               type="submit"

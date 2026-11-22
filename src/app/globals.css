@@ -106,6 +106,29 @@ body {
 }
 
 /* =====================================================================
+   ANCLAJE INAMOVIBLE Y AISLAMIENTO GPU PARA DOCK FLOTANTE (Apple HIG)
+   ===================================================================== */
+.dock-viewport-fixed {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100vw !important;
+  pointer-events: none;
+  z-index: 45;
+  /* Forzado de composición en capa de hardware GPU (Metal en iOS / Vulkan en Android) */
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  perspective: 1000px;
+  -webkit-perspective: 1000px;
+  /* Aislamiento estricto de reflujo respecto al resto de la página */
+  contain: layout style;
+  will-change: transform, opacity;
+}
+
+/* =====================================================================
    UTILIDADES ESPECÍFICAS DE LIQUID GLASS (Apple visionOS / iOS 18+)
    ===================================================================== */
 @layer utilities {
@@ -146,7 +169,7 @@ body {
     backdrop-filter: blur(32px) saturate(190%);
     -webkit-backdrop-filter: blur(32px) saturate(190%);
     border: 1px solid var(--glass-border);
-    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.12), var(--glass-specular-bevel);
+    box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.45), var(--glass-specular-bevel);
     border-radius: 9999px;
   }
 
@@ -291,6 +314,10 @@ body {
     transition: opacity 150ms ease !important;
     transform: none !important;
   }
+  .dock-viewport-fixed > div {
+    transition: opacity 150ms ease !important;
+    transform: none !important;
+  }
 }
 
 @media (prefers-reduced-transparency: reduce) {
@@ -308,4 +335,3 @@ body {
     border-color: currentColor !important;
   }
 }
-
